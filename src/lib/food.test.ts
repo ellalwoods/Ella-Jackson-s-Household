@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
 import { addDays, key, mondayOf } from './dates';
 import { HouseholdData, seed } from './model';
-import { addToPantry, costContext, expiry, weekBudget, fmtAmount, recipeCost, shoppingList, stockUp, toBase } from './food';
+import { addToPantry, costContext, guessSection, expiry, weekBudget, fmtAmount, recipeCost, shoppingList, stockUp, toBase } from './food';
 
 const mon = mondayOf(new Date(2026, 8, 23)); // Mon 21 Sep 2026
 const wk = key(mon);
@@ -154,4 +154,14 @@ it('adds to the pantry by hand, topping up amounts in matching units', () => {
     { name: 'Salt', state: 'Full' },
     { name: 'Oats', state: 'Full', qty: 750, unit: 'g' },
   ]);
+});
+
+it('sorts shopping items into sections: guesses for added items, remembers choices', () => {
+  expect(['Toothpaste', 'Dishwashing liquid', 'Toilet paper', 'Milk', 'Pad thai noodles', 'Face cleanser', 'Laundry powder', 'Olive oil spray'].map(guessSection))
+    .toEqual(['personal', 'cleaning', 'other', 'food', 'food', 'personal', 'cleaning', 'food']);
+  const D = household();
+  D.shopExtras = { [wk]: [{ id: 'a', name: 'Shampoo' }, { id: 'b', name: 'Sponges' }] };
+  D.shopSections = { egg: 'other' };
+  const sec = Object.fromEntries(shoppingList(D, mon).items.map(i => [i.name, i.section]));
+  expect(sec).toMatchObject({ Rice: 'food', Egg: 'other', Shampoo: 'personal', Sponges: 'cleaning' });
 });

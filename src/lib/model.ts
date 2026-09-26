@@ -89,6 +89,10 @@ export type Schedule =
   | { type: 'monthly'; dom: number }
   | { type: 'once'; date: string };
 export interface Chore { id: string; name: string; person: ChoreOwner; sched: Schedule }
+export const SHOP_SECTIONS = ['food', 'cleaning', 'personal', 'other'] as const;
+export type ShopSection = (typeof SHOP_SECTIONS)[number];
+export const SHOP_SECTION_LABEL: Record<ShopSection, string> = { food: 'Food', cleaning: 'Cleaning', personal: 'Personal', other: 'Other' };
+
 /** Stored as an item's expiry when it doesn't expire (the "N/A" option). */
 export const NO_EXPIRY = 'none';
 
@@ -145,6 +149,8 @@ export interface HouseholdData {
   tags: Tag[];
   /** Hand-added shopping items by week (Monday's date key). */
   shopExtras: Record<string, ManualShopItem[]>;
+  /** Shopping list section chosen for an item, by normalised name. */
+  shopSections: Record<string, ShopSection>;
 }
 
 export const uid = () => Math.random().toString(36).slice(2, 9);
@@ -213,6 +219,7 @@ export function seed(today = new Date()): HouseholdData {
     events: [],
     tags: [],
     shopExtras: {},
+    shopSections: {},
   };
 }
 
@@ -227,7 +234,7 @@ export function migrate(d: any): HouseholdData | null {
     ];
   }
   delete d.income;
-  d.recipes ??= []; d.plan ??= {}; d.chores ??= []; d.done ??= {}; d.prices ??= []; d.staples ??= []; d.extras ??= {}; d.spends ??= {}; d.events ??= []; d.tags ??= []; d.shopExtras ??= {};
+  d.recipes ??= []; d.plan ??= {}; d.chores ??= []; d.done ??= {}; d.prices ??= []; d.staples ??= []; d.extras ??= {}; d.spends ??= {}; d.events ??= []; d.tags ??= []; d.shopExtras ??= {}; d.shopSections ??= {};
   for (const c of d.cats) if (c.fixed === undefined && /\brent\b/i.test(c.name)) c.fixed = true;
   if (!Array.isArray(d.pantry)) d.pantry = Array.isArray(d.cupboard) ? d.cupboard : [];
   delete d.cupboard;

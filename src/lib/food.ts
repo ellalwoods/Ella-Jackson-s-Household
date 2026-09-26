@@ -1,5 +1,5 @@
 import { addDays, DOW, key, MON, parse } from './dates';
-import { CAT_COLORS, earnings, NO_EXPIRY, EXTRA_COLOR, HouseholdData, INCLUDE_LOW, Meal, MEALS, norm, num, shareOf, Spend, PantryItem, Price, Recipe, RecipeIngredient, STAPLE_COST, Unit } from './model';
+import { CAT_COLORS, earnings, NO_EXPIRY, SHOP_SECTION_LABEL, SHOP_SECTIONS, ShopSection, EXTRA_COLOR, HouseholdData, INCLUDE_LOW, Meal, MEALS, norm, num, shareOf, Spend, PantryItem, Price, Recipe, RecipeIngredient, STAPLE_COST, Unit } from './model';
 
 // ── Plan ───────────────────────────────────────────────────────────────────
 
@@ -159,7 +159,23 @@ export function expiry(expires: string | undefined, today = new Date()) {
 
 // ── Shopping list ──────────────────────────────────────────────────────────
 
+// ── Shopping sections ──────────────────────────────────────────────────────
+
+const CLEANING = /(clean|detergent|laundry|bleach|disinfect|sponge|scourer|dishwash|dish ?soap|wipes?\b|bin ?bags?|garbage bags?|rubbish bags?|fabric softener|polish|mop|gloves|steel wool|window|toilet (cleaner|duck)|napisan|vanish|glen ?20|domestos|jif|finish|air freshener)/i;
+const PERSONAL = /(tooth|floss|mouthwash|shampoo|conditioner|body ?wash|soap|deodorant|razor|shav|sunscreen|moistur|lotion|tampon|sanitary pads|panty|cotton|tissues|makeup|mascara|lip|hair|nail|vitamin|panadol|nurofen|paracetamol|ibuprofen|bandaid|plasters?|contact|skincare|cleanser|serum|perfume|cologne|condom|pill)/i;
+const HOUSEHOLD = /(toilet paper|toilet roll|paper towel|foil|cling ?wrap|baking paper|batter(y|ies)|light ?bulb|candle|matches|zip ?lock|sandwich bags|freezer bags)/i;
+
+/** A best guess at where a hand-added item belongs; food unless it looks otherwise. */
+export function guessSection(name: string): ShopSection {
+  if (HOUSEHOLD.test(name)) return 'other';
+  if (/dish|laundry|detergent/i.test(name)) return 'cleaning';
+  if (PERSONAL.test(name)) return 'personal';
+  if (CLEANING.test(name)) return 'cleaning';
+  return 'food';
+}
+
 export interface ShopItem {
+  section: ShopSection;
   /** Unique on the list (ticks and expiry dates are keyed by it). */
   id: string;
   /** Normalised name, used to match the pantry. */
@@ -235,6 +251,7 @@ export function shoppingList(D: HouseholdData, mon: Date, today = new Date()) {
     let packs = pr ? 1 : 0;
     if (pr && short && toBase(pr.qty, pr.unit).dim === short.dim) packs = Math.max(1, Math.ceil(short.v / toBase(pr.qty, pr.unit).v - 1e-9));
     items.push({
+      section: D.shopSections[lk] ?? 'food',
       id: lk, lk, name: n.name, days: n.days, status, need, packs, buy: pr,
       have: have && need && have.dim === need.dim ? have : null,
       cost: pr ? round(packs * pr.price) : null,
@@ -245,6 +262,7 @@ export function shoppingList(D: HouseholdData, mon: Date, today = new Date()) {
   for (const m of D.shopExtras[wk] ?? []) {
     const buy: Price | null = m.qty && m.unit ? { name: m.name, qty: m.qty, unit: m.unit, price: m.price ?? 0 } : null;
     items.push({
+      section: D.shopSections[norm(m.name)] ?? guessSection(m.name),
       id: 'm:' + m.id, lk: norm(m.name), manual: m.id, name: m.name, days: [], status: 'Added',
       need: null, have: null, buy, packs: buy ? 1 : 0, cost: m.price != null ? round(m.price) : null,
     });
@@ -313,7 +331,10 @@ export function shoppingText(label: string, items: ShopItem[], skipped: Skipped[
     return '☐ ' + i.name + (bits.length ? '  (' + bits.join(' · ') + ')' : '');
   };
   return 'Shopping list — ' + label + '\n\n' +
-    (items.length ? items.map(line).join('\n') : 'Nothing needed.') +
+    (items.length
+      ? SHOP_SECTIONS.map(s => items.filter(i => i.section === s)).filter(g => g.length)
+        .map(g => SHOP_SECTION_LABEL[g[0].section] + '\n' + g.map(line).join('\n')).join('\n\n')
+      : 'Nothing needed.') +
     (total ? '\n\nEstimated total: $' + total.toFixed(2) : '') +
     (skipped.length ? '\n\nAlready in pantry: ' + skipped.map(x => x.name).join(', ') : '');
 }

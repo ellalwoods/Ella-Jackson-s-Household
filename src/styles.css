@@ -131,8 +131,8 @@ input:focus, textarea:focus, select:focus { outline: 2px solid var(--ink); outli
   .ing-name { flex-basis: calc(100% - 44px); }
   .ing-row > .x-btn { order: 0; }
 }
-.shop-row { border-top: 1px solid #EFEBE3; }
-.shop-row > .shop-item { border-top: none; }
+.shop-row { border-top: 1px solid #EFEBE3; display: flex; flex-wrap: wrap; align-items: center; gap: 0 10px; }
+.shop-row > .shop-item { border-top: none; flex: 1 1 0; min-width: 0; width: auto; }
 .shop-expiry { display: flex; gap: 8px; align-items: center; padding: 0 0 10px 34px; font-size: 13px; color: var(--muted); }
 .exp-chip { font-size: 11px; padding: 3px 8px; border-radius: 999px; background: var(--chip); color: var(--chip-ink); }
 .exp-chip.soon { background: #DCD690; color: var(--ink); }
@@ -195,7 +195,6 @@ input:focus, textarea:focus, select:focus { outline: 2px solid var(--ink); outli
 .pill.nav-on .count-badge { background: #fff; color: var(--ink); }
 /* Shopping list: add your own items */
 .shop-add { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; padding: 4px 0 12px; }
-.shop-remove { position: absolute; right: 0; bottom: 6px; font-size: 11px; }
 .shop-add .ing-group { order: 0; }
 /* Phones: the recipe search opens as a full-width panel near the top, so it's never cut off. */
 @media (max-width: 720px) {
@@ -204,3 +203,9 @@ input:focus, textarea:focus, select:focus { outline: 2px solid var(--ink); outli
   .scrim { background: rgba(35, 34, 31, .18); }
 }
 .expiry-input { display: inline-flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.shop-side { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; padding: 6px 0; flex: none; }
+.shop-row > .shop-expiry { flex-basis: 100%; }
+.section-select { border: none; background: none; font-size: 11px; color: var(--muted); padding: 0; cursor: pointer; text-align: right; }
+.section-select:hover { color: var(--ink); }
+.shop-group + .shop-group { margin-top: 14px; }
+.shop-group-head { display: flex; gap: 8px; align-items: baseline; font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; padding: 4px 0 6px; }

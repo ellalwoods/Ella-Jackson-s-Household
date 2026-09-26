@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { addDays, key } from '../lib/dates';
-import { ManualShopItem, money, Unit, uid } from '../lib/model';
-import { buyText, fmtAmount, ShopItem, shoppingText, Skipped, stockUp } from '../lib/food';
+import { ManualShopItem, money, norm, SHOP_SECTION_LABEL, SHOP_SECTIONS, ShopSection, Unit, uid } from '../lib/model';
+import { buyText, fmtAmount, guessSection, ShopItem, shoppingText, Skipped, stockUp } from '../lib/food';
 import type { Update } from '../Household';
 import { ExpiryInput, stockRule, UnitSelect } from './PantryPage';
 
@@ -59,7 +59,12 @@ export default function ShopPage({ update, mon, label, items, skipped }: Props) 
     const left = (x.shopExtras[wk] ?? []).filter(m => m.id !== id);
     if (left.length) x.shopExtras[wk] = left; else delete x.shopExtras[wk];
   });
-  const addManual = (m: ManualShopItem) => update(x => { x.shopExtras[wk] = [...(x.shopExtras[wk] ?? []), m]; });
+  const addManual = (m: ManualShopItem, section: ShopSection) => update(x => {
+    x.shopExtras[wk] = [...(x.shopExtras[wk] ?? []), m];
+    x.shopSections[norm(m.name)] = section;
+  });
+  const setSection = (i: ShopItem, section: ShopSection) => update(x => { x.shopSections[i.lk] = section; });
+  const groups = SHOP_SECTIONS.map(sec => ({ sec, list: items.filter(i => i.section === sec) })).filter(g => g.list.length);
 
   return (
     <div className="flow">
@@ -69,36 +74,47 @@ export default function ShopPage({ update, mon, label, items, skipped }: Props) 
           <button className="pill plain" onClick={print}>Print</button>
         </div>
         <AddItem onAdd={addManual} />
-        {items.map(i => {
-          const ck = isTicked(i);
-          return (
-            <div key={i.id} className="shop-row" style={{ position: 'relative' }}>
-            <button className="shop-item" style={{ opacity: ck ? 0.55 : 1 }}
-              onClick={() => setTicks(t => ({ ...t, [tick(i)]: !t[tick(i)] }))}>
-              <span className="box-check" style={{ background: ck ? '#23221F' : 'transparent' }}>{ck ? '✓' : ''}</span>
-              <span style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, whiteSpace: 'normal' }}>
-                <span style={{ fontSize: 15, textDecoration: ck ? 'line-through' : 'none' }}>{i.name}</span>
-                <span style={{ fontSize: 12 }} className="muted">
-                  {i.manual ? 'Added by you' : 'For ' + i.days.join(', ')}{i.need ? ' · uses ' + fmtAmount(i.need) : ''}{i.buy ? ' · buy ' + buyText(i) : ''}
-                </span>
-              </span>
-              <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3 }}>
-                <span className="chip" style={{ fontSize: 11, padding: '3px 8px' }}>{i.status}</span>
-                {i.cost !== null && <span style={{ fontSize: 12 }} className="muted">{money(i.cost)}</span>}
-              </span>
-            </button>
-            {i.manual && (
-              <button className="link-btn shop-remove" aria-label={'Remove ' + i.name} onClick={() => removeManual(i.manual!)}>Remove</button>
-            )}
-            {ck && (
-              <div className="shop-expiry">
-                <ExpiryInput label="Expires" value={dates[tick(i)] ?? ''} onChange={v => setDates(ds => ({ ...ds, [tick(i)]: v }))} />
-                <span className="note">optional</span>
-              </div>
-            )}
+        {groups.map(({ sec, list }) => (
+          <div key={sec} className="shop-group">
+            <div className="shop-group-head">
+              <span>{SHOP_SECTION_LABEL[sec]}</span>
+              <span className="muted">{list.length}</span>
             </div>
-          );
-        })}
+            {list.map(i => {
+              const ck = isTicked(i);
+              return (
+                <div key={i.id} className="shop-row">
+                  <button className="shop-item" style={{ opacity: ck ? 0.55 : 1 }}
+                    onClick={() => setTicks(t => ({ ...t, [tick(i)]: !t[tick(i)] }))}>
+                    <span className="box-check" style={{ background: ck ? '#23221F' : 'transparent' }}>{ck ? '✓' : ''}</span>
+                    <span style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, whiteSpace: 'normal' }}>
+                      <span style={{ fontSize: 15, textDecoration: ck ? 'line-through' : 'none' }}>{i.name}</span>
+                      <span style={{ fontSize: 12 }} className="muted">
+                        {i.manual ? 'Added by you' : 'For ' + i.days.join(', ')}{i.need ? ' · uses ' + fmtAmount(i.need) : ''}{i.buy ? ' · buy ' + buyText(i) : ''}
+                      </span>
+                    </span>
+                  </button>
+                  <span className="shop-side">
+                    <span className="chip" style={{ fontSize: 11, padding: '3px 8px' }}>{i.status}</span>
+                    {i.cost !== null && <span style={{ fontSize: 12 }} className="muted">{money(i.cost)}</span>}
+                    <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <select className="section-select" value={i.section} onChange={e => setSection(i, e.target.value as ShopSection)} aria-label={'Section for ' + i.name}>
+                        {SHOP_SECTIONS.map(x => <option key={x} value={x}>{SHOP_SECTION_LABEL[x]}</option>)}
+                      </select>
+                      {i.manual && <button className="link-btn" style={{ fontSize: 11 }} aria-label={'Remove ' + i.name} onClick={() => removeManual(i.manual!)}>Remove</button>}
+                    </span>
+                  </span>
+                  {ck && (
+                    <div className="shop-expiry">
+                      <ExpiryInput label="Expires" value={dates[tick(i)] ?? ''} onChange={v => setDates(ds => ({ ...ds, [tick(i)]: v }))} />
+                      <span className="note">optional</span>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        ))}
         {total > 0 && (
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, fontWeight: 600, padding: '12px 0 0', borderTop: '1px solid #23221F' }}>
             <span>Estimated total</span><span>{money(total)}</span>
@@ -122,11 +138,14 @@ export default function ShopPage({ update, mon, label, items, skipped }: Props) 
 }
 
 /** Add something that isn't part of a recipe: a name, and optionally how much and what it costs. */
-function AddItem({ onAdd }: { onAdd: (m: ManualShopItem) => void }) {
+function AddItem({ onAdd }: { onAdd: (m: ManualShopItem, section: ShopSection) => void }) {
   const [name, setName] = useState('');
   const [qty, setQty] = useState('');
   const [unit, setUnit] = useState<Unit>('each');
   const [price, setPrice] = useState('');
+  /** Picked by hand; otherwise follows a guess from the name. */
+  const [picked, setPicked] = useState<ShopSection | null>(null);
+  const section = picked ?? guessSection(name);
   const add = () => {
     const n = name.trim();
     if (!n) return;
@@ -134,8 +153,8 @@ function AddItem({ onAdd }: { onAdd: (m: ManualShopItem) => void }) {
     const q = parseFloat(qty), pr = parseFloat(price);
     if (q > 0) { m.qty = q; m.unit = unit; }
     if (!isNaN(pr)) m.price = pr;
-    onAdd(m);
-    setName(''); setQty(''); setPrice('');
+    onAdd(m, section);
+    setName(''); setQty(''); setPrice(''); setPicked(null);
   };
   const onKey = (e: React.KeyboardEvent) => { if (e.key === 'Enter') add(); };
   return (
@@ -150,6 +169,9 @@ function AddItem({ onAdd }: { onAdd: (m: ManualShopItem) => void }) {
         <span className="ing-label">$</span>
         <input className="field-sm" style={{ width: 64, height: 40 }} inputMode="decimal" value={price} onChange={e => setPrice(e.target.value)} onKeyDown={onKey} placeholder="0.00" aria-label="Price" />
       </span>
+      <select className="field-sm" style={{ height: 40, width: 104 }} value={section} onChange={e => setPicked(e.target.value as ShopSection)} aria-label="Section">
+        {SHOP_SECTIONS.map(x => <option key={x} value={x}>{SHOP_SECTION_LABEL[x]}</option>)}
+      </select>
       <button className="pill-sm dark" style={{ height: 40 }} onClick={add}>Add</button>
     </div>
   );
