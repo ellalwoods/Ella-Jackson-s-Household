@@ -25,10 +25,11 @@ input:focus, textarea:focus, select:focus { outline: 2px solid var(--ink); outli
 
 /* Header */
 .header { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; justify-content: space-between; margin-bottom: 22px; }
-.logo { border: none; background: none; padding: 0; cursor: pointer; text-align: left; display: flex; flex-direction: column; gap: 2px; }
-.logo-names { font-family: Newsreader, serif; font-size: clamp(26px, 4vw, 34px); line-height: 1; letter-spacing: -0.01em; }
-.logo-names em { color: var(--faint); font-weight: 400; }
-.logo-sub { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.logo { border: none; background: none; padding: 0; cursor: pointer; text-align: left; display: flex; flex-direction: column; gap: 6px; }
+/* Logo 3e: Figtree wordmark with the heart mark in place of "&". */
+.logo-names { display: flex; align-items: center; gap: .22em; font-family: Figtree, sans-serif; font-weight: 500; font-size: clamp(26px, 4vw, 34px); line-height: 1; letter-spacing: -0.02em; }
+.logo-names .heart-mark { width: auto; height: .82em; flex: none; margin-top: .02em; }
+.logo-sub { font-size: 11px; letter-spacing: .24em; text-transform: uppercase; color: var(--muted); padding-left: 1px; }
 .row { display: flex; gap: 6px; flex-wrap: wrap; }
 .row8 { display: flex; gap: 8px; flex-wrap: wrap; }
 
