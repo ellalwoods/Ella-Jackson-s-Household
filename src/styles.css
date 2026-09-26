@@ -214,9 +214,9 @@ input:focus, textarea:focus, select:focus { outline: 2px solid var(--ink); outli
 .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 999px; padding: 2px; background: #fff; }
 .seg button { height: 28px; padding: 0 12px; border: none; border-radius: 999px; background: none; cursor: pointer; font-size: 12px; color: var(--ink); }
 .seg button.on { background: var(--ink); color: #fff; }
-/* A set expiry date (or N/A) reads as a complete, filled pill */
-.date-pill { display: inline-flex; align-items: stretch; border-radius: 999px; background: var(--ink); color: #fff; overflow: hidden; font-size: 12px; }
-.date-pill-main { display: inline-flex; gap: 6px; align-items: center; padding: 0 4px 0 11px; border: none; background: none; color: inherit; cursor: pointer; font-size: 12px; font-weight: 500; }
+/* A set expiry date (or N/A): the soft linen chip, matching the app's other tags */
+.date-pill { display: inline-flex; align-items: stretch; border-radius: 999px; background: var(--chip); color: var(--chip-ink); overflow: hidden; font-size: 11px; }
+.date-pill-main { display: inline-flex; gap: 5px; align-items: center; padding: 0 2px 0 10px; border: none; background: none; color: inherit; cursor: pointer; font-size: 11px; }
 .date-pill-main:disabled { cursor: default; }
-.date-pill-x { border: none; background: none; color: rgba(255, 255, 255, .7); cursor: pointer; padding: 0 10px 0 6px; font-size: 14px; line-height: 1; }
-.date-pill-x:hover { color: #fff; }
+.date-pill-x { border: none; background: none; color: var(--faint); cursor: pointer; padding: 0 9px 0 5px; font-size: 13px; line-height: 1; }
+.date-pill-x:hover { color: var(--ink); }
