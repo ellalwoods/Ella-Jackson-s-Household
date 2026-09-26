@@ -48,17 +48,17 @@ it('replays local edits on top of the other person’s newer save', async () => 
   await store.start();
 
   // Jackson saves from his phone; this device hasn't heard about it yet.
-  server.data = { ...server.data, cupboard: [...server.data.cupboard, { name: 'Milk', state: 'Full' }] };
+  server.data = { ...server.data, pantry: [...server.data.pantry, { name: 'Milk', state: 'Full' }] };
   server.version = 6;
 
-  store.update(d => { d.cupboard.push({ name: 'Eggs', state: 'Low' }); });
+  store.update(d => { d.pantry.push({ name: 'Eggs', state: 'Low' }); });
   await wait(600);
 
-  const names = server.data!.cupboard.map(c => c.name);
+  const names = server.data!.pantry.map(c => c.name);
   expect(names).toContain('Milk');
   expect(names).toContain('Eggs');
   expect(server.version).toBe(7);
-  expect(store.getState().data!.cupboard.map(c => c.name)).toEqual(names);
+  expect(store.getState().data!.pantry.map(c => c.name)).toEqual(names);
   store.stop();
 });
 

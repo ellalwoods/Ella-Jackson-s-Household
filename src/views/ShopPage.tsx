@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { addDays, key } from '../lib/dates';
-import { norm, ShopItem, shoppingText, StockState } from '../lib/model';
+import { money } from '../lib/model';
+import { buyText, fmtAmount, ShopItem, shoppingText, Skipped, stockUp } from '../lib/food';
 import type { Update } from '../Household';
-import { stockRule } from './CupboardPage';
+import { stockRule } from './PantryPage';
 
 const TICKS_KEY = 'hh-shop-ticks';
 
@@ -15,13 +16,14 @@ function useTicks() {
   return [ticks, setTicks] as const;
 }
 
-interface Props { update: Update; mon: Date; label: string; items: ShopItem[]; skipped: { name: string; state: StockState }[] }
+interface Props { update: Update; mon: Date; label: string; items: ShopItem[]; skipped: Skipped[] }
 
 export default function ShopPage({ update, mon, label, items, skipped }: Props) {
   const [ticks, setTicks] = useTicks();
   const [copied, setCopied] = useState(false);
   const wk = key(mon);
   const isTicked = (i: ShopItem) => !!ticks[wk + '|' + i.lk];
+  const total = items.reduce((a, i) => a + (i.cost ?? 0), 0);
   const text = () => shoppingText(label + ' ' + addDays(mon, 6).getFullYear(), items, skipped);
 
   const copy = () => {
@@ -48,12 +50,7 @@ export default function ShopPage({ update, mon, label, items, skipped }: Props) 
   };
   const stockTicked = () => {
     const got = items.filter(isTicked);
-    update(x => {
-      got.forEach(i => {
-        const c = x.cupboard.find(c => norm(c.name) === i.lk);
-        if (c) c.state = 'Full'; else x.cupboard.push({ name: i.name, state: 'Full' });
-      });
-    });
+    update(x => stockUp(x, got, wk));
   };
 
   return (
@@ -72,21 +69,31 @@ export default function ShopPage({ update, mon, label, items, skipped }: Props) 
               <span className="box-check" style={{ background: ck ? '#23221F' : 'transparent' }}>{ck ? '✓' : ''}</span>
               <span style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, whiteSpace: 'normal' }}>
                 <span style={{ fontSize: 15, textDecoration: ck ? 'line-through' : 'none' }}>{i.name}</span>
-                <span style={{ fontSize: 12 }} className="muted">For {i.days.join(', ')}</span>
+                <span style={{ fontSize: 12 }} className="muted">
+                  For {i.days.join(', ')}{i.need ? ' · uses ' + fmtAmount(i.need) : ''}{i.buy ? ' · buy ' + buyText(i) : ''}
+                </span>
               </span>
-              <span className="chip" style={{ fontSize: 11, padding: '3px 8px' }}>{i.status}</span>
+              <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3 }}>
+                <span className="chip" style={{ fontSize: 11, padding: '3px 8px' }}>{i.status}</span>
+                {i.cost !== null && <span style={{ fontSize: 12 }} className="muted">{money(i.cost)}</span>}
+              </span>
             </button>
           );
         })}
-        {!items.length && <p className="empty" style={{ padding: '16px 0', margin: 0 }}>Nothing to buy — plan some dinners, or everything's already in the cupboard.</p>}
+        {total > 0 && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, fontWeight: 600, padding: '12px 0 0', borderTop: '1px solid #23221F' }}>
+            <span>Estimated total</span><span>{money(total)}</span>
+          </div>
+        )}
+        {!items.length && <p className="empty" style={{ padding: '16px 0', margin: 0 }}>Nothing to buy — plan some dinners, or everything's already in the pantry.</p>}
         {items.some(isTicked) && (
-          <button className="pill outline-dark" style={{ marginTop: 12 }} onClick={stockTicked}>Add ticked items to cupboard as Full</button>
+          <button className="pill outline-dark" style={{ marginTop: 12 }} onClick={stockTicked}>Add ticked items to pantry</button>
         )}
       </section>
       <aside className="card" style={{ flex: '1 1 260px', padding: '18px 20px' }}>
-        <div className="eyebrow" style={{ marginBottom: 10 }}>Already in cupboard — skipped</div>
+        <div className="eyebrow" style={{ marginBottom: 10 }}>Already in pantry — skipped</div>
         <div className="row">
-          {skipped.map(s => <span key={s.name} className="chip">{s.name} · {s.state}</span>)}
+          {skipped.map(s => <span key={s.name} className="chip">{s.name} · {s.note}</span>)}
         </div>
         {!skipped.length && <p style={{ fontSize: 13, margin: 0 }} className="muted">Nothing skipped this week.</p>}
         <p className="note" style={{ margin: '14px 0 0' }}>{stockRule}</p>

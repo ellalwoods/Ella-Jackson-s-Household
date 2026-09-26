@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { addDays, DOW, key } from '../lib/dates';
-import { HouseholdData, money, norm, occurs, PEOPLE, searchRecipes, uid } from '../lib/model';
+import { HouseholdData, money, norm, occurs, PEOPLE, uid } from '../lib/model';
+import { priceMap, recipeCost, searchRecipes } from '../lib/food';
 import type { Update } from '../Household';
 
 interface Props { D: HouseholdData; update: Update; mon: Date }
@@ -12,6 +13,8 @@ export default function WeekTable({ D, update, mon }: Props) {
 
   const tk = key(new Date());
   const rBy = new Map(D.recipes.map(r => [r.id, r]));
+  const prices = priceMap(D);
+  const cost = (r: (typeof D.recipes)[number]) => recipeCost(r, prices);
 
   const days = DOW.map((dow, i) => {
     const d = addDays(mon, i), k = key(d);
@@ -23,7 +26,7 @@ export default function WeekTable({ D, update, mon }: Props) {
     return { k, dow, dateNum: d.getDate(), r, isToday: k === tk, chores };
   });
 
-  const mealTotal = days.reduce((a, d) => a + (d.r ? d.r.cost : 0), 0);
+  const mealTotal = days.reduce((a, d) => a + (d.r ? cost(d.r) : 0), 0);
   const allChores = days.flatMap(d => d.chores);
 
   // Picker search: name matches first, then alphabetical.
@@ -71,7 +74,7 @@ export default function WeekTable({ D, update, mon }: Props) {
             <button className="meal-btn" onClick={() => { setPicker(d.k); setQuery(''); setIdx(0); }}
               style={{ borderColor: d.r ? '#E8E4DB' : '#E3DED3', background: d.r ? '#FBFAF7' : 'transparent' }}>
               <span style={{ fontSize: 14, fontWeight: d.r ? 500 : 400, color: d.r ? '#23221F' : '#A39D90' }}>{d.r ? d.r.name : '+ Add dinner'}</span>
-              {d.r && <span style={{ fontSize: 12 }} className="muted">{money(d.r.cost)} · {money(d.r.cost / 2)} each</span>}
+              {d.r && <span style={{ fontSize: 12 }} className="muted">{money(cost(d.r))} · {money(cost(d.r) / 2)} each</span>}
             </button>
             {picker === d.k && (
               <>
@@ -86,10 +89,10 @@ export default function WeekTable({ D, update, mon }: Props) {
                         <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0, whiteSpace: 'normal' }}>
                           <span style={{ fontSize: 14, fontWeight: 500 }}>{r.name}</span>
                           <span style={{ fontSize: 12 }} className="muted">
-                            {pq && !norm(r.name).includes(pq) ? 'Uses ' + r.ingredients.filter(g => norm(g).includes(pq)).join(', ') : r.ingredients.length + ' ingredients'}
+                            {pq && !norm(r.name).includes(pq) ? 'Uses ' + r.ingredients.filter(g => norm(g.name).includes(pq)).map(g => g.name).join(', ') : r.ingredients.length + ' ingredients'}
                           </span>
                         </span>
-                        <span style={{ fontSize: 13 }} className="muted">{money(r.cost)}</span>
+                        <span style={{ fontSize: 13 }} className="muted">{money(cost(r))}</span>
                       </button>
                     ))}
                     {!matches.length && <span style={{ fontSize: 13, padding: '8px 10px' }} className="muted">No recipes match.</span>}

@@ -1,21 +1,22 @@
 import { useMemo, useState } from 'react';
 import { addDays, isoWeek, mondayOf, weekLabel as fmtWeek } from './lib/dates';
-import { HouseholdData, shoppingList } from './lib/model';
+import type { HouseholdData } from './lib/model';
+import { shoppingList } from './lib/food';
 import type { Mutation, SyncStatus } from './lib/store';
 import { Logo } from './views/Logo';
 import WeekTable from './views/WeekTable';
 import BudgetCard from './views/BudgetCard';
 import ShopPage from './views/ShopPage';
 import RecipesPage from './views/RecipesPage';
-import CupboardPage from './views/CupboardPage';
+import PantryPage from './views/PantryPage';
 import ChoresPage from './views/ChoresPage';
 import BudgetPage from './views/BudgetPage';
 import CalendarPage from './views/CalendarPage';
 
-export type Page = 'shop' | 'recipes' | 'cupboard' | 'chores' | 'budget' | 'calendar';
+export type Page = 'shop' | 'recipes' | 'pantry' | 'chores' | 'budget' | 'calendar';
 export type Update = (m: Mutation) => void;
 
-const TABS: [Page, string][] = [['shop', 'Shopping'], ['recipes', 'Recipes'], ['cupboard', 'Cupboard'], ['chores', 'Chores'], ['budget', 'Budget'], ['calendar', 'Month']];
+const TABS: [Page, string][] = [['shop', 'Shopping'], ['recipes', 'Recipes'], ['pantry', 'Pantry'], ['chores', 'Chores'], ['budget', 'Budget'], ['calendar', 'Month']];
 
 const STATUS_TEXT: Record<SyncStatus, string> = {
   local: 'Saved on this device',
@@ -45,9 +46,9 @@ export default function Household({ data: D, update, status }: Props) {
   };
 
   const titles: Record<Page, [string, string]> = {
-    shop: ['Shopping list', label + ' · excludes what’s in the cupboard'],
+    shop: ['Shopping list', label + ' · excludes what’s in the pantry'],
     recipes: ['Recipes', D.recipes.length + ' saved · search by name or ingredient'],
-    cupboard: ['Cupboard', D.cupboard.length + ' ingredients tracked'],
+    pantry: ['Pantry', D.pantry.length + ' ingredients tracked'],
     chores: ['Chores', D.chores.length + ' tasks · recurring & one-off'],
     budget: ['Budget', 'Weekly amounts, per person'],
     calendar: ['Month view', 'Plan ahead'],
@@ -79,7 +80,7 @@ export default function Household({ data: D, update, status }: Props) {
             <div className="row8">
               <button className="pill dark" onClick={go('shop')}>Shopping list · {shop.items.length}</button>
               <button className="pill ghost" onClick={go('recipes')}>Recipes · {D.recipes.length}</button>
-              <button className="pill ghost" onClick={go('cupboard')}>Cupboard</button>
+              <button className="pill ghost" onClick={go('pantry')}>Pantry</button>
               <button className="pill ghost" onClick={go('chores')}>Chores</button>
               <button className="pill ghost" onClick={go('budget')}>Budget</button>
             </div>
@@ -108,7 +109,7 @@ export default function Household({ data: D, update, status }: Props) {
           </div>
           {page === 'shop' && <ShopPage update={update} mon={mon} label={label} {...shop} />}
           {page === 'recipes' && <RecipesPage D={D} update={update} mon={mon} />}
-          {page === 'cupboard' && <CupboardPage D={D} update={update} />}
+          {page === 'pantry' && <PantryPage D={D} update={update} />}
           {page === 'chores' && <ChoresPage D={D} update={update} />}
           {page === 'budget' && <BudgetPage D={D} update={update} />}
           {page === 'calendar' && (

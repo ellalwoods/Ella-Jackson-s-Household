@@ -1,26 +1,23 @@
 import { useState } from 'react';
 import { addDays, DOW, key } from '../lib/dates';
-import { HouseholdData, money, norm, searchRecipes, STATE_COLORS, uid } from '../lib/model';
+import { HouseholdData, money, norm, STATE_COLORS } from '../lib/model';
+import { fmtQty, isStocked, priceMap, recipeCost, searchRecipes } from '../lib/food';
 import type { Update } from '../Household';
+import RecipeEditor, { safeLink } from './RecipeEditor';
 
 export default function RecipesPage({ D, update, mon }: { D: HouseholdData; update: Update; mon: Date }) {
   const [q, setQ] = useState('');
-  const [open, setOpen] = useState(false);
-  const [name, setName] = useState('');
-  const [cost, setCost] = useState('');
-  const [ings, setIngs] = useState('');
+  /** null = closed, 'new' = adding, otherwise the id being edited. */
+  const [editing, setEditing] = useState<string | null>(null);
+  const [openMethod, setOpenMethod] = useState<Record<string, boolean>>({});
 
-  const cup = new Map(D.cupboard.map(c => [norm(c.name), c]));
+  const pantry = new Map(D.pantry.map(c => [norm(c.name), c]));
+  const prices = priceMap(D);
   const weekKeys = DOW.map((_, i) => key(addDays(mon, i)));
   const recipes = searchRecipes(D.recipes, q).slice().sort((a, b) => a.name.localeCompare(b.name));
+  const editingRecipe = editing && editing !== 'new' ? D.recipes.find(r => r.id === editing) ?? null : null;
 
-  const save = () => {
-    const n = name.trim();
-    if (!n) return;
-    const r = { id: uid(), name: n, cost: parseFloat(cost) || 0, ingredients: ings.split(',').map(x => x.trim()).filter(Boolean) };
-    update(x => { x.recipes.push(r); });
-    setName(''); setCost(''); setIngs(''); setOpen(false);
-  };
+  const edit = (id: string) => { setEditing(id); try { window.scrollTo(0, 0); } catch { /* not available */ } };
   const remove = (id: string) => update(x => {
     x.recipes = x.recipes.filter(z => z.id !== id);
     Object.keys(x.plan).forEach(k => { if (x.plan[k].r === id) delete x.plan[k]; });
@@ -30,38 +27,50 @@ export default function RecipesPage({ D, update, mon }: { D: HouseholdData; upda
     <>
       <div className="row8" style={{ marginBottom: 14 }}>
         <input className="search" style={{ flex: '1 1 260px' }} value={q} onChange={e => setQ(e.target.value)} placeholder="Search by name or ingredient" />
-        <button className="pill dark" style={{ height: 44, padding: '0 18px' }} onClick={() => setOpen(o => !o)}>{open ? 'Close' : '+ New recipe'}</button>
+        <button className="pill dark" style={{ height: 44, padding: '0 18px' }} onClick={() => setEditing(e => (e ? null : 'new'))}>{editing ? 'Close' : '+ New recipe'}</button>
       </div>
-      {open && (
-        <div style={{ background: '#fff', border: '1px solid #23221F', borderRadius: 16, padding: 16, marginBottom: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 120px', gap: 8 }}>
-            <input className="field" value={name} onChange={e => setName(e.target.value)} placeholder="Recipe name" />
-            <input className="field" value={cost} onChange={e => setCost(e.target.value)} placeholder="Cost $" inputMode="decimal" />
-          </div>
-          <textarea value={ings} onChange={e => setIngs(e.target.value)} placeholder="Ingredients, comma separated" rows={3}
-            style={{ padding: '10px 12px', border: '1px solid #DDD8CC', borderRadius: 10, background: '#fff', fontSize: 14, resize: 'vertical' }} />
-          <button className="pill dark" style={{ alignSelf: 'flex-start', padding: '0 18px' }} onClick={save}>Save recipe</button>
-        </div>
-      )}
+      {editing && <RecipeEditor key={editing} D={D} update={update} recipe={editingRecipe} onDone={() => setEditing(null)} />}
       <div className="auto-grid" style={{ gridTemplateColumns: 'repeat(auto-fill,minmax(min(100%,280px),1fr))' }}>
         {recipes.map(r => {
           const planned = weekKeys.map((k, i) => (D.plan[k]?.r === r.id ? DOW[i] : '')).filter(Boolean);
+          const link = safeLink(r.link);
+          const showMethod = !!openMethod[r.id];
           return (
             <div key={r.id} className="card" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontSize: 16, fontWeight: 600 }}>{r.name}</div>
-                  <div style={{ fontSize: 13 }} className="muted">{money(r.cost)} · {planned.length ? 'On ' + planned.join(', ') : 'Not this week'}</div>
+                  <div style={{ fontSize: 13 }} className="muted">{money(recipeCost(r, prices))} · {planned.length ? 'On ' + planned.join(', ') : 'Not this week'}</div>
                 </div>
-                <button className="link-btn" onClick={() => remove(r.id)}>Remove</button>
+                <span style={{ display: 'flex', gap: 10 }}>
+                  <button className="link-btn" onClick={() => edit(r.id)}>Edit</button>
+                  <button className="link-btn" onClick={() => remove(r.id)}>Remove</button>
+                </span>
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-                {r.ingredients.map((n, i) => {
-                  const c = cup.get(norm(n));
-                  const dot = !c ? '#BFB8AA' : c.state === 'Full' || c.state === 'Half' ? STATE_COLORS.Full : STATE_COLORS.Replace;
-                  return <span key={i} className="ing-tag"><span className="dot6" style={{ background: dot }} />{n}</span>;
+                {r.ingredients.map((g, i) => {
+                  const c = pantry.get(norm(g.name));
+                  const dot = !c ? '#BFB8AA' : isStocked(c) ? STATE_COLORS.Full : STATE_COLORS.Replace;
+                  return (
+                    <span key={i} className="ing-tag">
+                      <span className="dot6" style={{ background: dot }} />{g.name}
+                      {g.qty && g.unit ? <span className="muted">· {fmtQty(g.qty, g.unit)}</span> : null}
+                    </span>
+                  );
                 })}
+                {!r.ingredients.length && <span className="note">No ingredients yet — tap Edit to add them.</span>}
               </div>
+              {(link || r.method) && (
+                <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', fontSize: 13 }}>
+                  {link && <a href={link} target="_blank" rel="noopener noreferrer">Open recipe ↗</a>}
+                  {r.method && (
+                    <button className="link-btn" style={{ fontSize: 13 }} onClick={() => setOpenMethod(m => ({ ...m, [r.id]: !m[r.id] }))}>
+                      {showMethod ? 'Hide method' : 'Show method'}
+                    </button>
+                  )}
+                </div>
+              )}
+              {showMethod && r.method && <div style={{ fontSize: 14, lineHeight: 1.5, whiteSpace: 'pre-wrap', borderTop: '1px solid #F0ECE4', paddingTop: 10 }}>{r.method}</div>}
             </div>
           );
         })}

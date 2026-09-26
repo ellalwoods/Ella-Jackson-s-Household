@@ -1,6 +1,6 @@
 import { describe as group, expect, it } from 'vitest';
 import { addDays, key, mondayOf, weekLabel } from './dates';
-import { budget, describe, HouseholdData, migrate, money, occurs, seed, shoppingList } from './model';
+import { budget, describe, HouseholdData, migrate, money, occurs, seed } from './model';
 
 const mon = mondayOf(new Date(2026, 8, 23)); // Mon 21 Sep 2026
 
@@ -21,19 +21,6 @@ group('occurs / describe', () => {
   });
 });
 
-group('shoppingList', () => {
-  it('skips Full/Half cupboard items and keeps Low/Replace', () => {
-    const D = seed(mon);
-    const { items, skipped } = shoppingList(D, mon);
-    const names = items.map(i => i.name);
-    expect(names).toContain('Garlic'); // Low
-    expect(names).toContain('Spaghetti'); // Replace
-    expect(names).not.toContain('Passata'); // Full
-    expect(skipped.map(s => s.name)).toEqual(expect.arrayContaining(['Passata', 'Rice', 'Soy sauce', 'Olive oil']));
-    expect(items.find(i => i.name === 'Garlic')!.days).toEqual(['Mon', 'Tue', 'Thu']);
-  });
-});
-
 group('budget', () => {
   it('sums string amounts typed in inputs', () => {
     const D: HouseholdData = { ...seed(mon), cats: [{ id: 'x', name: 'Rent', ella: '380', jackson: 380 }] };
@@ -50,6 +37,13 @@ group('migrate', () => {
     const d = migrate({ cats: [], income: { ella: 100, jackson: 200 } })!;
     expect(d.incomes.map(i => [i.person, i.amount])).toEqual([['ella', 100], ['jackson', 200]]);
     expect(d.plan).toEqual({});
+  });
+  it('moves cupboard to pantry and plain ingredients to objects', () => {
+    const d = migrate({ cats: [], incomes: [], cupboard: [{ name: 'Rice', state: 'Half' }], recipes: [{ id: 'a', name: 'X', cost: 9, ingredients: ['Rice'] }] })!;
+    expect(d.pantry).toEqual([{ name: 'Rice', state: 'Half' }]);
+    expect('cupboard' in d).toBe(false);
+    expect(d.recipes[0].ingredients).toEqual([{ name: 'Rice' }]);
+    expect(d.prices).toEqual([]);
   });
 });
 

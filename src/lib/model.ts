@@ -23,10 +23,34 @@ export const INCLUDE_LOW = true;
 export type Amount = number | string;
 export const num = (a: Amount | undefined) => +(a ?? 0) || 0;
 
-export interface Recipe { id: string; name: string; cost: number; ingredients: string[] }
+export const UNITS = ['g', 'kg', 'ml', 'L', 'each'] as const;
+export type Unit = (typeof UNITS)[number];
+
+/** How much of an ingredient a recipe uses (both optional: some things are "to taste"). */
+export interface RecipeIngredient { name: string; qty?: number; unit?: Unit }
+export interface Recipe {
+  id: string;
+  name: string;
+  ingredients: RecipeIngredient[];
+  link?: string;
+  /** Free-text method. */
+  method?: string;
+  /** Legacy total cost, used only until the recipe's ingredients have prices. */
+  cost?: number;
+}
+/** What you buy, shared by every recipe using the ingredient: e.g. Rice, 1 kg for $3. */
+export interface Price { name: string; qty: number; unit: Unit; price: number }
 export interface Category { id: string; name: string; ella: Amount; jackson: Amount }
 export interface Income { id: string; name: string; person: PersonId; amount: Amount }
-export interface CupboardItem { name: string; state: StockState }
+/** Tracked by amount (qty + unit) when known, otherwise by level (state). */
+export interface PantryItem {
+  name: string;
+  state: StockState;
+  qty?: number;
+  unit?: Unit;
+  /** Set when stocked from a week's shopping list: the amount already allows for that week's dinners. */
+  forWeek?: string;
+}
 export type Schedule =
   | { type: 'weekly'; days: number[] }
   | { type: 'every'; n: number; start: string }
@@ -40,7 +64,8 @@ export interface HouseholdData {
   recipes: Recipe[];
   /** Dinner per date key. */
   plan: Record<string, { r: string }>;
-  cupboard: CupboardItem[];
+  prices: Price[];
+  pantry: PantryItem[];
   chores: Chore[];
   /** `${dateKey}|${choreId}` → 1 when done. */
   done: Record<string, 1>;
@@ -70,14 +95,31 @@ export function seed(today = new Date()): HouseholdData {
       { id: uid(), name: 'Leisure', ella: 60, jackson: 60 },
     ],
     recipes: [
-      { id: 'bol', name: 'Spaghetti bolognese', cost: 16, ingredients: ['Spaghetti', 'Beef mince', 'Passata', 'Onion', 'Garlic', 'Carrot', 'Parmesan'] },
-      { id: 'stir', name: 'Veggie stir-fry', cost: 12, ingredients: ['Rice', 'Broccoli', 'Capsicum', 'Soy sauce', 'Ginger', 'Garlic', 'Tofu'] },
-      { id: 'tray', name: 'Lemon chicken tray bake', cost: 18, ingredients: ['Chicken thighs', 'Potatoes', 'Lemon', 'Garlic', 'Rosemary', 'Olive oil'] },
-      { id: 'salmon', name: 'Salmon, rice & greens', cost: 24, ingredients: ['Salmon', 'Rice', 'Green beans', 'Lemon', 'Soy sauce'] },
+      { id: 'bol', name: 'Spaghetti bolognese', ingredients: [
+        { name: 'Spaghetti', qty: 400, unit: 'g' }, { name: 'Beef mince', qty: 500, unit: 'g' }, { name: 'Passata', qty: 700, unit: 'ml' },
+        { name: 'Onion', qty: 1, unit: 'each' }, { name: 'Garlic', qty: 0.25, unit: 'each' }, { name: 'Carrot', qty: 150, unit: 'g' }, { name: 'Parmesan', qty: 40, unit: 'g' }] },
+      { id: 'stir', name: 'Veggie stir-fry', ingredients: [
+        { name: 'Rice', qty: 200, unit: 'g' }, { name: 'Broccoli', qty: 1, unit: 'each' }, { name: 'Capsicum', qty: 1, unit: 'each' }, { name: 'Soy sauce', qty: 30, unit: 'ml' },
+        { name: 'Ginger', qty: 20, unit: 'g' }, { name: 'Garlic', qty: 0.25, unit: 'each' }, { name: 'Tofu', qty: 450, unit: 'g' }] },
+      { id: 'tray', name: 'Lemon chicken tray bake', ingredients: [
+        { name: 'Chicken thighs', qty: 600, unit: 'g' }, { name: 'Potatoes', qty: 600, unit: 'g' }, { name: 'Lemon', qty: 1, unit: 'each' },
+        { name: 'Garlic', qty: 0.25, unit: 'each' }, { name: 'Rosemary', qty: 0.5, unit: 'each' }, { name: 'Olive oil', qty: 30, unit: 'ml' }] },
+      { id: 'salmon', name: 'Salmon, rice & greens', ingredients: [
+        { name: 'Salmon', qty: 250, unit: 'g' }, { name: 'Rice', qty: 150, unit: 'g' }, { name: 'Green beans', qty: 250, unit: 'g' },
+        { name: 'Lemon', qty: 0.5, unit: 'each' }, { name: 'Soy sauce', qty: 20, unit: 'ml' }] },
+    ],
+    prices: [
+      { name: 'Spaghetti', qty: 500, unit: 'g', price: 2.5 }, { name: 'Beef mince', qty: 500, unit: 'g', price: 8 }, { name: 'Passata', qty: 700, unit: 'ml', price: 2.5 },
+      { name: 'Onion', qty: 1, unit: 'each', price: 0.6 }, { name: 'Garlic', qty: 1, unit: 'each', price: 1 }, { name: 'Carrot', qty: 1, unit: 'kg', price: 2.5 },
+      { name: 'Parmesan', qty: 250, unit: 'g', price: 7 }, { name: 'Rice', qty: 1, unit: 'kg', price: 3 }, { name: 'Broccoli', qty: 1, unit: 'each', price: 2.5 },
+      { name: 'Capsicum', qty: 1, unit: 'each', price: 1.8 }, { name: 'Soy sauce', qty: 250, unit: 'ml', price: 3 }, { name: 'Ginger', qty: 100, unit: 'g', price: 2 },
+      { name: 'Tofu', qty: 450, unit: 'g', price: 4 }, { name: 'Chicken thighs', qty: 1, unit: 'kg', price: 13 }, { name: 'Potatoes', qty: 2, unit: 'kg', price: 5 },
+      { name: 'Lemon', qty: 1, unit: 'each', price: 0.9 }, { name: 'Rosemary', qty: 1, unit: 'each', price: 3 }, { name: 'Olive oil', qty: 1, unit: 'L', price: 12 },
+      { name: 'Salmon', qty: 500, unit: 'g', price: 16 }, { name: 'Green beans', qty: 250, unit: 'g', price: 3 },
     ],
     plan,
-    cupboard: [
-      { name: 'Olive oil', state: 'Full' }, { name: 'Soy sauce', state: 'Full' }, { name: 'Rice', state: 'Half' },
+    pantry: [
+      { name: 'Olive oil', state: 'Full' }, { name: 'Soy sauce', state: 'Full' }, { name: 'Rice', state: 'Full', qty: 600, unit: 'g' },
       { name: 'Garlic', state: 'Low' }, { name: 'Passata', state: 'Full' }, { name: 'Spaghetti', state: 'Replace' },
     ],
     chores: [
@@ -92,7 +134,7 @@ export function seed(today = new Date()): HouseholdData {
   };
 }
 
-/** Accepts data saved by the prototype (single income per person) or partial docs. */
+/** Upgrades older saved data: the prototype's single income, `cupboard` → `pantry`, plain-text ingredients. */
 export function migrate(d: any): HouseholdData | null {
   if (!d || typeof d !== 'object' || !Array.isArray(d.cats)) return null;
   if (!Array.isArray(d.incomes)) {
@@ -103,7 +145,12 @@ export function migrate(d: any): HouseholdData | null {
     ];
   }
   delete d.income;
-  d.recipes ??= []; d.plan ??= {}; d.cupboard ??= []; d.chores ??= []; d.done ??= {};
+  d.recipes ??= []; d.plan ??= {}; d.chores ??= []; d.done ??= {}; d.prices ??= [];
+  if (!Array.isArray(d.pantry)) d.pantry = Array.isArray(d.cupboard) ? d.cupboard : [];
+  delete d.cupboard;
+  for (const r of d.recipes) {
+    r.ingredients = (r.ingredients ?? []).map((g: unknown) => (typeof g === 'string' ? { name: g } : g));
+  }
   return d as HouseholdData;
 }
 
@@ -125,48 +172,6 @@ export function describe(s: Schedule) {
   if (s.type === 'every') return s.n === 7 ? 'Weekly from ' + f(s.start) : s.n === 14 ? 'Fortnightly from ' + f(s.start) : 'Every ' + s.n + ' days from ' + f(s.start);
   if (s.type === 'monthly') return 'Monthly on the ' + ord(s.dom);
   return 'Once · ' + f(s.date);
-}
-
-export const inStock = (c: CupboardItem | undefined) =>
-  !!c && (c.state === 'Full' || c.state === 'Half' || (!INCLUDE_LOW && c.state === 'Low'));
-
-export function searchRecipes(recipes: Recipe[], q: string) {
-  const pq = norm(q);
-  return recipes.filter(r => !pq || norm(r.name).includes(pq) || r.ingredients.some(g => norm(g).includes(pq)));
-}
-
-export interface ShopItem { lk: string; name: string; days: string[]; status: string }
-
-/** Ingredients needed for the week's dinners, minus what's in stock. */
-export function shoppingList(D: HouseholdData, mon: Date) {
-  const rBy = new Map(D.recipes.map(r => [r.id, r]));
-  const cup = new Map(D.cupboard.map(c => [norm(c.name), c]));
-  const need = new Map<string, { name: string; days: string[] }>();
-  for (let i = 0; i < 7; i++) {
-    const r = rBy.get(D.plan[key(addDays(mon, i))]?.r ?? '');
-    if (!r) continue;
-    for (let n of r.ingredients) {
-      n = n.trim();
-      if (!n) continue;
-      const lk = norm(n);
-      if (!need.has(lk)) need.set(lk, { name: n, days: [] });
-      const e = need.get(lk)!;
-      if (e.days.indexOf(DOW[i]) < 0) e.days.push(DOW[i]);
-    }
-  }
-  const items: ShopItem[] = [], skipped: { name: string; state: StockState }[] = [];
-  need.forEach((n, lk) => {
-    const c = cup.get(lk);
-    if (inStock(c)) skipped.push({ name: n.name, state: c!.state });
-    else items.push({ lk, name: n.name, days: n.days, status: c ? c.state : 'Not stocked' });
-  });
-  return { items, skipped };
-}
-
-export function shoppingText(label: string, items: ShopItem[], skipped: { name: string }[]) {
-  return 'Shopping list — ' + label + '\n\n' +
-    (items.length ? items.map(i => '☐ ' + i.name + '  (' + i.days.join(', ') + (i.status !== 'Not stocked' ? ' · ' + i.status.toLowerCase() : '') + ')').join('\n') : 'Nothing needed.') +
-    (skipped.length ? '\n\nAlready in cupboard: ' + skipped.map(x => x.name).join(', ') : '');
 }
 
 export function budget(D: HouseholdData) {
