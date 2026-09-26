@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { budget, Category, HouseholdData, Income, money, otherPerson, PEOPLE, PersonId, uid } from '../lib/model';
 import type { Update } from '../Household';
-import { Donut } from './BudgetCard';
+import { Donut, GroceryTag } from './BudgetCard';
+import { groceryEstimate } from '../lib/food';
 
-export default function BudgetPage({ D, update }: { D: HouseholdData; update: Update }) {
-  const b = budget(D);
+export default function BudgetPage({ D, update, mon }: { D: HouseholdData; update: Update; mon: Date }) {
+  const g = groceryEstimate(D, mon);
+  const b = budget(D, g);
   const [incName, setIncName] = useState('');
   const [incAmt, setIncAmt] = useState('');
   const [incPerson, setIncPerson] = useState<PersonId>('ella');
@@ -75,6 +77,15 @@ export default function BudgetPage({ D, update }: { D: HouseholdData; update: Up
             <input className="field-sm" value={String(c.ella)} onChange={setCat(c.id, 'ella')} inputMode="decimal" />
             <input className="field-sm" value={String(c.jackson)} onChange={setCat(c.id, 'jackson')} inputMode="decimal" />
             <button className="x-btn" aria-label="Remove" onClick={() => update(x => { x.cats = x.cats.filter(z => z.id !== c.id); })}>×</button>
+            {g && g.id === c.id && (
+              <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 3, padding: '2px 0 6px 14px' }}>
+                <GroceryTag g={g} />
+                <span className="note">
+                  The amounts above are your placeholder. This week counts as {money(b.cats.find(z => z.id === c.id)!.total)}
+                  {' '}(Ella {money(g.ella)} · Jackson {money(g.jackson)}), going by the meals you’ve planned.
+                </span>
+              </div>
+            )}
           </div>
         ))}
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, fontWeight: 600, padding: '10px 0', borderTop: '1px solid #23221F', marginTop: 6 }}>

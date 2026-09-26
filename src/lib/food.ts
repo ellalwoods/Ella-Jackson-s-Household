@@ -1,5 +1,5 @@
 import { addDays, DOW, key, MON, parse } from './dates';
-import { HouseholdData, INCLUDE_LOW, Meal, MEALS, norm, PantryItem, Price, Recipe, RecipeIngredient, STAPLE_COST, Unit } from './model';
+import { HouseholdData, INCLUDE_LOW, Meal, MEALS, norm, num, PantryItem, Price, Recipe, RecipeIngredient, STAPLE_COST, Unit } from './model';
 
 // ── Plan ───────────────────────────────────────────────────────────────────
 
@@ -18,6 +18,37 @@ export function weekMeals(D: HouseholdData, mon: Date): PlannedMeal[] {
   }
   return out;
 }
+
+// ── Grocery budget ─────────────────────────────────────────────────────────
+
+/** Breakfast, lunch and dinner for 7 days. "Other" meals add on top at their real cost. */
+export const PLAN_SLOTS = 21;
+
+/**
+ * The week's grocery spend: planned meals at their real cost, plus the
+ * placeholder typed into the Groceries category for each breakfast, lunch
+ * or dinner slot still empty. Meals are split 50/50; the placeholder part
+ * keeps the split entered on the budget page.
+ */
+export function groceryEstimate(D: HouseholdData, mon: Date) {
+  const cat = D.cats.find(c => /grocer/i.test(c.name));
+  if (!cat) return null;
+  const ctx = costContext(D), meals = weekMeals(D, mon);
+  const filled = Math.min(PLAN_SLOTS, meals.filter(m => m.meal !== 'other').length);
+  const mealCost = meals.reduce((a, m) => a + recipeCost(m.recipe, ctx), 0);
+  const rest = (PLAN_SLOTS - filled) / PLAN_SLOTS;
+  const pe = num(cat.ella), pj = num(cat.jackson);
+  return {
+    id: cat.id,
+    placeholder: pe + pj,
+    mealCost: round(mealCost),
+    filled,
+    ella: round(mealCost / 2 + pe * rest),
+    jackson: round(mealCost / 2 + pj * rest),
+    status: (!meals.length ? 'placeholder' : rest > 0 ? 'partial' : 'planned') as 'placeholder' | 'partial' | 'planned',
+  };
+}
+export type GroceryEstimate = NonNullable<ReturnType<typeof groceryEstimate>>;
 
 // ── Units ──────────────────────────────────────────────────────────────────
 

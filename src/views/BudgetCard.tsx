@@ -1,5 +1,5 @@
 import { budget, HouseholdData, money } from '../lib/model';
-import { costContext, recipeCost, weekMeals } from '../lib/food';
+import { GroceryEstimate, groceryEstimate, PLAN_SLOTS } from '../lib/food';
 
 export function Donut({ bg, size, hole, children }: { bg: string; size: number; hole: number; children?: React.ReactNode }) {
   return (
@@ -10,11 +10,8 @@ export function Donut({ bg, size, hole, children }: { bg: string; size: number; 
 }
 
 export default function BudgetCard({ D, mon, onEdit }: { D: HouseholdData; mon: Date; onEdit: () => void }) {
-  const b = budget(D);
-  const prices = costContext(D);
-  const mealTotal = weekMeals(D, mon).reduce((a, m) => a + recipeCost(m.recipe, prices), 0);
-  const groc = b.cats.find(c => /grocer/i.test(c.name));
-  const groceryNote = groc && mealTotal ? 'Meals this week use ' + money(mealTotal) + ' of the ' + money(groc.total) + ' grocery budget.' : '';
+  const g = groceryEstimate(D, mon);
+  const b = budget(D, g);
 
   return (
     <section className="card" style={{ flex: '1 1 300px', padding: 20 }}>
@@ -42,6 +39,7 @@ export default function BudgetCard({ D, mon, onEdit }: { D: HouseholdData; mon: 
             <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}><span className="swatch" style={{ background: c.color }} />{c.name}</span>
             <span style={{ fontWeight: 600 }}>{money(c.total)}</span>
           </div>
+          {g && g.id === c.id && <GroceryTag g={g} />}
           <div className="split-bar">
             <div style={{ background: '#E886B8', width: c.total ? (c.e / c.total * 100) + '%' : '50%' }} />
             <div style={{ background: '#2A9E80', width: c.total ? (c.j / c.total * 100) + '%' : '50%' }} />
@@ -52,7 +50,21 @@ export default function BudgetCard({ D, mon, onEdit }: { D: HouseholdData; mon: 
         </div>
       ))}
       {!b.cats.length && <p style={{ fontSize: 13, margin: 0 }} className="muted">No categories yet.</p>}
-      {groceryNote && <p style={{ margin: '12px 0 0' }} className="note">{groceryNote}</p>}
     </section>
+  );
+}
+
+/** Marks the Groceries amount as a placeholder, part placeholder, or taken from the meal plan. */
+export function GroceryTag({ g }: { g: GroceryEstimate }) {
+  const tone = g.status === 'planned' ? { background: '#DAEFE7', color: '#1B6B56' } : { background: '#F2EEE6', color: '#6D675C' };
+  return (
+    <span style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', fontSize: 11 }}>
+      <span style={{ ...tone, padding: '2px 8px', borderRadius: 999, fontWeight: 600 }}>{g.status === 'placeholder' ? 'Placeholder' : g.status === 'partial' ? 'Part placeholder' : 'Meal plan'}</span>
+      <span className="muted">
+        {g.status === 'placeholder' ? money(g.placeholder) + ' until you plan meals'
+          : g.status === 'partial' ? money(g.mealCost) + ' planned + placeholder for ' + (PLAN_SLOTS - g.filled) + ' empty meals'
+          : money(g.mealCost) + ' across this week’s meals'}
+      </span>
+    </span>
   );
 }

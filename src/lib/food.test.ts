@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
 import { addDays, key, mondayOf } from './dates';
 import { HouseholdData, seed } from './model';
-import { costContext, expiry, fmtAmount, recipeCost, shoppingList, stockUp, toBase } from './food';
+import { costContext, expiry, groceryEstimate, fmtAmount, recipeCost, shoppingList, stockUp, toBase } from './food';
 
 const mon = mondayOf(new Date(2026, 8, 23)); // Mon 21 Sep 2026
 const wk = key(mon);
@@ -101,4 +101,21 @@ it('costs staples at a nominal amount and leaves them off pack sizes', () => {
   const salt = shoppingList(D, mon).items.find(i => i.name === 'Salt')!;
   expect(salt.buy).toBeNull();
   expect(salt.cost).toBeNull();
+});
+
+it('blends planned meal costs with the grocery placeholder for empty slots', () => {
+  const D = household();
+  D.cats = [{ id: 'g', name: 'Groceries', ella: 105, jackson: 105 }]; // $210 placeholder = $10 per slot
+  D.plan = {};
+  expect(groceryEstimate(D, mon)).toMatchObject({ status: 'placeholder', ella: 105, jackson: 105 });
+
+  D.plan = { [key(mon)]: { dinner: 'a', other: 'b' } }; // $0.75 dinner + $1.60 other
+  const g = groceryEstimate(D, mon)!;
+  expect(g.status).toBe('partial');
+  expect(g.filled).toBe(1); // "Other" doesn't use up a slot
+  expect(g.ella + g.jackson).toBeCloseTo(2.35 + 200, 1); // meals + 20 empty slots × $10
+
+  D.plan = {};
+  for (let i = 0; i < 7; i++) D.plan[key(addDays(mon, i))] = { breakfast: 'a', lunch: 'a', dinner: 'a' };
+  expect(groceryEstimate(D, mon)).toMatchObject({ status: 'planned', ella: 7.88, jackson: 7.88 }); // 21 × $0.75 split
 });

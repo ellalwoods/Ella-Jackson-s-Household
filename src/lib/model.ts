@@ -207,9 +207,13 @@ export function describe(s: Schedule) {
   return 'Once · ' + f(s.date);
 }
 
-export function budget(D: HouseholdData) {
+/** Replaces one category's amounts, e.g. groceries worked out from the meal plan. */
+export interface CategoryOverride { id: string; ella: number; jackson: number }
+
+export function budget(D: HouseholdData, override?: CategoryOverride | null) {
   const cats = D.cats.map((c, i) => {
-    const e = num(c.ella), j = num(c.jackson);
+    const o = override && override.id === c.id ? override : null;
+    const e = o ? o.ella : num(c.ella), j = o ? o.jackson : num(c.jackson);
     return { ...c, e, j, total: e + j, color: CAT_COLORS[i % CAT_COLORS.length] };
   });
   const spend = cats.reduce((a, c) => a + c.total, 0);
