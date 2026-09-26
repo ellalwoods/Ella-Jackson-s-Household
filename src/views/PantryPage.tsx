@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { HouseholdData, INCLUDE_LOW, norm, PantryItem, STATE_COLORS, STATES, StockState, Unit, UNIT_LABEL, UNITS } from '../lib/model';
-import { expiry, fmtQty, priceMap } from '../lib/food';
+import { addToPantry, expiry, fmtQty, priceMap } from '../lib/food';
 import type { Update } from '../Household';
 
 export const stockRule = (INCLUDE_LOW
@@ -14,8 +14,6 @@ export default function PantryPage({ D, update }: { D: HouseholdData; update: Up
   const prices = priceMap(D);
 
   const cq = norm(q);
-  const exists = D.pantry.some(c => norm(c.name) === cq);
-  const canAdd = !!cq && !exists;
   const levelOf = (c: PantryItem) => (c.qty != null ? null : c.state);
   const expiring = (c: PantryItem) => { const e = expiry(c.expires); return !!e && (e.soon || e.expired); };
   const matches = (c: PantryItem, f: typeof filter) => f === 'All' || (f === 'Expiring' ? expiring(c) : levelOf(c) === f);
@@ -23,22 +21,15 @@ export default function PantryPage({ D, update }: { D: HouseholdData; update: Up
     .filter(c => (!cq || norm(c.name).includes(cq)) && matches(c, filter))
     .sort((a, b) => a.name.localeCompare(b.name));
 
-  const add = () => {
-    const n = q.trim();
-    if (!n || exists) return;
-    update(x => { if (!x.pantry.some(c => norm(c.name) === norm(n))) x.pantry.push({ name: n, state: 'Full' }); });
-    setQ('');
-  };
   // Items are keyed by name so edits still land correctly after a sync.
   const edit = (name: string, f: (c: PantryItem) => void) => update(x => { const c = x.pantry.find(c => c.name === name); if (c) f(c); });
   const remove = (name: string) => update(x => { x.pantry = x.pantry.filter(c => c.name !== name); });
 
   return (
     <>
+      <AddToPantry D={D} update={update} />
       <div className="row8" style={{ marginBottom: 10 }}>
-        <input className="search" style={{ flex: '1 1 260px' }} value={q} onChange={e => setQ(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter') add(); }} placeholder="Search, or type a new ingredient and press Enter" />
-        {canAdd && <button className="pill dark" style={{ height: 44, padding: '0 18px' }} onClick={add}>+ Add “{q}”</button>}
+        <input className="search" style={{ flex: '1 1 260px' }} value={q} onChange={e => setQ(e.target.value)} placeholder="Search the pantry" />
       </div>
       <div className="row" style={{ marginBottom: 14 }}>
         {(['All', ...STATES, 'Expiring'] as const).map(f => {
@@ -109,5 +100,47 @@ export function UnitSelect({ value, onChange, height = 40 }: { value: Unit; onCh
     <select className="field-sm" style={{ height, padding: '0 4px', width: 64 }} value={value} onChange={e => onChange(e.target.value as Unit)} aria-label="Unit">
       {UNITS.map(u => <option key={u} value={u}>{UNIT_LABEL[u]}</option>)}
     </select>
+  );
+}
+
+/** Add something to the pantry by hand: a name and, optionally, how much and when it's used by. */
+function AddToPantry({ D, update }: { D: HouseholdData; update: Update }) {
+  const [name, setName] = useState('');
+  const [qty, setQty] = useState('');
+  const [unit, setUnit] = useState<Unit>('each');
+  const [expires, setExpires] = useState('');
+  const existing = D.pantry.find(c => norm(c.name) === norm(name));
+  const known = Array.from(new Set([...D.prices.map(p => p.name), ...D.recipes.flatMap(r => r.ingredients.map(g => g.name))]))
+    .filter(n => !D.pantry.some(c => norm(c.name) === norm(n))).sort();
+
+  const add = () => {
+    const n = name.trim();
+    if (!n) return;
+    const q = parseFloat(qty);
+    update(x => addToPantry(x, { name: n, ...(q > 0 ? { qty: q, unit } : {}), ...(expires ? { expires } : {}) }));
+    setName(''); setQty(''); setExpires('');
+  };
+  const onKey = (e: React.KeyboardEvent) => { if (e.key === 'Enter') add(); };
+
+  return (
+    <div className="card" style={{ padding: '12px 14px', marginBottom: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <div className="shop-add" style={{ padding: 0 }}>
+        <input className="field-sm" style={{ flex: '1 1 180px', height: 40 }} list="pantry-known" value={name} onChange={e => setName(e.target.value)} onKeyDown={onKey}
+          placeholder="Add to pantry, e.g. Rice" aria-label="Item to add to pantry" />
+        <datalist id="pantry-known">{known.map(k => <option key={k} value={k} />)}</datalist>
+        <span className="ing-group">
+          <input className="field-sm" style={{ width: 56, height: 40 }} inputMode="decimal" value={qty} onChange={e => setQty(e.target.value)} onKeyDown={onKey} placeholder="qty" aria-label="Amount" />
+          <UnitSelect value={unit} onChange={setUnit} />
+        </span>
+        <label className="ing-group">
+          <span className="ing-label">Use by</span>
+          <input type="date" className="field-sm" style={{ height: 40, fontSize: 13 }} value={expires} onChange={e => setExpires(e.target.value)} aria-label="Use by" />
+        </label>
+        <button className="pill-sm dark" style={{ height: 40 }} onClick={add}>Add</button>
+      </div>
+      <span className="note">
+        {existing ? existing.name + ' is already in the pantry — an amount here is added to what’s there.' : 'Amount and use-by date are optional. Without an amount it’s marked Full.'}
+      </span>
+    </div>
   );
 }

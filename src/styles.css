@@ -196,3 +196,4 @@ input:focus, textarea:focus, select:focus { outline: 2px solid var(--ink); outli
 /* Shopping list: add your own items */
 .shop-add { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; padding: 4px 0 12px; }
 .shop-remove { position: absolute; right: 0; bottom: 6px; font-size: 11px; }
+.shop-add .ing-group { order: 0; }

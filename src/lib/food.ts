@@ -285,6 +285,25 @@ export function stockUp(x: HouseholdData, items: ShopItem[], wk: string, expires
   }
 }
 
+/**
+ * Adds something to the pantry by hand. An amount is added to what's there
+ * (in matching units) or replaces a level; without one the item is marked Full.
+ */
+export function addToPantry(x: HouseholdData, item: { name: string; qty?: number; unit?: Unit; expires?: string }) {
+  const name = item.name.trim();
+  if (!name) return;
+  let p = x.pantry.find(c => norm(c.name) === norm(name));
+  if (!p) { p = { name, state: 'Full' }; x.pantry.push(p); }
+  if (item.qty && item.unit) {
+    const add = toBase(item.qty, item.unit), had = pantryAmount(p);
+    if (had && had.dim === add.dim) { p.qty = round(had.v + add.v); p.unit = baseUnit(add.dim); }
+    else { p.qty = item.qty; p.unit = item.unit; }
+    delete p.forWeek;
+  }
+  p.state = 'Full';
+  if (item.expires) p.expires = item.expires;
+}
+
 export function shoppingText(label: string, items: ShopItem[], skipped: Skipped[]) {
   const total = items.reduce((a, i) => a + (i.cost ?? 0), 0);
   const line = (i: ShopItem) => {

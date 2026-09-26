@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
 import { addDays, key, mondayOf } from './dates';
 import { HouseholdData, seed } from './model';
-import { costContext, expiry, weekBudget, fmtAmount, recipeCost, shoppingList, stockUp, toBase } from './food';
+import { addToPantry, costContext, expiry, weekBudget, fmtAmount, recipeCost, shoppingList, stockUp, toBase } from './food';
 
 const mon = mondayOf(new Date(2026, 8, 23)); // Mon 21 Sep 2026
 const wk = key(mon);
@@ -140,4 +140,17 @@ it('includes hand-added items, counts their price, and stocks them into the pant
   expect(D.pantry.find(p => p.name === 'Milk')).toMatchObject({ qty: 2500, unit: 'ml', expires: '2026-10-01' });
   expect(D.pantry.find(p => p.name === 'Toilet paper')).toMatchObject({ state: 'Full' });
   expect(D.shopExtras[wk]).toBeUndefined();
+});
+
+it('adds to the pantry by hand, topping up amounts in matching units', () => {
+  const D = household();
+  D.pantry = [{ name: 'Rice', state: 'Full', qty: 300, unit: 'g' }, { name: 'Salt', state: 'Low' }];
+  addToPantry(D, { name: 'rice', qty: 1, unit: 'kg', expires: '2027-01-01' });
+  addToPantry(D, { name: 'Salt' });
+  addToPantry(D, { name: 'Oats', qty: 750, unit: 'g' });
+  expect(D.pantry).toEqual([
+    { name: 'Rice', state: 'Full', qty: 1300, unit: 'g', expires: '2027-01-01' },
+    { name: 'Salt', state: 'Full' },
+    { name: 'Oats', state: 'Full', qty: 750, unit: 'g' },
+  ]);
 });
