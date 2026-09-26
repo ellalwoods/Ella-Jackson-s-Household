@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { addDays, isoWeek, mondayOf, weekLabel as fmtWeek } from './lib/dates';
 import { HouseholdData, shoppingList } from './lib/model';
 import type { Mutation, SyncStatus } from './lib/store';
-import { Logo } from './views/Login';
+import { Logo } from './views/Logo';
 import WeekTable from './views/WeekTable';
 import BudgetCard from './views/BudgetCard';
 import ShopPage from './views/ShopPage';
@@ -23,12 +23,12 @@ const STATUS_TEXT: Record<SyncStatus, string> = {
   synced: 'Synced',
   saving: 'Saving…',
   offline: 'Offline — changes will sync when you’re back online',
-  forbidden: '',
+  invalid: '',
 };
 
-interface Props { data: HouseholdData; update: Update; status: SyncStatus; onSignOut?: () => void }
+interface Props { data: HouseholdData; update: Update; status: SyncStatus }
 
-export default function Household({ data: D, update, status, onSignOut }: Props) {
+export default function Household({ data: D, update, status }: Props) {
   const [week, setWeek] = useState(0);
   const [page, setPage] = useState<Page | null>(null);
   const [calOff, setCalOff] = useState(0);
@@ -120,7 +120,6 @@ export default function Household({ data: D, update, status, onSignOut }: Props)
 
       <footer className="footer">
         <span>{STATUS_TEXT[status]}</span>
-        {onSignOut && <button className="link-btn" onClick={onSignOut}>Sign out</button>}
       </footer>
     </div>
   );

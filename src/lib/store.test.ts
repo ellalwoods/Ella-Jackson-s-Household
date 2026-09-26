@@ -1,78 +1,71 @@
 import { beforeAll, expect, it } from 'vitest';
-import type { SupabaseClient } from '@supabase/supabase-js';
-import { seed } from './model';
-import { HouseholdStore } from './store';
+import { HouseholdData, seed } from './model';
+import { Backend, HouseholdStore } from './store';
 
 beforeAll(() => {
   const noop = { addEventListener() {}, removeEventListener() {}, visibilityState: 'visible' };
   Object.assign(globalThis, { window: noop, document: noop });
 });
 
-/** Minimal in-memory stand-in for the single `household` row. */
-function fakeServer() {
-  const server = { row: null as null | { data: unknown; version: number } };
-  const query = (op: string, payload?: any) => {
-    const filters: Record<string, unknown> = {};
-    const q: any = {
-      eq(col: string, v: unknown) { filters[col] = v; return q; },
-      select() { return q; },
-      maybeSingle: async () => ({ data: server.row && JSON.parse(JSON.stringify(server.row)), error: null }),
-      then(res: (v: unknown) => void) {
-        if (op === 'insert') {
-          if (server.row) return res({ error: { code: '23505' } });
-          server.row = { data: payload.data, version: payload.version };
-          return res({ error: null });
-        }
-        // update
-        if (!server.row || server.row.version !== filters.version) return res({ data: [], error: null });
-        server.row = { data: payload.data, version: payload.version };
-        return res({ data: [{ version: payload.version }], error: null });
-      },
-    };
-    return q;
-  };
-  const channel: any = { on: () => channel, subscribe: () => channel };
-  const client = {
-    from: () => ({ select: () => query('select'), insert: (p: unknown) => query('insert', p), update: (p: unknown) => query('update', p) }),
-    channel: () => channel,
-    removeChannel() {},
-  } as unknown as SupabaseClient;
-  return { server, client };
+/** In-memory stand-in for the household row behind get_household / save_household. */
+function fakeBackend(secret = 'k') {
+  const server = { data: null as HouseholdData | null, version: 0 };
+  const make = (key: string): Backend => ({
+    load: async () => (key === secret ? { data: server.data && JSON.parse(JSON.stringify(server.data)), version: server.version } : 'invalid'),
+    save: async (data, expected) => {
+      if (key !== secret || server.version !== expected) return null;
+      server.data = JSON.parse(JSON.stringify(data));
+      return ++server.version;
+    },
+    listen: () => () => {},
+    announce: () => {},
+  });
+  return { server, make };
 }
 
 const wait = (ms: number) => new Promise(r => setTimeout(r, ms));
 
-it('creates the row on first sign-in and saves edits', async () => {
-  const { server, client } = fakeServer();
-  const store = new HouseholdStore(client);
+it('fills a brand-new household and saves edits', async () => {
+  const { server, make } = fakeBackend();
+  const store = new HouseholdStore(make('k'));
   await store.start();
-  expect(server.row?.version).toBe(1);
+  await wait(50);
+  expect(server.version).toBe(1);
+  expect(server.data?.recipes.length).toBeGreaterThan(0);
   store.update(d => { d.recipes.push({ id: 'new', name: 'Laksa', cost: 20, ingredients: [] }); });
   await wait(600);
-  expect(server.row?.version).toBe(2);
-  expect((server.row!.data as any).recipes.some((r: any) => r.name === 'Laksa')).toBe(true);
+  expect(server.version).toBe(2);
+  expect(server.data!.recipes.some(r => r.name === 'Laksa')).toBe(true);
   expect(store.getState().status).toBe('synced');
   store.stop();
 });
 
 it('replays local edits on top of the other person’s newer save', async () => {
-  const { server, client } = fakeServer();
-  server.row = { data: seed(), version: 5 };
-  const store = new HouseholdStore(client);
+  const { server, make } = fakeBackend();
+  server.data = seed();
+  server.version = 5;
+  const store = new HouseholdStore(make('k'));
   await store.start();
 
   // Jackson saves from his phone; this device hasn't heard about it yet.
-  const theirs: any = JSON.parse(JSON.stringify(server.row.data));
-  theirs.cupboard.push({ name: 'Milk', state: 'Full' });
-  server.row = { data: theirs, version: 6 };
+  server.data = { ...server.data, cupboard: [...server.data.cupboard, { name: 'Milk', state: 'Full' }] };
+  server.version = 6;
 
   store.update(d => { d.cupboard.push({ name: 'Eggs', state: 'Low' }); });
   await wait(600);
 
-  const names = (server.row!.data as any).cupboard.map((c: any) => c.name);
+  const names = server.data!.cupboard.map(c => c.name);
   expect(names).toContain('Milk');
   expect(names).toContain('Eggs');
-  expect(server.row!.version).toBe(7);
+  expect(server.version).toBe(7);
   expect(store.getState().data!.cupboard.map(c => c.name)).toEqual(names);
   store.stop();
+});
+
+it('refuses a link with the wrong key', async () => {
+  const { server, make } = fakeBackend();
+  const store = new HouseholdStore(make('wrong'));
+  await store.start();
+  expect(store.getState().status).toBe('invalid');
+  expect(server.version).toBe(0);
 });

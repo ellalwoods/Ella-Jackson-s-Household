@@ -1,13 +1,23 @@
-import type { RealtimeChannel, SupabaseClient } from '@supabase/supabase-js';
 import { HouseholdData, migrate, seed } from './model';
 
 export type Mutation = (d: HouseholdData) => void;
-export type SyncStatus = 'local' | 'loading' | 'synced' | 'saving' | 'offline' | 'forbidden';
+export type SyncStatus = 'local' | 'loading' | 'synced' | 'saving' | 'offline' | 'invalid';
 export interface StoreState { data: HouseholdData | null; status: SyncStatus }
+
+/** Where the shared household lives. Methods throw on network errors. */
+export interface Backend {
+  /** `invalid` when the link's key doesn't match a household; `data` is null before the first save. */
+  load(): Promise<{ data: unknown; version: number } | 'invalid'>;
+  /** Saves only if the server is still at `expected`; returns the new version, or null on conflict. */
+  save(data: HouseholdData, expected: number): Promise<number | null>;
+  /** Called with the new version whenever another device saves. Returns an unsubscribe. */
+  listen(onSaved: (version: number) => void): () => void;
+  /** Tell other devices we saved. */
+  announce(version: number): void;
+}
 
 /** Same key the prototype used, so data saved there carries over. */
 const CACHE_KEY = 'hh-sydney-v1';
-const ROW_ID = 'home';
 const FLUSH_DELAY = 400;
 const RETRY_DELAY = 5000;
 
@@ -21,11 +31,11 @@ function writeCache(d: HouseholdData) {
 }
 
 /**
- * Holds the household document and keeps it in sync with one Supabase row.
+ * Holds the household document and keeps it in sync with the backend.
  *
  * Local edits are kept as a queue of mutations on top of the last version
- * confirmed by the server. Writes are conditional on the version, so when the
- * other person saved in the meantime we pull their version and replay our
+ * confirmed by the server. Saves are conditional on the version, so when the
+ * other person saved in the meantime we load their version and replay our
  * queued mutations on top of it instead of overwriting their changes.
  */
 export class HouseholdStore {
@@ -35,14 +45,14 @@ export class HouseholdStore {
   private version = 0;
   private pending: Mutation[] = [];
   private flushing = false;
+  private remoteWhileFlushing = false;
   private timer: ReturnType<typeof setTimeout> | undefined;
-  private channel: RealtimeChannel | null = null;
-  private remoteWhileFlushing: { data: HouseholdData; version: number } | null = null;
+  private unlisten: (() => void) | null = null;
   /** Bumped on start/stop so a stale start() never subscribes. */
   private run = 0;
 
-  constructor(private sb: SupabaseClient | null) {
-    this.state = sb ? { data: readCache(), status: 'loading' } : { data: readCache() ?? seed(), status: 'local' };
+  constructor(private backend: Backend | null) {
+    this.state = backend ? { data: readCache(), status: 'loading' } : { data: readCache() ?? seed(), status: 'local' };
   }
 
   getState = () => this.state;
@@ -55,25 +65,24 @@ export class HouseholdStore {
   }
 
   async start() {
-    if (!this.sb) return;
+    if (!this.backend) return;
     const run = ++this.run;
     await this.pull();
-    if (run !== this.run || this.state.status === 'forbidden') return;
-    this.channel = this.sb
-      .channel('household')
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'household', filter: 'id=eq.' + ROW_ID }, p => {
-        const row = p.new as { data: HouseholdData; version: number };
-        this.receive(row.data, row.version);
-      })
-      .subscribe();
+    if (run !== this.run || this.state.status === 'invalid') return;
+    this.unlisten = this.backend.listen(v => {
+      if (this.flushing) this.remoteWhileFlushing = true;
+      else if (v > this.version) this.pull().then(() => this.flush());
+    });
     window.addEventListener('online', this.onWake);
     document.addEventListener('visibilitychange', this.onWake);
+    this.flush();
   }
 
   stop() {
     this.run++;
     clearTimeout(this.timer);
-    if (this.channel) this.sb?.removeChannel(this.channel);
+    this.unlisten?.();
+    this.unlisten = null;
     window.removeEventListener('online', this.onWake);
     document.removeEventListener('visibilitychange', this.onWake);
   }
@@ -89,7 +98,7 @@ export class HouseholdStore {
     if (!cur) return;
     const next = clone(cur);
     m(next);
-    if (!this.sb) { this.set({ data: next }); return; }
+    if (!this.backend) { this.set({ data: next }); return; }
     this.pending.push(m);
     this.set({ data: next, status: 'saving' });
     clearTimeout(this.timer);
@@ -104,73 +113,57 @@ export class HouseholdStore {
     this.set({ data: d });
   }
 
-  private receive(data: HouseholdData, version: number) {
-    if (this.flushing) { this.remoteWhileFlushing = { data, version }; return; }
-    if (version <= this.version) return;
-    this.base = migrate(data);
-    this.version = version;
-    this.recompute();
-  }
-
   private async pull(): Promise<void> {
-    const sb = this.sb!;
-    const { data: row, error } = await sb.from('household').select('data,version').eq('id', ROW_ID).maybeSingle();
-    if (error) { this.set({ status: 'offline' }); return; }
-    if (!row) {
-      // First sign-in for the household: start from whatever this device has, else sample data.
-      const initial = this.base ?? readCache() ?? seed();
-      const { error: insErr } = await sb.from('household').insert({ id: ROW_ID, data: initial, version: 1 });
-      if (insErr && insErr.code !== '23505') {
-        this.set({ status: insErr.code === '42501' ? 'forbidden' : 'offline' });
-        return;
+    let res;
+    try { res = await this.backend!.load(); } catch { this.set({ status: 'offline' }); return; }
+    if (res === 'invalid') { this.set({ status: 'invalid' }); return; }
+    const data = migrate(res.data);
+    if (!data) {
+      // Brand-new household: start from whatever this device has, else sample data, and save it.
+      if (!this.base) {
+        this.base = readCache() ?? seed();
+        this.version = res.version;
+        this.pending.unshift(() => {});
+        this.recompute();
       }
-      return this.pull();
-    }
-    if (row.version > this.version || !this.base) {
-      this.base = migrate(row.data) ?? seed();
-      this.version = row.version;
+    } else if (res.version > this.version || !this.base) {
+      this.base = data;
+      this.version = res.version;
       this.recompute();
     }
     this.set({ status: this.pending.length ? 'saving' : 'synced' });
   }
 
+  private retryLater() {
+    this.set({ status: 'offline' });
+    clearTimeout(this.timer);
+    this.timer = setTimeout(() => this.flush(), RETRY_DELAY);
+  }
+
   private async flush(): Promise<void> {
-    if (!this.sb || this.flushing || !this.pending.length) return;
+    if (!this.backend || this.flushing || !this.pending.length) return;
     if (!this.base) { await this.pull(); if (!this.base) return; }
     this.flushing = true;
     const n = this.pending.length;
     const next = clone(this.base);
     this.pending.slice(0, n).forEach(m => m(next));
-    const { data: rows, error } = await this.sb
-      .from('household')
-      .update({ data: next, version: this.version + 1, updated_at: new Date().toISOString() })
-      .eq('id', ROW_ID)
-      .eq('version', this.version)
-      .select('version');
+    let saved: number | null;
+    try { saved = await this.backend.save(next, this.version); } catch { this.flushing = false; this.retryLater(); return; }
     this.flushing = false;
     const remote = this.remoteWhileFlushing;
-    this.remoteWhileFlushing = null;
+    this.remoteWhileFlushing = false;
 
-    if (error) {
-      this.set({ status: 'offline' });
-      clearTimeout(this.timer);
-      this.timer = setTimeout(() => this.flush(), RETRY_DELAY);
-      return;
-    }
-    if (rows && rows.length) {
+    if (saved !== null) {
       this.base = next;
-      this.version = rows[0].version;
+      this.version = saved;
       this.pending.splice(0, n);
-      if (remote) this.receive(remote.data, remote.version);
-      else this.recompute();
+      this.backend.announce(saved);
+      this.recompute();
+      if (remote) await this.pull();
     } else {
       // Someone else saved first: take their version and replay our edits on it.
       await this.pull();
-      if (this.state.status === 'offline') {
-        clearTimeout(this.timer);
-        this.timer = setTimeout(() => this.flush(), RETRY_DELAY);
-        return;
-      }
+      if (this.state.status === 'offline') { this.retryLater(); return; }
     }
     if (this.pending.length) return this.flush();
     this.set({ status: 'synced' });
