@@ -190,6 +190,8 @@ export function budget(D: HouseholdData) {
   });
   const spend = cats.reduce((a, c) => a + c.total, 0);
   const income = D.incomes.reduce((a, i) => a + num(i.amount), 0);
+  const earns = (p: PersonId) => D.incomes.filter(i => i.person === p).reduce((a, i) => a + num(i.amount), 0);
+  const ella = cats.reduce((a, c) => a + c.e, 0), jackson = cats.reduce((a, c) => a + c.j, 0);
   let acc = 0;
   const stops = cats.filter(c => c.total > 0).map(c => {
     const a = acc / spend * 360;
@@ -198,8 +200,10 @@ export function budget(D: HouseholdData) {
   });
   return {
     cats, spend, income,
-    ella: cats.reduce((a, c) => a + c.e, 0),
-    jackson: cats.reduce((a, c) => a + c.j, 0),
+    ella, jackson,
+    left: income - spend,
+    ellaLeft: earns('ella') - ella,
+    jacksonLeft: earns('jackson') - jackson,
     donut: spend ? 'conic-gradient(' + stops.join(',') + ')' : '#EAE6DD',
   };
 }

@@ -27,6 +27,7 @@ group('budget', () => {
     const b = budget(D);
     expect(b.spend).toBe(760);
     expect(b.income).toBe(2400);
+    expect([b.left, b.ellaLeft, b.jacksonLeft]).toEqual([1640, 770, 870]); // 1150 − 380, 1250 − 380
     expect(money(b.income - b.spend)).toBe('$1,640');
     expect(money(-12.5)).toBe('−$12.50');
   });

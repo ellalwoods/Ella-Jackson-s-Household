@@ -78,7 +78,11 @@ export default function BudgetPage({ D, update }: { D: HouseholdData; update: Up
           </div>
         ))}
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, fontWeight: 600, padding: '10px 0', borderTop: '1px solid #23221F', marginTop: 6 }}>
-          <span>Committed {money(b.spend)}</span><span>Left {money(b.income - b.spend)}</span>
+          <span>Committed {money(b.spend)}</span><span>Left {money(b.left)}</span>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', fontSize: 13 }}>
+          <span style={{ color: '#A9477B' }}>Ella has left <strong>{money(b.ellaLeft)}</strong></span>
+          <span style={{ color: '#1B6B56' }}>Jackson has left <strong>{money(b.jacksonLeft)}</strong></span>
         </div>
       </section>
       <aside style={{ flex: '1 1 280px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -94,6 +98,8 @@ export default function BudgetPage({ D, update }: { D: HouseholdData; update: Up
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13 }}>
             <span>Ella pays <strong>{money(b.ella)}</strong></span>
             <span>Jackson pays <strong>{money(b.jackson)}</strong></span>
+            <span style={{ color: '#A9477B' }}>Ella has left <strong>{money(b.ellaLeft)}</strong></span>
+            <span style={{ color: '#1B6B56' }}>Jackson has left <strong>{money(b.jacksonLeft)}</strong></span>
             <span className="muted">of {money(b.income)} income</span>
           </div>
         </div>

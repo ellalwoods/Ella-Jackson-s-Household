@@ -31,13 +31,15 @@ export default function BudgetCard({ D, mon, onEdit }: { D: HouseholdData; mon: 
       <div style={{ display: 'flex', gap: 20, alignItems: 'center', flexWrap: 'wrap', marginBottom: 16 }}>
         <Donut bg={b.donut} size={140} hole={22}>
           <span style={{ fontSize: 11 }} className="muted">Left over</span>
-          <span style={{ fontSize: 20, fontWeight: 600 }}>{money(b.income - b.spend)}</span>
+          <span style={{ fontSize: 20, fontWeight: 600 }}>{money(b.left)}</span>
         </Donut>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13, flex: 1, minWidth: 140 }}>
           <div className="kv"><span className="muted">Income</span><span style={{ fontWeight: 600 }}>{money(b.income)}</span></div>
           <div className="kv"><span className="muted">Committed</span><span style={{ fontWeight: 600 }}>{money(b.spend)}</span></div>
           <div className="kv"><span style={{ color: '#A9477B' }}>Ella pays</span><span>{money(b.ella)}</span></div>
           <div className="kv"><span style={{ color: '#1B6B56' }}>Jackson pays</span><span>{money(b.jackson)}</span></div>
+          <div className="kv" style={{ borderTop: '1px solid #F0ECE4', paddingTop: 6 }}><span style={{ color: '#A9477B' }}>Ella has left</span><span style={{ fontWeight: 600 }}>{money(b.ellaLeft)}</span></div>
+          <div className="kv"><span style={{ color: '#1B6B56' }}>Jackson has left</span><span style={{ fontWeight: 600 }}>{money(b.jacksonLeft)}</span></div>
         </div>
       </div>
       {b.cats.map(c => (
