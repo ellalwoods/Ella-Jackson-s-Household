@@ -19,6 +19,7 @@ export default function EventDialog({ D, update, date: initialDate, event, onClo
   const [newTag, setNewTag] = useState('');
   /** Tags created in this dialog, saved along with the event. */
   const [created, setCreated] = useState<Tag[]>([]);
+  const [editingTags, setEditingTags] = useState(false);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -37,6 +38,35 @@ export default function EventDialog({ D, update, date: initialDate, event, onClo
     if (!existing) setCreated(c => [...c, { name: n, color: TAG_COLORS[(D.tags.length + c.length) % TAG_COLORS.length] }]);
     if (!has(existing?.name ?? n)) setTags(ts => [...ts, existing?.name ?? n]);
     setNewTag('');
+  };
+
+  // Tag edits apply straight away to saved tags (and every event using them), or to ones made in this dialog.
+  const isSaved = (n: string) => D.tags.some(t => norm(t.name) === norm(n));
+  const renameTag = (old: string, next: string) => {
+    const n = next.trim();
+    if (!n || n === old) return;
+    // Don't merge into another existing tag.
+    if (norm(n) !== norm(old) && allTags.some(t => norm(t.name) === norm(n))) return;
+    const swap = (list: string[]) => list.map(t => (norm(t) === norm(old) ? n : t));
+    if (isSaved(old)) update(x => {
+      const t = x.tags.find(z => norm(z.name) === norm(old));
+      if (t) t.name = n;
+      for (const e of x.events) e.tags = swap(e.tags);
+    });
+    else setCreated(c => c.map(t => (norm(t.name) === norm(old) ? { ...t, name: n } : t)));
+    setTags(swap);
+  };
+  const recolourTag = (name: string, color: string) => {
+    if (isSaved(name)) update(x => { const t = x.tags.find(z => norm(z.name) === norm(name)); if (t) t.color = color; });
+    else setCreated(c => c.map(t => (norm(t.name) === norm(name) ? { ...t, color } : t)));
+  };
+  const deleteTag = (name: string) => {
+    if (isSaved(name)) update(x => {
+      x.tags = x.tags.filter(z => norm(z.name) !== norm(name));
+      for (const e of x.events) e.tags = e.tags.filter(t => norm(t) !== norm(name));
+    });
+    else setCreated(c => c.filter(t => norm(t.name) !== norm(name)));
+    setTags(ts => ts.filter(t => norm(t) !== norm(name)));
   };
 
   const save = () => {
@@ -87,7 +117,16 @@ export default function EventDialog({ D, update, date: initialDate, event, onClo
           })}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <span className="eyebrow" style={{ fontSize: 11 }}>Tags</span>
+          <span style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+            <span className="eyebrow" style={{ fontSize: 11 }}>Tags</span>
+            {allTags.length > 0 && <button className="link-btn" onClick={() => setEditingTags(v => !v)}>{editingTags ? 'Done' : 'Edit tags'}</button>}
+          </span>
+          {editingTags ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {allTags.map(t => <TagEditor key={t.name} tag={t} onRename={n => renameTag(t.name, n)} onColour={c => recolourTag(t.name, c)} onDelete={() => deleteTag(t.name)} />)}
+              <span className="note">Changes apply to every event with that tag.</span>
+            </div>
+          ) : (<>
           <div className="row" style={{ alignItems: 'center' }}>
             {allTags.map(t => {
               const on = has(t.name);
@@ -103,6 +142,7 @@ export default function EventDialog({ D, update, date: initialDate, event, onClo
             {newTag.trim() && <button className="pill-sm" style={{ height: 30 }} onClick={addTag}>Add</button>}
           </div>
           {tags.length > 1 && <span className="note">The first tag ({tags[0]}) colours the event.</span>}
+          </>)}
         </div>
         <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Notes" rows={3}
           style={{ padding: '10px 12px', border: '1px solid #DDD8CC', borderRadius: 10, background: '#fff', fontSize: 14, resize: 'vertical' }} />
@@ -111,6 +151,29 @@ export default function EventDialog({ D, update, date: initialDate, event, onClo
           <button className="pill plain" onClick={onClose}>Cancel</button>
           {event && <button className="link-btn" style={{ marginLeft: 'auto', fontSize: 13 }} onClick={remove}>Delete</button>}
         </div>
+      </div>
+    </div>
+  );
+}
+
+/** One tag in edit mode: rename (saved on Enter or leaving the box), pick a colour, or delete. */
+function TagEditor({ tag, onRename, onColour, onDelete }: { tag: Tag; onRename: (n: string) => void; onColour: (c: string) => void; onDelete: () => void }) {
+  const [name, setName] = useState(tag.name);
+  useEffect(() => setName(tag.name), [tag.name]);
+  const commit = () => { if (name.trim() && name.trim() !== tag.name) onRename(name); else setName(tag.name); };
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: 8, borderRadius: 10, background: soft(tag.color, 0.85) }}>
+      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+        <span className="dot8" style={{ background: tag.color, flex: 'none' }} />
+        <input className="field-sm" style={{ flex: 1, height: 32, fontSize: 13 }} value={name} aria-label={'Rename ' + tag.name}
+          onChange={e => setName(e.target.value)} onBlur={commit} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); commit(); } }} />
+        <button className="x-btn" style={{ width: 28, height: 28 }} aria-label={'Delete tag ' + tag.name} title="Delete tag" onClick={onDelete}>×</button>
+      </div>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', paddingLeft: 14 }}>
+        {TAG_COLORS.map(c => (
+          <button key={c} aria-label={'Colour ' + c} aria-pressed={c === tag.color} onClick={() => onColour(c)}
+            style={{ width: 20, height: 20, borderRadius: '50%', background: c, cursor: 'pointer', padding: 0, border: c === tag.color ? '2px solid #23221F' : '2px solid #fff', boxShadow: '0 0 0 1px ' + (c === tag.color ? '#fff' : '#DDD8CC') }} />
+        ))}
       </div>
     </div>
   );
