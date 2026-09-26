@@ -16,7 +16,7 @@ import CalendarPage from './views/CalendarPage';
 export type Page = 'shop' | 'recipes' | 'pantry' | 'chores' | 'budget' | 'calendar';
 export type Update = (m: Mutation) => void;
 
-const TABS: [Page, string][] = [['shop', 'Shopping'], ['recipes', 'Recipes'], ['pantry', 'Pantry'], ['chores', 'Chores'], ['budget', 'Budget'], ['calendar', 'Month']];
+const NAV: [Page, string][] = [['shop', 'Shopping list'], ['recipes', 'Recipes'], ['pantry', 'Pantry'], ['chores', 'Chores'], ['budget', 'Budget']];
 
 const STATUS_TEXT: Record<SyncStatus, string> = {
   local: 'Saved on this device',
@@ -58,57 +58,47 @@ export default function Household({ data: D, update, status }: Props) {
     <div className="app" data-screen-label="Household">
       <header className="header">
         <Logo onClick={go(null)} />
-        {!page ? (
-          <div className="row">
-            <button className="round-btn" aria-label="Previous week" onClick={() => setWeek(w => w - 1)}>←</button>
-            <button className="pill" onClick={() => setWeek(0)}>This week</button>
-            <button className="round-btn" aria-label="Next week" onClick={() => setWeek(w => w + 1)}>→</button>
-            <button className="pill" onClick={go('calendar')}>Month</button>
-          </div>
-        ) : (
-          <button className="pill" onClick={go(null)}>← Back to week</button>
-        )}
+        <div className="row">
+          <button className="round-btn" aria-label="Previous week" onClick={() => setWeek(w => w - 1)}>←</button>
+          <button className="pill" onClick={() => setWeek(0)}>This week</button>
+          <button className="round-btn" aria-label="Next week" onClick={() => setWeek(w => w + 1)}>→</button>
+          <button className={'pill' + (page === 'calendar' ? ' nav-on' : '')} aria-current={page === 'calendar' ? 'page' : undefined}
+            onClick={go(page === 'calendar' ? null : 'calendar')}>Month</button>
+        </div>
       </header>
 
-      {!page ? (
-        <>
-          <div className="week-head">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <div style={{ fontSize: 13 }} className="muted">{(week === 0 ? 'This week · ' : '') + 'Week ' + isoWeek(mon)}</div>
-              <h1 className="h1">{label}</h1>
-            </div>
-            <div className="row8">
-              <button className="pill ghost" onClick={go('shop')} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                Shopping list <span className="count-badge">{shop.items.length}</span>
+      {/* Same heading row and buttons on every screen; only the content below changes. */}
+      <div className="week-head">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <div style={{ fontSize: 13 }} className="muted">
+            {!page ? (week === 0 ? 'This week · ' : '') + 'Week ' + isoWeek(mon) : (
+              <><button className="link-btn" style={{ fontSize: 13 }} onClick={go(null)}>← Back to week</button> · {titles[page][1]}</>
+            )}
+          </div>
+          <h1 className="h1">{!page ? label : titles[page][0]}</h1>
+        </div>
+        <div className="row8">
+          {NAV.map(([p, text]) => {
+            const on = page === p;
+            return (
+              <button key={p} className={'pill ghost' + (on ? ' nav-on' : '')} aria-current={on ? 'page' : undefined} onClick={go(on ? null : p)}
+                style={p === 'shop' ? { display: 'flex', gap: 8, alignItems: 'center' } : undefined}>
+                {text}
+                {p === 'shop' && <span className="count-badge">{shop.items.length}</span>}
+                {p === 'recipes' && ' · ' + D.recipes.length}
               </button>
-              <button className="pill ghost" onClick={go('recipes')}>Recipes · {D.recipes.length}</button>
-              <button className="pill ghost" onClick={go('pantry')}>Pantry</button>
-              <button className="pill ghost" onClick={go('chores')}>Chores</button>
-              <button className="pill ghost" onClick={go('budget')}>Budget</button>
-            </div>
-          </div>
-          <div className="flow">
-            <WeekTable key={+mon} D={D} update={update} mon={mon} />
-            <BudgetCard D={D} update={update} mon={mon} onEdit={go('budget')} />
-          </div>
-        </>
+            );
+          })}
+        </div>
+      </div>
+
+      {!page ? (
+        <div className="flow">
+          <WeekTable key={+mon} D={D} update={update} mon={mon} />
+          <BudgetCard D={D} update={update} mon={mon} onEdit={go('budget')} />
+        </div>
       ) : (
         <div className="page">
-          <div className="page-head">
-            <div>
-              <h1 className="h1">{titles[page][0]}</h1>
-              <div style={{ fontSize: 14, marginTop: 4 }} className="muted">{titles[page][1]}</div>
-            </div>
-            <div className="row" style={{ gap: 4 }}>
-              {TABS.map(([p, l]) => {
-                const on = page === p;
-                return (
-                  <button key={p} className="tab" onClick={go(p)}
-                    style={{ borderColor: on ? '#23221F' : '#DDD8CC', background: on ? '#23221F' : '#fff', color: on ? '#fff' : '#23221F' }}>{l}</button>
-                );
-              })}
-            </div>
-          </div>
           {page === 'shop' && <ShopPage update={update} mon={mon} label={label} {...shop} />}
           {page === 'recipes' && <RecipesPage D={D} update={update} mon={mon} />}
           {page === 'pantry' && <PantryPage D={D} update={update} />}
