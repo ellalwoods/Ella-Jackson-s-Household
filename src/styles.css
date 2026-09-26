@@ -197,3 +197,9 @@ input:focus, textarea:focus, select:focus { outline: 2px solid var(--ink); outli
 .shop-add { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; padding: 4px 0 12px; }
 .shop-remove { position: absolute; right: 0; bottom: 6px; font-size: 11px; }
 .shop-add .ing-group { order: 0; }
+/* Phones: the recipe search opens as a full-width panel near the top, so it's never cut off. */
+@media (max-width: 720px) {
+  .picker, .picker-right { position: fixed; top: max(72px, env(safe-area-inset-top)); left: 12px; right: 12px; width: auto; }
+  .picker-list { max-height: min(50vh, 360px); }
+  .scrim { background: rgba(35, 34, 31, .18); }
+}

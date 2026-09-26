@@ -40,12 +40,6 @@ export default function ShopPage({ update, mon, label, items, skipped }: Props) 
     };
     if (navigator.clipboard) navigator.clipboard.writeText(txt).then(() => setCopied(true), fallback); else fallback();
   };
-  const download = () => {
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([text()], { type: 'text/plain' }));
-    a.download = 'shopping-list-' + wk + '.txt';
-    document.body.appendChild(a); a.click(); a.remove();
-  };
   const print = () => {
     const w = window.open('', '_blank');
     if (!w) return;
@@ -72,7 +66,6 @@ export default function ShopPage({ update, mon, label, items, skipped }: Props) 
       <section className="card" style={{ flex: '2 1 420px', padding: '18px 20px' }}>
         <div className="row8" style={{ marginBottom: 10 }}>
           <button className="pill dark" onClick={copy}>{copied ? 'Copied ✓' : 'Copy list'}</button>
-          <button className="pill plain" onClick={download}>Download .txt</button>
           <button className="pill plain" onClick={print}>Print</button>
         </div>
         <AddItem onAdd={addManual} />
