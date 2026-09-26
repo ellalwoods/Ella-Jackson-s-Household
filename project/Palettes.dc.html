@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;600;700&display=swap">
+<style>html,body{margin:0;background:#F6F4EF}*{box-sizing:border-box}a{color:#123D30}a:hover{color:#A8325C}</style>
+</helmet>
+<div style="font-family:Figtree,sans-serif;color:#23221F;padding:28px clamp(14px,4vw,40px) 60px;">
+  <h1 style="margin:0 0 4px;font-size:28px;font-weight:600;letter-spacing:-0.02em;">Category palettes</h1>
+  <p style="margin:0 0 20px;font-size:14px;color:#8A857A;">Every colour uses Ella's lightness/chroma (bright) or Jackson's (deep). Pink and green hues are kept out.</p>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,330px),1fr));gap:12px;">
+    <sc-for list="{{ pals }}" as="p" hint-placeholder-count="20">
+      <div style="background:#fff;border:1px solid #E8E4DB;border-radius:16px;padding:16px;display:flex;gap:16px;align-items:center;">
+        <div style="position:relative;width:78px;height:78px;border-radius:50%;flex:none;background:{{ p.donut }};"><div style="position:absolute;inset:14px;border-radius:50%;background:#fff;display:grid;place-items:center;font-weight:700;font-size:15px;">{{ p.id }}</div></div>
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:8px;">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;"><span style="font-weight:600;">{{ p.name }}</span><span style="font-size:11px;color:#8A857A;">{{ p.mode }}</span></div>
+          <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:4px;">
+            <sc-for list="{{ p.cols }}" as="c"><div style="display:flex;flex-direction:column;gap:3px;"><span style="height:28px;border-radius:6px;background:{{ c }};"></span><span style="font-size:8.5px;color:#8A857A;letter-spacing:-0.02em;">{{ c }}</span></div></sc-for>
+          </div>
+          <div style="display:flex;gap:4px;align-items:center;font-size:11px;color:#8A857A;"><span style="width:14px;height:14px;border-radius:50%;background:#D6517F;"></span><span style="width:14px;height:14px;border-radius:50%;background:#123D30;"></span><span style="padding-left:4px;">Ella · Jackson</span></div>
+        </div>
+      </div>
+    </sc-for>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1200,&quot;height&quot;:1100}}">
+const hex=(L,C,H)=>{const h=H*Math.PI/180,a=C*Math.cos(h),b=C*Math.sin(h);
+ const l=(L+0.3963377774*a+0.2158037573*b)**3,m=(L-0.1055613458*a-0.0638541728*b)**3,s=(L-0.0894841775*a-1.291485548*b)**3;
+ const f=x=>{x=x<=0.0031308?12.92*x:1.055*Math.pow(x,1/2.4)-0.055;return Math.round(Math.min(1,Math.max(0,x))*255).toString(16).padStart(2,'0');};
+ return ('#'+f(4.0767416621*l-3.3077115913*m+0.2309699292*s)+f(-1.2684380046*l+2.6097574011*m-0.3413193965*s)+f(-0.0041960863*l-0.7034186147*m+1.707614701*s)).toUpperCase();};
+const BR=[0.62,0.15],DP=[0.33,0.055];
+const SETS=[
+ ['Harbour','mix',[250,60,280,40,220,90]],['Sandstone','mix',[70,240,40,260,95,300]],['Dusk','mix',[290,50,255,80,310,30]],['Citrus','bright',[85,250,45,290,100,220]],
+ ['Deep sea','deep',[250,220,280,60,200,300]],['Terracotta','mix',[40,230,65,270,30,100]],['Saffron','mix',[80,290,55,240,100,30]],['Lagoon','mix',[210,50,240,80,195,280]],
+ ['Plum & ochre','mix',[310,75,290,50,320,95]],['Rust','bright',[40,65,250,90,30,280]],['Storm','deep',[240,280,30,220,60,300]],['Coastal','mix',[225,70,255,45,200,90]],
+ ['Berry-free','bright',[290,60,240,85,310,215]],['Tobacco','deep',[60,40,80,240,30,270]],['Violet','mix',[285,60,300,90,265,40]],['Marigold','bright',[75,260,50,300,95,230]],
+ ['Nightfall','deep',[270,230,300,50,250,80]],['Clay & sky','mix',[35,235,60,215,45,260]],['Amber','mix',[65,250,85,285,50,230]],['Ink & brass','mix',[255,85,240,65,280,95]]];
+class Component extends DCLogic {
+  renderVals(){
+    return {pals:SETS.map((p,i)=>{const cols=p[2].map((H,j)=>{const t=p[1]==='bright'?BR:p[1]==='deep'?DP:(j%2?DP:BR);const L=t[0]+(p[1]!=='mix'?(j%3-1)*0.04:0);return hex(L,t[1],H);});
+      const st=cols.map((c,j)=>c+' '+(j*60)+'deg '+((j+1)*60)+'deg').join(',');
+      return {id:i+1,name:p[0],mode:p[1]==='mix'?'bright + deep':p[1]==='bright'?'all bright':'all deep',cols,donut:'conic-gradient('+st+')'};})};
+  }
+}
+</script>
+</body>
+</html>

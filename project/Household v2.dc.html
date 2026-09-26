@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap">
+<style>
+html,body{margin:0;padding:0;background:#FFFFFF;-webkit-font-smoothing:antialiased}
+*{box-sizing:border-box}
+a{color:#1B6B56}a:hover{color:#A9477B}
+button{font:inherit;color:inherit;white-space:nowrap}
+select,input,textarea{font:inherit;color:inherit}
+input:focus,textarea:focus,select:focus{outline:2px solid #23221F;outline-offset:1px}
+</style>
+</helmet>
+
+<sc-if value="{{ showPalettes }}" hint-placeholder-val="{{ true }}">
+<div style="position:sticky;top:0;z-index:40;background:#1E1D1B;color:#F2EFE8;font-family:Figtree,sans-serif;font-size:12px;display:flex;gap:6px;align-items:center;padding:8px 12px;overflow-x:auto;white-space:nowrap;">
+  <span style="opacity:.6;padding-right:6px;">Palette</span>
+  <sc-for list="{{ palettes }}" as="p" hint-placeholder-count="5">
+    <button onClick="{{ p.pick }}" style="display:flex;gap:8px;align-items:center;height:30px;padding:0 12px 0 8px;border-radius:999px;border:1px solid #3A3834;cursor:pointer;background:{{ p.bg }};color:{{ p.fg }};">
+      <span style="display:flex;"><sc-for list="{{ p.sw }}" as="c"><span style="width:12px;height:12px;border-radius:50%;margin-right:-3px;border:1.5px solid #1E1D1B;background:{{ c }};"></span></sc-for></span>
+      <span style="font-weight:600;padding-left:4px;">{{ p.name }}</span>
+    </button>
+  </sc-for>
+</div>
+</sc-if>
+<div data-screen-label="Household" style="min-height:100vh;background:#FFFFFF;font-family:Figtree,sans-serif;color:#23221F;padding:22px clamp(14px,4vw,48px) 64px;">
+  <header style="display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between;margin-bottom:22px;">
+    <button onClick="{{ goHome }}" style="border:none;background:none;padding:0;cursor:pointer;text-align:left;display:flex;flex-direction:column;gap:2px;">
+      <span style="font-family:Newsreader,serif;font-size:clamp(26px,4vw,34px);line-height:1;letter-spacing:-0.01em;"><span style="color:#A9477B;">Ella</span> <em style="color:#A39D90;font-weight:400;">&amp;</em> <span style="color:#1B6B56;">Jackson</span></span>
+      <span style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#8A857A;">Household</span>
+    </button>
+    <sc-if value="{{ isHome }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <button onClick="{{ prevWeek }}" aria-label="Previous week" style="width:40px;height:40px;border-radius:999px;border:1px solid #DDD8CC;background:#fff;cursor:pointer;font-size:16px;">←</button>
+        <button onClick="{{ thisWeek }}" style="height:40px;padding:0 16px;border-radius:999px;border:1px solid #DDD8CC;background:#fff;cursor:pointer;font-size:14px;font-weight:500;">This week</button>
+        <button onClick="{{ nextWeek }}" aria-label="Next week" style="width:40px;height:40px;border-radius:999px;border:1px solid #DDD8CC;background:#fff;cursor:pointer;font-size:16px;">→</button>
+        <button onClick="{{ openCalendar }}" style="height:40px;padding:0 16px;border-radius:999px;border:1px solid #DDD8CC;background:#fff;cursor:pointer;font-size:14px;font-weight:500;">Month</button>
+      </div>
+    </sc-if>
+    <sc-if value="{{ isPage }}" hint-placeholder-val="{{ false }}">
+      <button onClick="{{ goHome }}" style="height:40px;padding:0 16px;border-radius:999px;border:1px solid #DDD8CC;background:#fff;cursor:pointer;font-size:14px;font-weight:500;">← Back to week</button>
+    </sc-if>
+  </header>
+
+  <sc-if value="{{ isHome }}" hint-placeholder-val="{{ true }}">
+    <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;justify-content:space-between;margin-bottom:16px;">
+      <div style="display:flex;flex-direction:column;gap:4px;">
+        <div style="font-size:13px;color:#8A857A;">{{ weekNum }}</div>
+        <h1 style="margin:0;font-size:clamp(26px,4vw,36px);font-weight:600;letter-spacing:-0.02em;">{{ weekLabel }}</h1>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button onClick="{{ openShop }}" style="height:40px;padding:0 16px;border-radius:999px;border:none;background:#23221F;color:#fff;cursor:pointer;font-size:14px;font-weight:600;">Shopping list · {{ shop.count }}</button>
+        <button onClick="{{ openRecipes }}" style="height:40px;padding:0 16px;border-radius:999px;border:1px solid #DDD8CC;background:transparent;cursor:pointer;font-size:14px;">Recipes · {{ recipeCount }}</button>
+        <button onClick="{{ openCupboard }}" style="height:40px;padding:0 16px;border-radius:999px;border:1px solid #DDD8CC;background:transparent;cursor:pointer;font-size:14px;">Cupboard</button>
+        <button onClick="{{ openChores }}" style="height:40px;padding:0 16px;border-radius:999px;border:1px solid #DDD8CC;background:transparent;cursor:pointer;font-size:14px;">Chores</button>
+        <button onClick="{{ openBudget }}" style="height:40px;padding:0 16px;border-radius:999px;border:1px solid #DDD8CC;background:transparent;cursor:pointer;font-size:14px;">Budget</button>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start;">
+      <section style="flex:2 1 560px;min-width:0;background:#fff;border:1px solid #E8E4DB;border-radius:16px;">
+        <div style="display:grid;grid-template-columns:64px minmax(0,1fr) minmax(0,1.2fr);gap:14px;padding:14px 18px;border-bottom:1px solid #E8E4DB;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#8A857A;">
+          <span>Day</span>
+          <span style="display:flex;justify-content:space-between;gap:8px;"><span>Dinner</span><span style="text-transform:none;letter-spacing:0;font-weight:500;white-space:nowrap;">{{ mealTotal }} · {{ mealEach }} each</span></span>
+          <span style="display:flex;justify-content:space-between;gap:8px;"><span>Chores</span><span style="text-transform:none;letter-spacing:0;font-weight:500;white-space:nowrap;">{{ choresDone }}/{{ choresTotal }} done</span></span>
+        </div>
+        <sc-for list="{{ days }}" as="d" hint-placeholder-count="7">
+          <div style="display:grid;grid-template-columns:64px minmax(0,1fr) minmax(0,1.2fr);gap:14px;align-items:start;padding:12px 18px;border-top:1px solid #F0ECE4;position:relative;background:{{ d.rowBg }};">
+            <div style="display:flex;flex-direction:column;line-height:1.15;padding-top:4px;color:{{ d.dayColor }};">
+              <span style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;">{{ d.dow }}</span>
+              <span style="font-size:20px;font-weight:600;">{{ d.dateNum }}</span>
+            </div>
+            <div style="position:relative;min-width:0;">
+              <button onClick="{{ d.openPicker }}" style="width:100%;min-height:44px;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:1px;padding:6px 10px;border-radius:10px;border:1px solid {{ d.mealBorder }};background:{{ d.mealBg }};cursor:pointer;text-align:left;white-space:normal;">
+                <span style="font-size:14px;font-weight:{{ d.mealWeight }};color:{{ d.mealColor }};">{{ d.mealLabel }}</span>
+                <sc-if value="{{ d.hasMeal }}"><span style="font-size:12px;color:#8A857A;">{{ d.costStr }}</span></sc-if>
+              </button>
+              <sc-if value="{{ d.pickerOpen }}">
+                <div onClick="{{ closePicker }}" style="position:fixed;inset:0;z-index:30;"></div>
+                <div style="position:absolute;top:calc(100% + 6px);left:0;width:min(340px,86vw);z-index:31;background:#fff;border:1px solid #DDD8CC;border-radius:14px;box-shadow:0 14px 40px rgba(35,34,31,.16);padding:10px;display:flex;flex-direction:column;gap:6px;">
+                  <input autoFocus="{{ true }}" value="{{ pickQuery }}" onChange="{{ onPickQuery }}" onKeyDown="{{ pickKey }}" placeholder="Search recipes or ingredients" style="height:40px;padding:0 12px;border:1px solid #DDD8CC;border-radius:10px;background:#FBFAF7;font-size:14px;">
+                  <div style="max-height:260px;overflow-y:auto;display:flex;flex-direction:column;">
+                    <sc-for list="{{ pickResults }}" as="r">
+                      <button onClick="{{ r.pick }}" style="display:flex;justify-content:space-between;align-items:center;gap:10px;min-height:44px;padding:6px 10px;border:none;border-radius:8px;background:{{ r.bg }};cursor:pointer;text-align:left;" style-hover="background:#F5F2EC;">
+                        <span style="display:flex;flex-direction:column;min-width:0;white-space:normal;"><span style="font-size:14px;font-weight:500;">{{ r.name }}</span><span style="font-size:12px;color:#8A857A;">{{ r.sub }}</span></span>
+                        <span style="font-size:13px;color:#8A857A;">{{ r.costStr }}</span>
+                      </button>
+                    </sc-for>
+                    <sc-if value="{{ pickNone }}"><span style="font-size:13px;color:#8A857A;padding:8px 10px;">No recipes match.</span></sc-if>
+                  </div>
+                  <div style="display:flex;gap:6px;border-top:1px solid #F0ECE4;padding-top:8px;flex-wrap:wrap;">
+                    <sc-if value="{{ canCreate }}"><button onClick="{{ createFromPick }}" style="height:34px;padding:0 12px;border-radius:999px;border:none;background:#23221F;color:#fff;cursor:pointer;font-size:13px;font-weight:600;">+ New “{{ pickQuery }}”</button></sc-if>
+                    <sc-if value="{{ d.hasMeal }}"><button onClick="{{ d.clearMeal }}" style="height:34px;padding:0 12px;border-radius:999px;border:1px solid #DDD8CC;background:#fff;cursor:pointer;font-size:13px;">Clear</button></sc-if>
+                  </div>
+                </div>
+              </sc-if>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;min-height:44px;align-items:center;">
+              <sc-for list="{{ d.chores }}" as="c">
+                <button onClick="{{ c.toggle }}" style="display:flex;gap:6px;align-items:center;height:32px;padding:0 11px 0 6px;border-radius:999px;border:none;cursor:pointer;font-size:13px;background:{{ c.tint }};color:{{ c.ink }};opacity:{{ c.op }};">
+                  <span style="width:18px;height:18px;border-radius:50%;border:1.5px solid {{ c.color }};background:{{ c.checkBg }};color:#fff;font-size:11px;display:grid;place-items:center;">{{ c.check }}</span>
+                  <span style="text-decoration:{{ c.deco }};">{{ c.name }}</span>
+                </button>
+              </sc-for>
+              <sc-if value="{{ d.noChores }}"><span style="font-size:13px;color:#C2BCB0;">—</span></sc-if>
+            </div>
+          </div>
+        </sc-for>
+        <div style="display:flex;flex-wrap:wrap;gap:14px;justify-content:space-between;padding:12px 18px;border-top:1px solid #E8E4DB;font-size:13px;color:#8A857A;">
+          <span>{{ mealsPlanned }} of 7 dinners planned</span>
+          <span style="display:flex;gap:12px;"><span style="display:flex;gap:6px;align-items:center;"><span style="width:8px;height:8px;border-radius:50%;background:#E886B8;"></span>Ella</span><span style="display:flex;gap:6px;align-items:center;"><span style="width:8px;height:8px;border-radius:50%;background:#2A9E80;"></span>Jackson</span></span>
+        </div>
+      </section>
+
+      <section style="flex:1 1 300px;min-width:0;background:#fff;border:1px solid #E8E4DB;border-radius:16px;padding:20px;">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:16px;">
+          <h2 style="margin:0;font-size:17px;font-weight:600;">Budget <span style="font-weight:400;color:#8A857A;font-size:13px;">per week</span></h2>
+          <button onClick="{{ openBudget }}" style="border:none;background:none;cursor:pointer;font-size:13px;color:#8A857A;text-decoration:underline;">Edit</button>
+        </div>
+        <div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap;margin-bottom:16px;">
+          <div style="position:relative;width:140px;height:140px;border-radius:50%;flex:none;background:{{ b.donut }};">
+            <div style="position:absolute;inset:22px;border-radius:50%;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+              <span style="font-size:11px;color:#8A857A;">Left over</span>
+              <span style="font-size:20px;font-weight:600;">{{ b.left }}</span>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px;font-size:13px;flex:1;min-width:140px;">
+            <div style="display:flex;justify-content:space-between;"><span style="color:#8A857A;">Income</span><span style="font-weight:600;">{{ b.income }}</span></div>
+            <div style="display:flex;justify-content:space-between;"><span style="color:#8A857A;">Committed</span><span style="font-weight:600;">{{ b.spend }}</span></div>
+            <div style="display:flex;justify-content:space-between;"><span style="color:#A9477B;">Ella pays</span><span>{{ b.ellaSpend }}</span></div>
+            <div style="display:flex;justify-content:space-between;"><span style="color:#1B6B56;">Jackson pays</span><span>{{ b.jacksonSpend }}</span></div>
+          </div>
+        </div>
+        <sc-for list="{{ b.cats }}" as="c" hint-placeholder-count="5">
+          <div style="display:flex;flex-direction:column;gap:6px;padding:9px 0;border-top:1px solid #F0ECE4;">
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:14px;gap:8px;">
+              <span style="display:flex;gap:8px;align-items:center;"><span style="width:10px;height:10px;border-radius:3px;background:{{ c.color }};"></span>{{ c.name }}</span>
+              <span style="font-weight:600;">{{ c.totalStr }}</span>
+            </div>
+            <div style="display:flex;height:6px;border-radius:3px;overflow:hidden;background:#F0ECE4;"><div style="background:#E886B8;width:{{ c.ew }};"></div><div style="background:#2A9E80;width:{{ c.jw }};"></div></div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;"><span style="color:#A9477B;">{{ c.ellaStr }}</span><span style="color:#1B6B56;">{{ c.jacksonStr }}</span></div>
+          </div>
+        </sc-for>
+        <sc-if value="{{ b.noCats }}"><p style="font-size:13px;color:#8A857A;margin:0;">No categories yet.</p></sc-if>
+        <sc-if value="{{ hasGroceryNote }}"><p style="margin:12px 0 0;font-size:12px;color:#8A857A;">{{ groceryNote }}</p></sc-if>
+      </section>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isPage }}" hint-placeholder-val="{{ false }}">
+    <div style="max-width:1120px;margin:0 auto;">
+      <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:12px;margin-bottom:18px;">
+        <div>
+          <h1 style="margin:0;font-size:clamp(26px,4vw,36px);font-weight:600;letter-spacing:-0.02em;">{{ pageTitle }}</h1>
+          <div style="font-size:14px;color:#8A857A;margin-top:4px;">{{ pageSub }}</div>
+        </div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap;">
+          <sc-for list="{{ tabs }}" as="t"><button onClick="{{ t.go }}" style="height:36px;padding:0 14px;border-radius:999px;cursor:pointer;font-size:13px;font-weight:500;border:1px solid {{ t.bd }};background:{{ t.bg }};color:{{ t.fg }};">{{ t.label }}</button></sc-for>
+        </div>
+      </div>
+
+      <sc-if value="{{ pShop }}">
+        <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start;">
+          <section style="flex:2 1 420px;min-width:0;background:#fff;border:1px solid #E8E4DB;border-radius:16px;padding:18px 20px;">
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+              <button onClick="{{ copyList }}" style="height:40px;padding:0 16px;border-radius:999px;border:none;background:#23221F;color:#fff;cursor:pointer;font-size:14px;font-weight:600;">{{ copyLabel }}</button>
+              <button onClick="{{ downloadList }}" style="height:40px;padding:0 16px;border-radius:999px;border:1px solid #DDD8CC;background:#fff;cursor:pointer;font-size:14px;">Download .txt</button>
+              <button onClick="{{ printList }}" style="height:40px;padding:0 16px;border-radius:999px;border:1px solid #DDD8CC;background:#fff;cursor:pointer;font-size:14px;">Print</button>
+            </div>
+            <sc-for list="{{ shop.items }}" as="it">
+              <button onClick="{{ it.toggle }}" style="display:flex;gap:12px;align-items:center;width:100%;min-height:50px;border:none;border-top:1px solid #EFEBE3;background:none;padding:6px 0;cursor:pointer;text-align:left;opacity:{{ it.op }};">
+                <span style="width:22px;height:22px;border-radius:6px;border:1.5px solid #23221F;background:{{ it.checkBg }};color:#fff;display:grid;place-items:center;font-size:12px;flex:none;">{{ it.check }}</span>
+                <span style="flex:1;display:flex;flex-direction:column;min-width:0;white-space:normal;"><span style="font-size:15px;text-decoration:{{ it.deco }};">{{ it.name }}</span><span style="font-size:12px;color:#8A857A;">{{ it.meals }}</span></span>
+                <span style="font-size:11px;padding:3px 8px;border-radius:999px;background:#F2EEE6;color:#6D675C;">{{ it.status }}</span>
+              </button>
+            </sc-for>
+            <sc-if value="{{ shop.empty }}"><p style="font-size:14px;color:#8A857A;padding:16px 0;margin:0;">Nothing to buy — plan some dinners, or everything's already in the cupboard.</p></sc-if>
+            <sc-if value="{{ shop.hasChecked }}">
+              <button onClick="{{ stockChecked }}" style="margin-top:12px;height:40px;padding:0 16px;border-radius:999px;border:1px solid #23221F;background:#fff;cursor:pointer;font-size:14px;">Add ticked items to cupboard as Full</button>
+            </sc-if>
+          </section>
+          <aside style="flex:1 1 260px;min-width:0;background:#fff;border:1px solid #E8E4DB;border-radius:16px;padding:18px 20px;">
+            <div style="font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:#8A857A;margin-bottom:10px;">Already in cupboard — skipped</div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;">
+              <sc-for list="{{ shop.skipped }}" as="s"><span style="font-size:13px;padding:5px 10px;border-radius:999px;background:#F2EEE6;color:#6D675C;">{{ s.name }} · {{ s.state }}</span></sc-for>
+            </div>
+            <sc-if value="{{ shop.noSkipped }}"><p style="font-size:13px;color:#8A857A;margin:0;">Nothing skipped this week.</p></sc-if>
+            <p style="font-size:12px;color:#8A857A;margin:14px 0 0;">{{ stockRule }}</p>
+          </aside>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ pRecipes }}">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
+          <input value="{{ q.recipes }}" onChange="{{ onQ.recipes }}" placeholder="Search by name or ingredient" style="flex:1 1 260px;height:44px;padding:0 14px;border:1px solid #DDD8CC;border-radius:12px;background:#fff;font-size:15px;min-width:0;">
+          <button onClick="{{ toggleNewRecipe }}" style="height:44px;padding:0 18px;border-radius:999px;border:none;background:#23221F;color:#fff;cursor:pointer;font-size:14px;font-weight:600;">{{ newRecipeLabel }}</button>
+        </div>
+        <sc-if value="{{ showNewRecipe }}">
+          <div style="background:#fff;border:1px solid #23221F;border-radius:16px;padding:16px;margin-bottom:14px;display:flex;flex-direction:column;gap:8px;">
+            <div style="display:grid;grid-template-columns:minmax(0,1fr) 120px;gap:8px;">
+              <input value="{{ draft.rName }}" onChange="{{ on.rName }}" placeholder="Recipe name" style="height:42px;padding:0 12px;border:1px solid #DDD8CC;border-radius:10px;background:#fff;font-size:14px;min-width:0;">
+              <input value="{{ draft.rCost }}" onChange="{{ on.rCost }}" placeholder="Cost $" inputmode="decimal" style="height:42px;padding:0 12px;border:1px solid #DDD8CC;border-radius:10px;background:#fff;font-size:14px;min-width:0;">
+            </div>
+            <textarea value="{{ draft.rIng }}" onChange="{{ on.rIng }}" placeholder="Ingredients, comma separated" rows="3" style="padding:10px 12px;border:1px solid #DDD8CC;border-radius:10px;background:#fff;font-size:14px;resize:vertical;"></textarea>
+            <button onClick="{{ addRecipe }}" style="align-self:flex-start;height:40px;padding:0 18px;border-radius:999px;border:none;background:#23221F;color:#fff;cursor:pointer;font-size:14px;font-weight:600;">Save recipe</button>
+          </div>
+        </sc-if>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,280px),1fr));gap:12px;">
+          <sc-for list="{{ recipes }}" as="r">
+            <div style="background:#fff;border:1px solid #E8E4DB;border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:10px;">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">
+                <div style="min-width:0;"><div style="font-size:16px;font-weight:600;">{{ r.name }}</div><div style="font-size:13px;color:#8A857A;">{{ r.costStr }} · {{ r.planned }}</div></div>
+                <button onClick="{{ r.remove }}" style="border:none;background:none;cursor:pointer;font-size:12px;color:#8A857A;text-decoration:underline;padding:0;">Remove</button>
+              </div>
+              <div style="display:flex;flex-wrap:wrap;gap:5px;">
+                <sc-for list="{{ r.ings }}" as="g"><span style="display:flex;gap:5px;align-items:center;font-size:12px;padding:4px 9px;border-radius:999px;background:#F5F2EC;"><span style="width:6px;height:6px;border-radius:50%;background:{{ g.dot }};"></span>{{ g.name }}</span></sc-for>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+        <sc-if value="{{ recipesNone }}"><p style="font-size:14px;color:#8A857A;">No recipes match “{{ q.recipes }}”.</p></sc-if>
+        <div style="font-size:12px;color:#8A857A;margin-top:14px;display:flex;gap:14px;flex-wrap:wrap;"><span style="display:flex;gap:5px;align-items:center;"><span style="width:6px;height:6px;border-radius:50%;background:{{ dotIn }};"></span>In stock</span><span style="display:flex;gap:5px;align-items:center;"><span style="width:6px;height:6px;border-radius:50%;background:{{ dotLow }};"></span>Low / replace</span><span style="display:flex;gap:5px;align-items:center;"><span style="width:6px;height:6px;border-radius:50%;background:#BFB8AA;"></span>Not stocked</span></div>
+      </sc-if>
+
+      <sc-if value="{{ pCupboard }}">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+          <input value="{{ q.cupboard }}" onChange="{{ onQ.cupboard }}" onKeyDown="{{ cKey }}" placeholder="Search, or type a new ingredient and press Enter" style="flex:1 1 260px;height:44px;padding:0 14px;border:1px solid #DDD8CC;border-radius:12px;background:#fff;font-size:15px;min-width:0;">
+          <sc-if value="{{ canAddCup }}"><button onClick="{{ addCupboard }}" style="height:44px;padding:0 18px;border-radius:999px;border:none;background:#23221F;color:#fff;cursor:pointer;font-size:14px;font-weight:600;">+ Add “{{ q.cupboard }}”</button></sc-if>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;">
+          <sc-for list="{{ cupFilters }}" as="f"><button onClick="{{ f.pick }}" style="height:32px;padding:0 12px;border-radius:999px;cursor:pointer;font-size:13px;border:1px solid {{ f.bd }};background:{{ f.bg }};color:{{ f.fg }};">{{ f.label }}</button></sc-for>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,260px),1fr));gap:10px;">
+          <sc-for list="{{ cupboard }}" as="c">
+            <div style="background:#fff;border:1px solid #E8E4DB;border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px;">
+              <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;">
+                <span style="font-size:15px;font-weight:600;">{{ c.name }} <span style="font-weight:400;font-size:12px;color:#8A857A;">{{ c.usedIn }}</span></span>
+                <button onClick="{{ c.remove }}" style="border:none;background:none;cursor:pointer;font-size:12px;color:#8A857A;text-decoration:underline;padding:0;">Remove</button>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;">
+                <sc-for list="{{ c.states }}" as="st"><button onClick="{{ st.pick }}" style="height:34px;border-radius:999px;cursor:pointer;font-size:12px;border:1px solid {{ st.bd }};background:{{ st.bg }};color:{{ st.fg }};">{{ st.label }}</button></sc-for>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+        <sc-if value="{{ cupboardNone }}"><p style="font-size:14px;color:#8A857A;">Nothing here. Add what you have so the shopping list can skip it.</p></sc-if>
+        <p style="font-size:12px;color:#8A857A;margin-top:14px;">{{ stockRule }}</p>
+      </sc-if>
+
+      <sc-if value="{{ pChores }}">
+        <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start;">
+          <section style="flex:2 1 420px;min-width:0;">
+            <input value="{{ q.chores }}" onChange="{{ onQ.chores }}" placeholder="Search chores" style="width:100%;height:44px;padding:0 14px;border:1px solid #DDD8CC;border-radius:12px;background:#fff;font-size:15px;margin-bottom:10px;">
+            <div style="background:#fff;border:1px solid #E8E4DB;border-radius:16px;padding:4px 18px;">
+              <sc-for list="{{ choresList }}" as="c">
+                <div style="display:flex;gap:12px;align-items:center;padding:12px 0;border-top:1px solid #F0ECE4;">
+                  <button onClick="{{ c.togglePerson }}" title="Switch person" style="height:32px;min-width:78px;padding:0 10px;border-radius:999px;border:none;cursor:pointer;font-size:12px;font-weight:600;flex:none;background:{{ c.tint }};color:{{ c.ink }};">{{ c.personName }}</button>
+                  <div style="flex:1;min-width:0;"><div style="font-size:15px;">{{ c.name }}</div><div style="font-size:12px;color:#8A857A;">{{ c.desc }}</div></div>
+                  <button onClick="{{ c.remove }}" style="border:none;background:none;cursor:pointer;font-size:12px;color:#8A857A;text-decoration:underline;">Remove</button>
+                </div>
+              </sc-for>
+              <sc-if value="{{ choresNone }}"><p style="font-size:14px;color:#8A857A;">No chores found.</p></sc-if>
+            </div>
+          </section>
+          <aside style="flex:1 1 300px;min-width:0;background:#fff;border:1px solid #E8E4DB;border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:10px;">
+            <div style="font-weight:600;">New chore</div>
+            <input value="{{ draft.chName }}" onChange="{{ on.chName }}" placeholder="e.g. Take bins out" style="height:42px;padding:0 12px;border:1px solid #DDD8CC;border-radius:10px;background:#fff;font-size:14px;">
+            <div style="display:flex;gap:6px;">
+              <button onClick="{{ pickElla }}" style="flex:1;height:42px;border-radius:999px;cursor:pointer;font-size:14px;font-weight:600;border:1.5px solid #E886B8;background:{{ chEllaBg }};color:{{ chEllaFg }};">Ella</button>
+              <button onClick="{{ pickJackson }}" style="flex:1;height:42px;border-radius:999px;cursor:pointer;font-size:14px;font-weight:600;border:1.5px solid #2A9E80;background:{{ chJackBg }};color:{{ chJackFg }};">Jackson</button>
+            </div>
+            <select value="{{ draft.chType }}" onChange="{{ on.chType }}" style="height:42px;padding:0 8px;border:1px solid #DDD8CC;border-radius:10px;background:#fff;font-size:14px;">
+              <option value="weekly">Weekly on chosen days</option>
+              <option value="every">Every N days</option>
+              <option value="monthly">Monthly on a date</option>
+              <option value="once">One-off</option>
+            </select>
+            <sc-if value="{{ tWeekly }}">
+              <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;">
+                <sc-for list="{{ dayChips }}" as="dc"><button onClick="{{ dc.pick }}" style="height:40px;border-radius:10px;cursor:pointer;font-size:12px;font-weight:600;border:1px solid #DDD8CC;background:{{ dc.bg }};color:{{ dc.fg }};">{{ dc.label }}</button></sc-for>
+              </div>
+            </sc-if>
+            <sc-if value="{{ tEvery }}">
+              <div style="display:flex;gap:8px;align-items:center;font-size:14px;flex-wrap:wrap;">Every <input value="{{ draft.chN }}" onChange="{{ on.chN }}" inputmode="numeric" style="width:64px;height:40px;padding:0 10px;border:1px solid #DDD8CC;border-radius:8px;background:#fff;"> days from <input type="date" value="{{ draft.chStart }}" onChange="{{ on.chStart }}" style="height:40px;padding:0 8px;border:1px solid #DDD8CC;border-radius:8px;background:#fff;"></div>
+            </sc-if>
+            <sc-if value="{{ tMonthly }}">
+              <div style="display:flex;gap:8px;align-items:center;font-size:14px;">On day <input value="{{ draft.chDom }}" onChange="{{ on.chDom }}" inputmode="numeric" style="width:64px;height:40px;padding:0 10px;border:1px solid #DDD8CC;border-radius:8px;background:#fff;"> of each month</div>
+            </sc-if>
+            <sc-if value="{{ tOnce }}">
+              <input type="date" value="{{ draft.chDate }}" onChange="{{ on.chDate }}" style="height:40px;padding:0 8px;border:1px solid #DDD8CC;border-radius:8px;background:#fff;">
+            </sc-if>
+            <button onClick="{{ addChore }}" style="height:42px;border-radius:999px;border:none;background:#23221F;color:#fff;cursor:pointer;font-size:14px;font-weight:600;">Add chore</button>
+          </aside>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ pBudget }}">
+        <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start;">
+          <section style="flex:2 1 460px;min-width:0;background:#fff;border:1px solid #E8E4DB;border-radius:16px;padding:18px 20px;">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;"><span style="font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:#8A857A;">Income sources · per week</span><span style="font-size:14px;font-weight:600;">{{ b.income }}</span></div>
+            <sc-for list="{{ incomes }}" as="i">
+              <div style="display:grid;grid-template-columns:84px minmax(0,1.4fr) minmax(0,1fr) 32px;gap:6px;align-items:center;margin-bottom:6px;">
+                <button onClick="{{ i.togglePerson }}" title="Switch person" style="height:36px;border-radius:999px;border:none;cursor:pointer;font-size:12px;font-weight:600;background:{{ i.tint }};color:{{ i.ink }};">{{ i.personName }}</button>
+                <input value="{{ i.nameVal }}" onChange="{{ i.onName }}" style="height:40px;padding:0 8px;border:1px solid #DDD8CC;border-radius:8px;background:#fff;font-size:14px;min-width:0;">
+                <input value="{{ i.amtVal }}" onChange="{{ i.onAmt }}" inputmode="decimal" style="height:40px;padding:0 8px;border:1px solid #DDD8CC;border-radius:8px;background:#fff;font-size:14px;min-width:0;">
+                <button onClick="{{ i.remove }}" aria-label="Remove" style="width:32px;height:32px;border-radius:50%;border:1px solid #DDD8CC;background:#fff;cursor:pointer;">×</button>
+              </div>
+            </sc-for>
+            <sc-if value="{{ noIncomes }}"><p style="font-size:13px;color:#8A857A;margin:0 0 8px;">No income logged yet.</p></sc-if>
+            <div style="display:grid;grid-template-columns:84px minmax(0,1.4fr) minmax(0,1fr) auto;gap:6px;align-items:center;padding-top:10px;margin:4px 0 22px;border-top:1px dashed #DDD8CC;">
+              <button onClick="{{ toggleIncPerson }}" title="Switch person" style="height:36px;border-radius:999px;border:none;cursor:pointer;font-size:12px;font-weight:600;background:{{ incDraft.tint }};color:{{ incDraft.ink }};">{{ incDraft.name }}</button>
+              <input value="{{ draft.incName }}" onChange="{{ on.incName }}" onKeyDown="{{ incKey }}" placeholder="e.g. Salary, freelance" style="height:40px;padding:0 8px;border:1px solid #DDD8CC;border-radius:8px;background:#fff;font-size:14px;min-width:0;">
+              <input value="{{ draft.incAmt }}" onChange="{{ on.incAmt }}" onKeyDown="{{ incKey }}" placeholder="$ / week" inputmode="decimal" style="height:40px;padding:0 8px;border:1px solid #DDD8CC;border-radius:8px;background:#fff;font-size:14px;min-width:0;">
+              <button onClick="{{ addIncome }}" style="height:36px;padding:0 14px;border-radius:999px;border:none;background:#23221F;color:#fff;cursor:pointer;font-size:13px;font-weight:600;">Add</button>
+            </div>
+            <div style="display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) minmax(0,1fr) 32px;gap:6px;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#8A857A;margin-bottom:6px;"><span>Category</span><span style="color:#A9477B;">Ella $</span><span style="color:#1B6B56;">Jackson $</span><span></span></div>
+            <sc-for list="{{ b.cats }}" as="c">
+              <div style="display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) minmax(0,1fr) 32px;gap:6px;align-items:center;margin-bottom:6px;">
+                <div style="display:flex;gap:6px;align-items:center;min-width:0;"><span style="width:8px;height:8px;border-radius:50%;background:{{ c.color }};flex:none;"></span><input value="{{ c.nameVal }}" onChange="{{ c.onName }}" style="width:100%;height:40px;padding:0 8px;border:1px solid #DDD8CC;border-radius:8px;background:#fff;font-size:14px;min-width:0;"></div>
+                <input value="{{ c.ellaVal }}" onChange="{{ c.onElla }}" inputmode="decimal" style="height:40px;padding:0 8px;border:1px solid #DDD8CC;border-radius:8px;background:#fff;font-size:14px;min-width:0;">
+                <input value="{{ c.jacksonVal }}" onChange="{{ c.onJackson }}" inputmode="decimal" style="height:40px;padding:0 8px;border:1px solid #DDD8CC;border-radius:8px;background:#fff;font-size:14px;min-width:0;">
+                <button onClick="{{ c.remove }}" aria-label="Remove" style="width:32px;height:32px;border-radius:50%;border:1px solid #DDD8CC;background:#fff;cursor:pointer;">×</button>
+              </div>
+            </sc-for>
+            <div style="display:flex;justify-content:space-between;font-size:14px;font-weight:600;padding:10px 0;border-top:1px solid #23221F;margin-top:6px;"><span>Committed {{ b.spend }}</span><span>Left {{ b.left }}</span></div>
+          </section>
+          <aside style="flex:1 1 280px;min-width:0;display:flex;flex-direction:column;gap:16px;">
+            <div style="background:#fff;border:1px solid #E8E4DB;border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:8px;">
+              <div style="font-weight:600;">Add category</div>
+              <div style="font-size:13px;color:#8A857A;">Split 50/50 — adjust after.</div>
+              <input value="{{ draft.catName }}" onChange="{{ on.catName }}" placeholder="e.g. Internet" style="height:42px;padding:0 12px;border:1px solid #DDD8CC;border-radius:10px;background:#fff;font-size:14px;min-width:0;">
+              <input value="{{ draft.catTotal }}" onChange="{{ on.catTotal }}" placeholder="Total $ per week" inputmode="decimal" style="height:42px;padding:0 12px;border:1px solid #DDD8CC;border-radius:10px;background:#fff;font-size:14px;min-width:0;">
+              <button onClick="{{ addCat }}" style="height:42px;border-radius:999px;border:none;background:#23221F;color:#fff;cursor:pointer;font-size:14px;font-weight:600;">Add category</button>
+            </div>
+            <div style="background:#fff;border:1px solid #E8E4DB;border-radius:16px;padding:18px;display:flex;gap:16px;align-items:center;">
+              <div style="position:relative;width:110px;height:110px;border-radius:50%;flex:none;background:{{ b.donut }};"><div style="position:absolute;inset:18px;border-radius:50%;background:#fff;"></div></div>
+              <div style="display:flex;flex-direction:column;gap:4px;font-size:13px;"><span>Ella pays <strong>{{ b.ellaSpend }}</strong></span><span>Jackson pays <strong>{{ b.jacksonSpend }}</strong></span><span style="color:#8A857A;">of {{ b.income }} income</span></div>
+            </div>
+          </aside>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ pCalendar }}">
+        <div style="background:#fff;border:1px solid #E8E4DB;border-radius:16px;padding:18px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+            <button onClick="{{ calPrev }}" style="width:40px;height:40px;border-radius:50%;border:1px solid #DDD8CC;background:#fff;cursor:pointer;">←</button>
+            <span style="font-size:20px;font-weight:600;">{{ cal.title }}</span>
+            <button onClick="{{ calNext }}" style="width:40px;height:40px;border-radius:50%;border:1px solid #DDD8CC;background:#fff;cursor:pointer;">→</button>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;">
+            <sc-for list="{{ cal.head }}" as="h"><span style="font-size:11px;text-align:center;color:#8A857A;font-weight:600;padding-bottom:4px;">{{ h }}</span></sc-for>
+            <sc-for list="{{ cal.cells }}" as="c">
+              <button onClick="{{ c.pick }}" style="min-height:clamp(70px,11vw,110px);border-radius:10px;padding:6px;cursor:pointer;text-align:left;display:flex;flex-direction:column;gap:3px;white-space:normal;opacity:{{ c.op }};border:1.5px solid {{ c.bd }};background:{{ c.bg }};">
+                <span style="font-size:13px;font-weight:600;">{{ c.num }}</span>
+                <span style="font-size:11px;line-height:1.25;color:#6D675C;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">{{ c.meal }}</span>
+                <span style="display:flex;gap:3px;flex-wrap:wrap;margin-top:auto;"><sc-for list="{{ c.dots }}" as="dt"><span style="width:7px;height:7px;border-radius:50%;background:{{ dt }};"></span></sc-for></span>
+              </button>
+            </sc-for>
+          </div>
+          <p style="font-size:12px;color:#8A857A;margin:12px 0 0;">Tap a day to jump to its week. Dots are chores in each person's colour.</p>
+        </div>
+      </sc-if>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;includeLow&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;}}">
+const K='hh-sydney-v1';
+const P={ella:{name:'Ella',color:'#E886B8',ink:'#A9477B',tint:'#FAE3EE'},jackson:{name:'Jackson',color:'#2A9E80',ink:'#1B6B56',tint:'#DAEFE7'}};
+const PAL={Linen:{cats:['#8FB0CF','#C4A8D4','#86C2BF','#DCD690','#F0A88C','#E3CBC6','#6F93B5','#A98BBA'],st:{Full:'#86C2BF',Half:'#C3E0DD',Low:'#DCD690',Replace:'#F0A88C'}}};
+const STATES=['Full','Half','Low','Replace'];
+const DOW=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const MONL=['January','February','March','April','May','June','July','August','September','October','November','December'];
+const pad=n=>String(n).padStart(2,'0');
+const key=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const parse=k=>{const a=k.split('-').map(Number);return new Date(a[0],a[1]-1,a[2]);};
+const addDays=(d,n)=>{const x=new Date(d.getFullYear(),d.getMonth(),d.getDate());x.setDate(x.getDate()+n);return x;};
+const mondayOf=d=>addDays(d,-((d.getDay()+6)%7));
+const money=n=>{n=Math.round((+n||0)*100)/100;return (n<0?'−$':'$')+Math.abs(n).toLocaleString('en-AU',{minimumFractionDigits:n%1?2:0,maximumFractionDigits:2});};
+const uid=()=>Math.random().toString(36).slice(2,9);
+const ord=n=>{const s=['th','st','nd','rd'],v=n%100;return n+(s[(v-20)%10]||s[v]||s[0]);};
+const isoWeek=d=>{const t=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));const day=t.getUTCDay()||7;t.setUTCDate(t.getUTCDate()+4-day);const y=new Date(Date.UTC(t.getUTCFullYear(),0,1));return Math.ceil(((t-y)/864e5+1)/7);};
+const norm=s=>String(s||'').trim().toLowerCase();
+function seed(){const m=mondayOf(new Date()),k=i=>key(addDays(m,i));const plan={};plan[k(0)]={r:'bol'};plan[k(1)]={r:'stir'};plan[k(3)]={r:'tray'};
+ return {income:{ella:1150,jackson:1250},
+ cats:[{id:uid(),name:'Rent',ella:380,jackson:380},{id:uid(),name:'Groceries',ella:90,jackson:90},{id:uid(),name:'Utilities',ella:35,jackson:35},{id:uid(),name:'Transport',ella:45,jackson:45},{id:uid(),name:'Leisure',ella:60,jackson:60}],
+ recipes:[{id:'bol',name:'Spaghetti bolognese',cost:16,ingredients:['Spaghetti','Beef mince','Passata','Onion','Garlic','Carrot','Parmesan']},
+  {id:'stir',name:'Veggie stir-fry',cost:12,ingredients:['Rice','Broccoli','Capsicum','Soy sauce','Ginger','Garlic','Tofu']},
+  {id:'tray',name:'Lemon chicken tray bake',cost:18,ingredients:['Chicken thighs','Potatoes','Lemon','Garlic','Rosemary','Olive oil']},
+  {id:'salmon',name:'Salmon, rice & greens',cost:24,ingredients:['Salmon','Rice','Green beans','Lemon','Soy sauce']}],
+ plan,
+ cupboard:[{name:'Olive oil',state:'Full'},{name:'Soy sauce',state:'Full'},{name:'Rice',state:'Half'},{name:'Garlic',state:'Low'},{name:'Passata',state:'Full'},{name:'Spaghetti',state:'Replace'}],
+ chores:[{id:uid(),name:'Bins out',person:'jackson',sched:{type:'weekly',days:[1]}},{id:uid(),name:'Vacuum',person:'ella',sched:{type:'weekly',days:[5]}},
+  {id:uid(),name:'Dishes',person:'ella',sched:{type:'weekly',days:[0,2,4]}},{id:uid(),name:'Dishes',person:'jackson',sched:{type:'weekly',days:[1,3,5,6]}},
+  {id:uid(),name:'Clean bathroom',person:'jackson',sched:{type:'every',n:14,start:k(6)}},{id:uid(),name:'Change sheets',person:'ella',sched:{type:'every',n:14,start:k(6)}}],
+ done:{}};}
+function occurs(c,d){const s=c.sched,dow=(d.getDay()+6)%7;
+ if(s.type==='weekly')return s.days.indexOf(dow)>=0;
+ if(s.type==='every'){const diff=Math.round((d-parse(s.start))/864e5);return diff>=0&&diff%Math.max(1,s.n)===0;}
+ if(s.type==='once')return key(d)===s.date;
+ if(s.type==='monthly')return d.getDate()===s.dom;return false;}
+function describe(s){const f=k=>{const d=parse(k);return d.getDate()+' '+MON[d.getMonth()];};
+ if(s.type==='weekly')return s.days.length===7?'Every day':'Every '+s.days.slice().sort().map(i=>DOW[i]).join(', ');
+ if(s.type==='every')return s.n===7?'Weekly from '+f(s.start):s.n===14?'Fortnightly from '+f(s.start):'Every '+s.n+' days from '+f(s.start);
+ if(s.type==='monthly')return 'Monthly on the '+ord(s.dom);return 'Once · '+f(s.date);}
+const D0=()=>({incName:'',incAmt:'',incPerson:'ella',catName:'',catTotal:'',rName:'',rCost:'',rIng:'',chName:'',chPerson:'ella',chType:'weekly',chDays:[],chN:'14',chStart:key(new Date()),chDate:key(new Date()),chDom:'1'});
+function load(){let d=null;try{d=JSON.parse(localStorage.getItem(K));}catch(e){}if(!d||!d.cats)d=seed();
+ if(!d.incomes){const i=d.income||{};d.incomes=[{id:uid(),name:'Salary',person:'ella',amount:i.ella||0},{id:uid(),name:'Salary',person:'jackson',amount:i.jackson||0}];}return d;}
+
+class Component extends DCLogic {
+  state={palette:null,data:load(),week:0,page:null,calOff:0,checked:{},copied:false,draft:D0(),picker:null,pickQuery:'',pickIdx:0,q:{recipes:'',cupboard:'',chores:''},cupFilter:'All',showNewRecipe:false};
+  upd(mut){this.setState(s=>{const data=JSON.parse(JSON.stringify(s.data));mut(data);try{localStorage.setItem(K,JSON.stringify(data));}catch(e){}return {data};});}
+  setD(patch){this.setState(s=>({draft:Object.assign({},s.draft,patch)}));}
+  setMeal(k,rid){this.upd(x=>{if(rid)x.plan[k]={r:rid};else delete x.plan[k];});this.setState({picker:null,pickQuery:''});}
+  renderVals(){
+    const s=this.state,D=s.data,today=new Date(),tk=key(today);
+    const inclLow=this.props.includeLow??true;
+    const palName='Linen',pal=PAL[palName]||PAL.Linen,CC=pal.cats,SC=pal.st;
+    const mon=addDays(mondayOf(today),s.week*7),end=addDays(mon,6);
+    const rBy={};D.recipes.forEach(r=>rBy[r.id]=r);
+    const cup={};D.cupboard.forEach(c=>cup[norm(c.name)]=c);
+    const inStock=c=>c&&(c.state==='Full'||c.state==='Half'||(!inclLow&&c.state==='Low'));
+    const choresFor=d=>D.chores.filter(c=>occurs(c,d)).map(c=>{const dk=key(d)+'|'+c.id,done=!!D.done[dk],p=P[c.person];
+      return {name:c.name,color:p.color,tint:p.tint,ink:p.ink,done,deco:done?'line-through':'none',op:done?'0.5':'1',check:done?'✓':'',checkBg:done?p.color:'transparent',
+        toggle:()=>this.upd(x=>{if(x.done[dk])delete x.done[dk];else x.done[dk]=1;})};});
+    // picker results
+    const pq=norm(s.pickQuery);
+    const matches=D.recipes.filter(r=>!pq||norm(r.name).includes(pq)||r.ingredients.some(g=>norm(g).includes(pq)))
+      .sort((a,b)=>(norm(b.name).startsWith(pq)?1:0)-(norm(a.name).startsWith(pq)?1:0)||a.name.localeCompare(b.name));
+    const pIdx=Math.min(s.pickIdx,Math.max(0,matches.length-1));
+    const days=DOW.map((_,i)=>{const d=addDays(mon,i),k=key(d),r=rBy[(D.plan[k]||{}).r],isToday=k===tk,chores=choresFor(d);
+      return {key:k,dow:DOW[i],dateNum:d.getDate(),dayColor:isToday?'#23221F':'#8A857A',rowBg:isToday?'#FCFBF7':'#fff',
+        recipeId:r?r.id:'',cost:r?r.cost:0,costStr:r?money(r.cost)+' · '+money(r.cost/2)+' each':'',hasMeal:!!r,
+        mealLabel:r?r.name:'+ Add dinner',mealColor:r?'#23221F':'#A39D90',mealWeight:r?'500':'400',mealBg:r?'#FBFAF7':'transparent',mealBorder:r?'#E8E4DB':'#E3DED3',
+        pickerOpen:s.picker===k,openPicker:()=>this.setState({picker:k,pickQuery:'',pickIdx:0}),clearMeal:()=>this.setMeal(k,null),
+        chores,noChores:!chores.length};});
+    const pickResults=matches.slice(0,50).map((r,i)=>({name:r.name,costStr:money(r.cost),bg:i===pIdx?'#F5F2EC':'transparent',
+      sub:pq&&!norm(r.name).includes(pq)?'Uses '+r.ingredients.filter(g=>norm(g).includes(pq)).join(', '):r.ingredients.length+' ingredients',
+      pick:()=>this.setMeal(s.picker,r.id)}));
+    const mealTotalN=days.reduce((a,d)=>a+d.cost,0),all=days.flatMap(d=>d.chores);
+    // budget
+    const cats=D.cats.map((c,i)=>Object.assign({},c,{e:+c.ella||0,j:+c.jackson||0,color:CC[i%CC.length]}));
+    cats.forEach(c=>c.total=c.e+c.j);
+    const spend=cats.reduce((a,c)=>a+c.total,0),income=D.incomes.reduce((a,i)=>a+(+i.amount||0),0);
+    let acc=0;const stops=cats.filter(c=>c.total>0).map(c=>{const a=acc/spend*360;acc+=c.total;return c.color+' '+a+'deg '+(acc/spend*360)+'deg';});
+    const setCat=(id,f)=>e=>{const val=e.target.value;this.upd(x=>{const c=x.cats.find(c=>c.id===id);if(c)c[f]=val;});};
+    const b={donut:spend?'conic-gradient('+stops.join(',')+')':'#EAE6DD',income:money(income),spend:money(spend),left:money(income-spend),
+      ellaSpend:money(cats.reduce((a,c)=>a+c.e,0)),jacksonSpend:money(cats.reduce((a,c)=>a+c.j,0)),noCats:!cats.length,
+      cats:cats.map(c=>({name:c.name,color:c.color,totalStr:money(c.total),ellaStr:money(c.e),jacksonStr:money(c.j),
+        ew:c.total?(c.e/c.total*100)+'%':'50%',jw:c.total?(c.j/c.total*100)+'%':'50%',
+        nameVal:c.name,ellaVal:String(c.ella),jacksonVal:String(c.jackson),onName:setCat(c.id,'name'),onElla:setCat(c.id,'ella'),onJackson:setCat(c.id,'jackson'),
+        remove:()=>this.upd(x=>{x.cats=x.cats.filter(z=>z.id!==c.id);})}))};
+    const groc=cats.find(c=>/grocer/i.test(c.name));
+    const groceryNote=groc&&mealTotalN?'Dinners this week use '+money(mealTotalN)+' of the '+money(groc.total)+' grocery budget.':'';
+    // shopping
+    const need={},order=[];
+    days.forEach(d=>{const r=rBy[d.recipeId];if(!r)return;r.ingredients.forEach(n=>{n=n.trim();if(!n)return;const lk=norm(n);if(!need[lk]){need[lk]={name:n,meals:[]};order.push(lk);}if(need[lk].meals.indexOf(d.dow)<0)need[lk].meals.push(d.dow);});});
+    const wk=key(mon),items=[],skipped=[];
+    order.forEach(lk=>{const n=need[lk],c=cup[lk];if(inStock(c)){skipped.push({name:n.name,state:c.state});return;}
+      const ck=!!s.checked[wk+'|'+lk];
+      items.push({lk,name:n.name,meals:'For '+n.meals.join(', '),status:c?c.state:'Not stocked',checked:ck,check:ck?'✓':'',checkBg:ck?'#23221F':'transparent',deco:ck?'line-through':'none',op:ck?'0.55':'1',
+        toggle:()=>this.setState(st=>{const m=Object.assign({},st.checked);m[wk+'|'+lk]=!m[wk+'|'+lk];return {checked:m};})});});
+    const weekLabel=mon.getMonth()===end.getMonth()?mon.getDate()+'–'+end.getDate()+' '+MON[end.getMonth()]:mon.getDate()+' '+MON[mon.getMonth()]+' – '+end.getDate()+' '+MON[end.getMonth()];
+    const listText=()=>'Shopping list — '+weekLabel+' '+end.getFullYear()+'\n\n'+(items.length?items.map(i=>'☐ '+i.name+'  ('+i.meals.replace('For ','')+(i.status!=='Not stocked'?' · '+i.status.toLowerCase():'')+')').join('\n'):'Nothing needed.')+(skipped.length?'\n\nAlready in cupboard: '+skipped.map(x=>x.name).join(', '):'');
+    // recipes
+    const rq=norm(s.q.recipes);
+    const recipes=D.recipes.filter(r=>!rq||norm(r.name).includes(rq)||r.ingredients.some(g=>norm(g).includes(rq))).slice().sort((a,b)=>a.name.localeCompare(b.name)).map(r=>{const pd=days.filter(d=>d.recipeId===r.id).map(d=>d.dow);
+      return {name:r.name,costStr:money(r.cost),planned:pd.length?'On '+pd.join(', '):'Not this week',
+        ings:r.ingredients.map(n=>{const c=cup[norm(n)];return {name:n,dot:!c?'#BFB8AA':(c.state==='Full'||c.state==='Half')?SC.Full:SC.Replace};}),
+        remove:()=>this.upd(x=>{x.recipes=x.recipes.filter(z=>z.id!==r.id);Object.keys(x.plan).forEach(k=>{if(x.plan[k].r===r.id)delete x.plan[k];});})};});
+    // cupboard
+    const cq=norm(s.q.cupboard);
+    const cupboard=D.cupboard.map((c,i)=>({c,i})).filter(o=>(!cq||norm(o.c.name).includes(cq))&&(s.cupFilter==='All'||o.c.state===s.cupFilter))
+      .sort((a,b)=>a.c.name.localeCompare(b.c.name)).map(({c,i})=>{const n=D.recipes.filter(r=>r.ingredients.some(g=>norm(g)===norm(c.name))).length;
+      return {name:c.name,usedIn:n?'· in '+n+' recipe'+(n>1?'s':''):'',
+        states:STATES.map(st=>{const on=c.state===st;return {label:st,bg:on?SC[st]:'#fff',fg:'#23221F',bd:on?SC[st]:'#DDD8CC',pick:()=>this.upd(x=>{x.cupboard[i].state=st;})};}),
+        remove:()=>this.upd(x=>{x.cupboard.splice(i,1);})};});
+    const addIncome=()=>{const dr=s.draft,n=dr.incName.trim();if(!n)return;this.upd(x=>{x.incomes.push({id:uid(),name:n,person:dr.incPerson,amount:parseFloat(dr.incAmt)||0});});this.setD({incName:'',incAmt:''});};
+    const canAddCup=!!cq&&!cup[cq];
+    const addCupboard=()=>{const n=s.q.cupboard.trim();if(!n||cup[norm(n)])return;this.upd(x=>{x.cupboard.push({name:n,state:'Full'});});this.setState(st=>({q:Object.assign({},st.q,{cupboard:''})}));};
+    const cupFilters=['All'].concat(STATES).map(f=>{const on=s.cupFilter===f,cnt=f==='All'?D.cupboard.length:D.cupboard.filter(c=>c.state===f).length;return {label:f+' · '+cnt,bg:on?'#23221F':'#fff',fg:on?'#fff':'#23221F',bd:on?'#23221F':'#DDD8CC',pick:()=>this.setState({cupFilter:f})};});
+    // chores
+    const hq=norm(s.q.chores);
+    const choresList=D.chores.filter(c=>!hq||norm(c.name).includes(hq)||norm(P[c.person].name).includes(hq)).map(c=>{const p=P[c.person];return {name:c.name,desc:describe(c.sched),personName:p.name,tint:p.tint,ink:p.ink,
+      togglePerson:()=>this.upd(x=>{const z=x.chores.find(z=>z.id===c.id);z.person=z.person==='ella'?'jackson':'ella';}),remove:()=>this.upd(x=>{x.chores=x.chores.filter(z=>z.id!==c.id);})};});
+    const dr=s.draft,on={};['incName','incAmt','catName','catTotal','rName','rCost','rIng','chName','chType','chN','chStart','chDate','chDom'].forEach(f=>on[f]=e=>this.setD({[f]:e.target.value}));
+    const onQ={};['recipes','cupboard','chores'].forEach(f=>onQ[f]=e=>{const val=e.target.value;this.setState(st=>({q:Object.assign({},st.q,{[f]:val})}));});
+    // calendar
+    const base=new Date(mon.getFullYear(),mon.getMonth()+s.calOff,1),start=mondayOf(base),cells=[];
+    for(let i=0;i<42;i++){const d=addDays(start,i),k=key(d),r=rBy[(D.plan[k]||{}).r],inM=d.getMonth()===base.getMonth(),inW=d>=mon&&d<=end;
+      if(i===35&&!inM)break;
+      cells.push({num:d.getDate(),meal:r?r.name:'',op:inM?'1':'0.4',bd:k===tk?'#23221F':inW?'#CFC9BC':'#EFEBE3',bg:inW?'#F6F3EC':'#fff',dots:D.chores.filter(c=>occurs(c,d)).map(c=>P[c.person].color),
+        pick:()=>this.setState({week:Math.round((mondayOf(d)-mondayOf(today))/(7*864e5)),page:null,calOff:0})});}
+    const titles={shop:['Shopping list',weekLabel+' · excludes what’s in the cupboard'],recipes:['Recipes',D.recipes.length+' saved · search by name or ingredient'],cupboard:['Cupboard',D.cupboard.length+' ingredients tracked'],chores:['Chores',D.chores.length+' tasks · recurring & one-off'],budget:['Budget','Weekly amounts, per person'],calendar:['Month view','Plan ahead']};
+    const go=p=>()=>{this.setState({page:p,calOff:0,copied:false,picker:null});try{window.scrollTo(0,0);}catch(e){}};
+    const t=titles[s.page]||['',''];
+    const createFromPick=()=>{const n=s.pickQuery.trim();if(!n)return;const id=uid(),k=s.picker;this.upd(x=>{x.recipes.push({id,name:n,cost:0,ingredients:[]});x.plan[k]={r:id};});this.setState({picker:null,pickQuery:''});};
+    return {
+      showPalettes:false,dotIn:SC.Full,dotLow:SC.Replace,
+      palettes:Object.keys(PAL).map(n=>{const on=n===palName;return {name:n,sw:PAL[n].cats.slice(0,5),bg:on?'#F2EFE8':'transparent',fg:on?'#1E1D1B':'#F2EFE8',pick:()=>this.setState({palette:n})};}),
+      isHome:!s.page,isPage:!!s.page,goHome:go(null),
+      weekLabel,weekNum:(s.week===0?'This week · ':'')+'Week '+isoWeek(mon),
+      prevWeek:()=>this.setState(x=>({week:x.week-1,picker:null})),nextWeek:()=>this.setState(x=>({week:x.week+1,picker:null})),thisWeek:()=>this.setState({week:0,picker:null}),
+      days,recipeCount:D.recipes.length,
+      pickQuery:s.pickQuery,pickResults,pickNone:!matches.length,canCreate:!!pq&&!D.recipes.some(r=>norm(r.name)===pq),createFromPick,
+      onPickQuery:e=>this.setState({pickQuery:e.target.value,pickIdx:0}),closePicker:()=>this.setState({picker:null}),
+      pickKey:e=>{if(e.key==='Escape')this.setState({picker:null});else if(e.key==='ArrowDown'){e.preventDefault();this.setState({pickIdx:Math.min(pIdx+1,matches.length-1)});}else if(e.key==='ArrowUp'){e.preventDefault();this.setState({pickIdx:Math.max(pIdx-1,0)});}else if(e.key==='Enter'){if(matches[pIdx])this.setMeal(s.picker,matches[pIdx].id);else createFromPick();}},
+      mealsPlanned:days.filter(d=>d.recipeId).length,mealTotal:money(mealTotalN),mealEach:money(mealTotalN/2),
+      choresDone:all.filter(c=>c.done).length,choresTotal:all.length,
+      b,groceryNote,hasGroceryNote:!!groceryNote,
+      shop:{items,skipped,count:items.length,empty:!items.length,noSkipped:!skipped.length,hasChecked:items.some(i=>i.checked)},
+      openShop:go('shop'),openRecipes:go('recipes'),openCupboard:go('cupboard'),openChores:go('chores'),openBudget:go('budget'),openCalendar:go('calendar'),
+      pageTitle:t[0],pageSub:t[1],
+      tabs:[['shop','Shopping'],['recipes','Recipes'],['cupboard','Cupboard'],['chores','Chores'],['budget','Budget'],['calendar','Month']].map(o=>{const onT=s.page===o[0];return {label:o[1],go:go(o[0]),bg:onT?'#23221F':'#fff',fg:onT?'#fff':'#23221F',bd:onT?'#23221F':'#DDD8CC'};}),
+      pShop:s.page==='shop',pRecipes:s.page==='recipes',pCupboard:s.page==='cupboard',pChores:s.page==='chores',pBudget:s.page==='budget',pCalendar:s.page==='calendar',
+      copyLabel:s.copied?'Copied ✓':'Copy list',
+      copyList:()=>{const txt=listText();(navigator.clipboard?navigator.clipboard.writeText(txt):Promise.reject()).then(()=>this.setState({copied:true}),()=>{const ta=document.createElement('textarea');ta.value=txt;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');}catch(e){}ta.remove();this.setState({copied:true});});},
+      downloadList:()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([listText()],{type:'text/plain'}));a.download='shopping-list-'+wk+'.txt';document.body.appendChild(a);a.click();a.remove();},
+      printList:()=>{const w=window.open('','_blank');if(!w)return;w.document.write('<pre style="font:16px/1.7 Figtree,system-ui,sans-serif;padding:32px;white-space:pre-wrap">'+listText().replace(/</g,'&lt;')+'</pre>');w.document.close();w.focus();w.print();},
+      stockChecked:()=>{const got=items.filter(i=>i.checked);this.upd(x=>{got.forEach(i=>{const c=x.cupboard.find(c=>norm(c.name)===i.lk);if(c)c.state='Full';else x.cupboard.push({name:i.name,state:'Full'});});});},
+      q:s.q,onQ,recipes,recipesNone:!recipes.length,showNewRecipe:s.showNewRecipe,newRecipeLabel:s.showNewRecipe?'Close':'+ New recipe',toggleNewRecipe:()=>this.setState(x=>({showNewRecipe:!x.showNewRecipe})),
+      cupboard,cupboardNone:!cupboard.length,canAddCup,addCupboard,cKey:e=>{if(e.key==='Enter')addCupboard();},cupFilters,
+      choresList,choresNone:!choresList.length,
+      stockRule:inclLow?'Full and Half items are skipped on the shopping list; Low and Replace get added.':'Full, Half and Low items are skipped; only Replace gets added.',
+      draft:dr,on,
+      addRecipe:()=>{const n=dr.rName.trim();if(!n)return;const ing=dr.rIng.split(',').map(x=>x.trim()).filter(Boolean);this.upd(x=>{x.recipes.push({id:uid(),name:n,cost:parseFloat(dr.rCost)||0,ingredients:ing});});this.setD({rName:'',rCost:'',rIng:''});this.setState({showNewRecipe:false});},
+      addCat:()=>{const n=dr.catName.trim();if(!n)return;const tot=parseFloat(dr.catTotal)||0;this.upd(x=>{x.cats.push({id:uid(),name:n,ella:Math.round(tot*50)/100,jackson:Math.round(tot*50)/100});});this.setD({catName:'',catTotal:''});},
+      incomes:D.incomes.map(i=>{const p=P[i.person],set=f=>e=>{const val=e.target.value;this.upd(x=>{const z=x.incomes.find(z=>z.id===i.id);if(z)z[f]=val;});};
+        return {personName:p.name,tint:p.tint,ink:p.ink,nameVal:i.name,amtVal:String(i.amount),onName:set('name'),onAmt:set('amount'),
+          togglePerson:()=>this.upd(x=>{const z=x.incomes.find(z=>z.id===i.id);z.person=z.person==='ella'?'jackson':'ella';}),remove:()=>this.upd(x=>{x.incomes=x.incomes.filter(z=>z.id!==i.id);})};}),
+      noIncomes:!D.incomes.length,incDraft:P[dr.incPerson],toggleIncPerson:()=>this.setD({incPerson:dr.incPerson==='ella'?'jackson':'ella'}),
+      addIncome,incKey:e=>{if(e.key==='Enter')addIncome();},
+      pickElla:()=>this.setD({chPerson:'ella'}),pickJackson:()=>this.setD({chPerson:'jackson'}),
+      chEllaBg:dr.chPerson==='ella'?'#E886B8':'#fff',chEllaFg:dr.chPerson==='ella'?'#fff':'#A9477B',chJackBg:dr.chPerson==='jackson'?'#2A9E80':'#fff',chJackFg:dr.chPerson==='jackson'?'#fff':'#1B6B56',
+      tWeekly:dr.chType==='weekly',tEvery:dr.chType==='every',tMonthly:dr.chType==='monthly',tOnce:dr.chType==='once',
+      dayChips:DOW.map((l,i)=>{const onD=dr.chDays.indexOf(i)>=0;return {label:l,bg:onD?'#23221F':'#fff',fg:onD?'#fff':'#23221F',pick:()=>this.setD({chDays:onD?dr.chDays.filter(z=>z!==i):dr.chDays.concat(i)})};}),
+      addChore:()=>{const n=dr.chName.trim();if(!n)return;let sc;
+        if(dr.chType==='weekly'){if(!dr.chDays.length)return;sc={type:'weekly',days:dr.chDays.slice()};}
+        else if(dr.chType==='every')sc={type:'every',n:Math.max(1,parseInt(dr.chN)||7),start:dr.chStart||tk};
+        else if(dr.chType==='monthly')sc={type:'monthly',dom:Math.min(31,Math.max(1,parseInt(dr.chDom)||1))};
+        else sc={type:'once',date:dr.chDate||tk};
+        this.upd(x=>{x.chores.push({id:uid(),name:n,person:dr.chPerson,sched:sc});});this.setD({chName:'',chDays:[]});},
+      cal:{title:MONL[base.getMonth()]+' '+base.getFullYear(),head:DOW,cells},
+      calPrev:()=>this.setState(x=>({calOff:x.calOff-1})),calNext:()=>this.setState(x=>({calOff:x.calOff+1}))
+    };
+  }
+}
+</script>
+</body>
+</html>
