@@ -52,17 +52,18 @@ const OVER_INK = '#B0532F';
 
 /** One faded half per person, filling with their colour as they spend. */
 function FillBar({ c }: { c: CategoryWeek }) {
-  const half = (budget: number, spent: number, color: string, tint: string, width: string) => (
+  // Ella fills from the left edge, Jackson from the right, meeting in the middle.
+  const half = (budget: number, spent: number, color: string, tint: string, width: string, fromRight: boolean) => (
     <div style={{ width, background: tint, position: 'relative' }}>
-      <div style={{ position: 'absolute', inset: 0, right: 'auto', width: (budget ? Math.min(1, spent / budget) * 100 : spent ? 100 : 0) + '%', background: color }} />
+      <div style={{ position: 'absolute', top: 0, bottom: 0, [fromRight ? 'right' : 'left']: 0, width: (budget ? Math.min(1, spent / budget) * 100 : spent ? 100 : 0) + '%', background: color }} />
     </div>
   );
   const t = c.budget.total;
   const ew = t ? (c.budget.e / t * 100) + '%' : '50%', jw = t ? (c.budget.j / t * 100) + '%' : '50%';
   return (
     <div className="split-bar" style={{ gap: 2, background: 'transparent' }}>
-      {half(c.budget.e, c.spent.e, '#E886B8', '#FAE3EE', ew)}
-      {half(c.budget.j, c.spent.j, '#2A9E80', '#DAEFE7', jw)}
+      {half(c.budget.e, c.spent.e, '#E886B8', '#FAE3EE', ew, false)}
+      {half(c.budget.j, c.spent.j, '#2A9E80', '#DAEFE7', jw, true)}
     </div>
   );
 }
