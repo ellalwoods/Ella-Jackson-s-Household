@@ -23,7 +23,7 @@ export const CAT_COLORS = ['#8FB0CF', '#C4A8D4', '#86C2BF', '#DCD690', '#F0A88C'
 
 export const STATES = ['Full', 'Half', 'Low', 'Replace'] as const;
 export type StockState = (typeof STATES)[number];
-export const STATE_COLORS: Record<StockState, string> = { Full: '#86C2BF', Half: '#C3E0DD', Low: '#DCD690', Replace: '#F0A88C' };
+export const STATE_COLORS: Record<StockState, string> = { Full: '#86C2BF', Half: '#C4A8D4', Low: '#DCD690', Replace: '#F0A88C' };
 
 /** When true, Low items still go on the shopping list (only Full/Half are skipped). */
 export const INCLUDE_LOW = true;
