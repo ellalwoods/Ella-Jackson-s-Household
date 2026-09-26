@@ -68,32 +68,33 @@ export default function WeekTable({ D, update, mon }: Props) {
 
   return (
     <section className="card" style={{ flex: '2 1 560px' }}>
-      <div className="week-grid meals-wide week-colhead">
+      <div className="week-grid meals-row week-colhead">
         <span style={{ display: 'block' }}>Day</span>
-        <span><span>Meals</span><span className="meta">{money(mealTotal)} · {money(mealTotal / 2)} each</span></span>
+        {MEALS.map(m => <span key={m} className="col-meal">{MEAL_LABEL[m]}</span>)}
+        <span className="col-meals"><span>Meals</span></span>
         <span><span>Chores</span><span className="meta">{allChores.filter(c => c.done).length}/{allChores.length} done</span></span>
       </div>
 
       {days.map(d => (
-        <div key={d.k} className="week-grid meals-wide week-row" style={{ background: d.isToday ? '#FCFBF7' : '#fff' }}>
+        <div key={d.k} className="week-grid meals-row week-row" style={{ background: d.isToday ? '#FCFBF7' : '#fff' }}>
           <div className="day" style={{ color: d.isToday ? '#23221F' : '#8A857A' }}>
             <span className="day-dow">{d.dow}</span>
             <span className="day-num">{d.dateNum}</span>
           </div>
 
           <div className="meal-slots">
-            {d.meals.map(({ meal, slot, r }) => (
+            {d.meals.map(({ meal, slot, r }, mi) => (
               <div key={meal} style={{ position: 'relative', minWidth: 0 }}>
                 <button className="slot-btn" onClick={() => { setPicker(slot); setQuery(''); setIdx(0); }}
                   style={{ borderColor: r ? '#E8E4DB' : '#EFEBE3', background: r ? '#FBFAF7' : 'transparent' }}>
                   <span className="slot-label">{MEAL_LABEL[meal]}</span>
-                  <span className="slot-name" style={{ fontWeight: r ? 500 : 400, color: r ? '#23221F' : '#A39D90' }}>{r ? r.name : '+ Add'}</span>
+                  <span className="slot-name" style={{ fontWeight: r ? 500 : 400, color: r ? '#23221F' : '#A39D90' }}>{r ? r.name : '+'}</span>
                   {r && <span className="slot-cost">{money(cost(r))}</span>}
                 </button>
                 {picker === slot && (
                   <>
                     <div className="scrim" onClick={close} />
-                    <div className="picker">
+                    <div className={'picker' + (mi >= 2 ? ' picker-right' : '')}>
                       <input className="picker-input" autoFocus value={query} placeholder={'Search ' + MEAL_LABEL[meal].toLowerCase() + ' recipes or ingredients'}
                         onChange={e => { setQuery(e.target.value); setIdx(0); }} onKeyDown={onKey} />
                       <div className="picker-list">
@@ -137,7 +138,7 @@ export default function WeekTable({ D, update, mon }: Props) {
       ))}
 
       <div className="week-foot">
-        <span>{planned.length} meal{planned.length === 1 ? '' : 's'} planned · {money(mealTotal / 2)} each</span>
+        <span>{planned.length} meal{planned.length === 1 ? '' : 's'} planned · {money(mealTotal)} · {money(mealTotal / 2)} each</span>
         <span style={{ display: 'flex', gap: 12 }}>
           <span className="legend"><span className="dot8" style={{ background: '#E886B8' }} />Ella</span>
           <span className="legend"><span className="dot8" style={{ background: '#2A9E80' }} />Jackson</span>
