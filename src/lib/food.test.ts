@@ -128,3 +128,16 @@ it('fills budgets from spends and meals, fixed categories in full, and counts ov
   expect(b.committed.total).toBe(600 + 100 + 100 + 20);
   expect([b.ellaLeft, b.jacksonLeft]).toEqual([1000 - 300 - 50 - 40 - 10, 1000 - 300 - 50 - 60 - 10]);
 });
+
+it('includes hand-added items, counts their price, and stocks them into the pantry', () => {
+  const D = household();
+  D.plan = {};
+  D.shopExtras = { [wk]: [{ id: 'm1', name: 'Milk', qty: 2, unit: 'L', price: 3.1 }, { id: 'm2', name: 'Toilet paper' }] };
+  D.pantry = [{ name: 'Milk', state: 'Full', qty: 500, unit: 'ml' }];
+  const { items } = shoppingList(D, mon);
+  expect(items.map(i => [i.name, i.cost])).toEqual([['Milk', 3.1], ['Toilet paper', null]]);
+  stockUp(D, items, wk, { 'm:m1': '2026-10-01' });
+  expect(D.pantry.find(p => p.name === 'Milk')).toMatchObject({ qty: 2500, unit: 'ml', expires: '2026-10-01' });
+  expect(D.pantry.find(p => p.name === 'Toilet paper')).toMatchObject({ state: 'Full' });
+  expect(D.shopExtras[wk]).toBeUndefined();
+});

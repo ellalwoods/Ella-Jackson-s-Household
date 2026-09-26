@@ -193,3 +193,6 @@ input:focus, textarea:focus, select:focus { outline: 2px solid var(--ink); outli
 @media (max-width: 520px) { .cal-event-who { width: 5px; height: 5px; } }
 .pill.nav-on { background: var(--ink); border-color: var(--ink); color: #fff; }
 .pill.nav-on .count-badge { background: #fff; color: var(--ink); }
+/* Shopping list: add your own items */
+.shop-add { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; padding: 4px 0 12px; }
+.shop-remove { position: absolute; right: 0; bottom: 6px; font-size: 11px; }

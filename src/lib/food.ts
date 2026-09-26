@@ -160,7 +160,12 @@ export function expiry(expires: string | undefined, today = new Date()) {
 // ── Shopping list ──────────────────────────────────────────────────────────
 
 export interface ShopItem {
+  /** Unique on the list (ticks and expiry dates are keyed by it). */
+  id: string;
+  /** Normalised name, used to match the pantry. */
   lk: string;
+  /** Set for items added by hand: the ManualShopItem id. */
+  manual?: string;
   name: string;
   days: string[];
   status: string;
@@ -230,11 +235,20 @@ export function shoppingList(D: HouseholdData, mon: Date, today = new Date()) {
     let packs = pr ? 1 : 0;
     if (pr && short && toBase(pr.qty, pr.unit).dim === short.dim) packs = Math.max(1, Math.ceil(short.v / toBase(pr.qty, pr.unit).v - 1e-9));
     items.push({
-      lk, name: n.name, days: n.days, status, need, packs, buy: pr,
+      id: lk, lk, name: n.name, days: n.days, status, need, packs, buy: pr,
       have: have && need && have.dim === need.dim ? have : null,
       cost: pr ? round(packs * pr.price) : null,
     });
   });
+
+  // Hand-added items always show, whatever the pantry holds.
+  for (const m of D.shopExtras[wk] ?? []) {
+    const buy: Price | null = m.qty && m.unit ? { name: m.name, qty: m.qty, unit: m.unit, price: m.price ?? 0 } : null;
+    items.push({
+      id: 'm:' + m.id, lk: norm(m.name), manual: m.id, name: m.name, days: [], status: 'Added',
+      need: null, have: null, buy, packs: buy ? 1 : 0, cost: m.price != null ? round(m.price) : null,
+    });
+  }
   return { items, skipped };
 }
 
@@ -247,19 +261,25 @@ export const buyText = (i: ShopItem) =>
  * the dinners use) and is marked as already allowing for that week.
  */
 export function stockUp(x: HouseholdData, items: ShopItem[], wk: string, expires: Record<string, string> = {}) {
+  const bought = new Set(items.map(i => i.manual).filter(Boolean));
+  if (bought.size && x.shopExtras[wk]) {
+    x.shopExtras[wk] = x.shopExtras[wk].filter(m => !bought.has(m.id));
+    if (!x.shopExtras[wk].length) delete x.shopExtras[wk];
+  }
   for (const i of items) {
     let p = x.pantry.find(c => norm(c.name) === i.lk);
     if (!p) { p = { name: i.name, state: 'Full' }; x.pantry.push(p); }
     const wasExpired = !!expiry(p.expires)?.expired;
-    if (expires[i.lk]) p.expires = expires[i.lk];
+    const exp = expires[i.id] ?? expires[i.lk];
+    if (exp) p.expires = exp;
     else if (wasExpired) delete p.expires;
-    const bought = i.buy ? toBase(i.buy.qty * i.packs, i.buy.unit) : null;
-    if (!bought) { p.state = 'Full'; delete p.qty; delete p.unit; delete p.forWeek; continue; }
+    const got = i.buy ? toBase(i.buy.qty * i.packs, i.buy.unit) : null;
+    if (!got) { p.state = 'Full'; delete p.qty; delete p.unit; delete p.forWeek; continue; }
     const had = wasExpired ? null : pantryAmount(p);
-    const start = had && had.dim === bought.dim ? had.v : 0;
-    const used = i.need && i.need.dim === bought.dim ? i.need.v : 0;
-    p.qty = round(Math.max(0, start + bought.v - used));
-    p.unit = baseUnit(bought.dim);
+    const start = had && had.dim === got.dim ? had.v : 0;
+    const used = i.need && i.need.dim === got.dim ? i.need.v : 0;
+    p.qty = round(Math.max(0, start + got.v - used));
+    p.unit = baseUnit(got.dim);
     p.state = 'Full';
     if (used) p.forWeek = wk; else delete p.forWeek;
   }
@@ -268,10 +288,10 @@ export function stockUp(x: HouseholdData, items: ShopItem[], wk: string, expires
 export function shoppingText(label: string, items: ShopItem[], skipped: Skipped[]) {
   const total = items.reduce((a, i) => a + (i.cost ?? 0), 0);
   const line = (i: ShopItem) => {
-    const bits = [i.days.join(', ')];
+    const bits = i.days.length ? [i.days.join(', ')] : [];
     if (i.buy) bits.push(buyText(i));
-    if (i.status !== 'Not stocked') bits.push(i.status.toLowerCase());
-    return '☐ ' + i.name + '  (' + bits.join(' · ') + ')';
+    if (i.status !== 'Not stocked' && !i.manual) bits.push(i.status.toLowerCase());
+    return '☐ ' + i.name + (bits.length ? '  (' + bits.join(' · ') + ')' : '');
   };
   return 'Shopping list — ' + label + '\n\n' +
     (items.length ? items.map(line).join('\n') : 'Nothing needed.') +

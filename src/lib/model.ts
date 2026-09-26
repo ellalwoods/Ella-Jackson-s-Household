@@ -89,6 +89,9 @@ export type Schedule =
   | { type: 'monthly'; dom: number }
   | { type: 'once'; date: string };
 export interface Chore { id: string; name: string; person: ChoreOwner; sched: Schedule }
+/** Something added to the shopping list by hand (not from a recipe). */
+export interface ManualShopItem { id: string; name: string; qty?: number; unit?: Unit; price?: number }
+
 /** A calendar tag: the name is whatever you type; colour is picked automatically. */
 export interface Tag { name: string; color: string }
 export interface CalEvent {
@@ -137,6 +140,8 @@ export interface HouseholdData {
   spends: Record<string, Spend[]>;
   events: CalEvent[];
   tags: Tag[];
+  /** Hand-added shopping items by week (Monday's date key). */
+  shopExtras: Record<string, ManualShopItem[]>;
 }
 
 export const uid = () => Math.random().toString(36).slice(2, 9);
@@ -204,6 +209,7 @@ export function seed(today = new Date()): HouseholdData {
     spends: {},
     events: [],
     tags: [],
+    shopExtras: {},
   };
 }
 
@@ -218,7 +224,7 @@ export function migrate(d: any): HouseholdData | null {
     ];
   }
   delete d.income;
-  d.recipes ??= []; d.plan ??= {}; d.chores ??= []; d.done ??= {}; d.prices ??= []; d.staples ??= []; d.extras ??= {}; d.spends ??= {}; d.events ??= []; d.tags ??= [];
+  d.recipes ??= []; d.plan ??= {}; d.chores ??= []; d.done ??= {}; d.prices ??= []; d.staples ??= []; d.extras ??= {}; d.spends ??= {}; d.events ??= []; d.tags ??= []; d.shopExtras ??= {};
   for (const c of d.cats) if (c.fixed === undefined && /\brent\b/i.test(c.name)) c.fixed = true;
   if (!Array.isArray(d.pantry)) d.pantry = Array.isArray(d.cupboard) ? d.cupboard : [];
   delete d.cupboard;

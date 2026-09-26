@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { addDays, key } from '../lib/dates';
-import { money } from '../lib/model';
+import { ManualShopItem, money, Unit, uid } from '../lib/model';
 import { buyText, fmtAmount, ShopItem, shoppingText, Skipped, stockUp } from '../lib/food';
 import type { Update } from '../Household';
-import { stockRule } from './PantryPage';
+import { stockRule, UnitSelect } from './PantryPage';
 
 const TICKS_KEY = 'hh-shop-ticks';
 
@@ -25,7 +25,8 @@ export default function ShopPage({ update, mon, label, items, skipped }: Props) 
   const [dates, setDates] = useStored<string>(EXPIRY_KEY);
   const [copied, setCopied] = useState(false);
   const wk = key(mon);
-  const isTicked = (i: ShopItem) => !!ticks[wk + '|' + i.lk];
+  const tick = (i: ShopItem) => wk + '|' + i.id;
+  const isTicked = (i: ShopItem) => !!ticks[tick(i)];
   const total = items.reduce((a, i) => a + (i.cost ?? 0), 0);
   const text = () => shoppingText(label + ' ' + addDays(mon, 6).getFullYear(), items, skipped);
 
@@ -54,10 +55,17 @@ export default function ShopPage({ update, mon, label, items, skipped }: Props) 
   const stockTicked = () => {
     const got = items.filter(isTicked);
     const exp: Record<string, string> = {};
-    got.forEach(i => { const d = dates[wk + '|' + i.lk]; if (d) exp[i.lk] = d; });
+    got.forEach(i => { const d = dates[tick(i)]; if (d) exp[i.id] = d; });
     update(x => stockUp(x, got, wk, exp));
-    setDates(ds => { const n = { ...ds }; got.forEach(i => delete n[wk + '|' + i.lk]); return n; });
+    setDates(ds => { const n = { ...ds }; got.forEach(i => delete n[tick(i)]); return n; });
+    // Hand-added items leave the list once they're in the pantry.
+    setTicks(t => { const n = { ...t }; got.filter(i => i.manual).forEach(i => delete n[tick(i)]); return n; });
   };
+  const removeManual = (id: string) => update(x => {
+    const left = (x.shopExtras[wk] ?? []).filter(m => m.id !== id);
+    if (left.length) x.shopExtras[wk] = left; else delete x.shopExtras[wk];
+  });
+  const addManual = (m: ManualShopItem) => update(x => { x.shopExtras[wk] = [...(x.shopExtras[wk] ?? []), m]; });
 
   return (
     <div className="flow">
@@ -67,17 +75,18 @@ export default function ShopPage({ update, mon, label, items, skipped }: Props) 
           <button className="pill plain" onClick={download}>Download .txt</button>
           <button className="pill plain" onClick={print}>Print</button>
         </div>
+        <AddItem onAdd={addManual} />
         {items.map(i => {
           const ck = isTicked(i);
           return (
-            <div key={i.lk} className="shop-row">
+            <div key={i.id} className="shop-row" style={{ position: 'relative' }}>
             <button className="shop-item" style={{ opacity: ck ? 0.55 : 1 }}
-              onClick={() => setTicks(t => ({ ...t, [wk + '|' + i.lk]: !t[wk + '|' + i.lk] }))}>
+              onClick={() => setTicks(t => ({ ...t, [tick(i)]: !t[tick(i)] }))}>
               <span className="box-check" style={{ background: ck ? '#23221F' : 'transparent' }}>{ck ? '✓' : ''}</span>
               <span style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, whiteSpace: 'normal' }}>
                 <span style={{ fontSize: 15, textDecoration: ck ? 'line-through' : 'none' }}>{i.name}</span>
                 <span style={{ fontSize: 12 }} className="muted">
-                  For {i.days.join(', ')}{i.need ? ' · uses ' + fmtAmount(i.need) : ''}{i.buy ? ' · buy ' + buyText(i) : ''}
+                  {i.manual ? 'Added by you' : 'For ' + i.days.join(', ')}{i.need ? ' · uses ' + fmtAmount(i.need) : ''}{i.buy ? ' · buy ' + buyText(i) : ''}
                 </span>
               </span>
               <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3 }}>
@@ -85,10 +94,13 @@ export default function ShopPage({ update, mon, label, items, skipped }: Props) 
                 {i.cost !== null && <span style={{ fontSize: 12 }} className="muted">{money(i.cost)}</span>}
               </span>
             </button>
+            {i.manual && (
+              <button className="link-btn shop-remove" aria-label={'Remove ' + i.name} onClick={() => removeManual(i.manual!)}>Remove</button>
+            )}
             {ck && (
               <label className="shop-expiry">
-                Expires <input type="date" className="field-sm" style={{ height: 34 }} value={dates[wk + '|' + i.lk] ?? ''}
-                  onChange={e => { const v = e.target.value; setDates(ds => ({ ...ds, [wk + '|' + i.lk]: v })); }} />
+                Expires <input type="date" className="field-sm" style={{ height: 34 }} value={dates[tick(i)] ?? ''}
+                  onChange={e => { const v = e.target.value; setDates(ds => ({ ...ds, [tick(i)]: v })); }} />
                 <span className="note">optional</span>
               </label>
             )}
@@ -100,7 +112,7 @@ export default function ShopPage({ update, mon, label, items, skipped }: Props) 
             <span>Estimated total</span><span>{money(total)}</span>
           </div>
         )}
-        {!items.length && <p className="empty" style={{ padding: '16px 0', margin: 0 }}>Nothing to buy — plan some dinners, or everything's already in the pantry.</p>}
+        {!items.length && <p className="empty" style={{ padding: '16px 0', margin: 0 }}>Nothing to buy — plan some meals, add an item above, or everything's already in the pantry.</p>}
         {items.some(isTicked) && (
           <button className="pill outline-dark" style={{ marginTop: 12 }} onClick={stockTicked}>Add ticked items to pantry</button>
         )}
@@ -113,6 +125,40 @@ export default function ShopPage({ update, mon, label, items, skipped }: Props) 
         {!skipped.length && <p style={{ fontSize: 13, margin: 0 }} className="muted">Nothing skipped this week.</p>}
         <p className="note" style={{ margin: '14px 0 0' }}>{stockRule}</p>
       </aside>
+    </div>
+  );
+}
+
+/** Add something that isn't part of a recipe: a name, and optionally how much and what it costs. */
+function AddItem({ onAdd }: { onAdd: (m: ManualShopItem) => void }) {
+  const [name, setName] = useState('');
+  const [qty, setQty] = useState('');
+  const [unit, setUnit] = useState<Unit>('each');
+  const [price, setPrice] = useState('');
+  const add = () => {
+    const n = name.trim();
+    if (!n) return;
+    const m: ManualShopItem = { id: uid(), name: n };
+    const q = parseFloat(qty), pr = parseFloat(price);
+    if (q > 0) { m.qty = q; m.unit = unit; }
+    if (!isNaN(pr)) m.price = pr;
+    onAdd(m);
+    setName(''); setQty(''); setPrice('');
+  };
+  const onKey = (e: React.KeyboardEvent) => { if (e.key === 'Enter') add(); };
+  return (
+    <div className="shop-add">
+      <input className="field-sm" style={{ flex: '1 1 160px', height: 40 }} value={name} onChange={e => setName(e.target.value)} onKeyDown={onKey}
+        placeholder="Add an item, e.g. Milk" aria-label="Item to add" />
+      <span className="ing-group">
+        <input className="field-sm" style={{ width: 56, height: 40 }} inputMode="decimal" value={qty} onChange={e => setQty(e.target.value)} onKeyDown={onKey} placeholder="qty" aria-label="Amount" />
+        <UnitSelect value={unit} onChange={setUnit} />
+      </span>
+      <span className="ing-group">
+        <span className="ing-label">$</span>
+        <input className="field-sm" style={{ width: 64, height: 40 }} inputMode="decimal" value={price} onChange={e => setPrice(e.target.value)} onKeyDown={onKey} placeholder="0.00" aria-label="Price" />
+      </span>
+      <button className="pill-sm dark" style={{ height: 40 }} onClick={add}>Add</button>
     </div>
   );
 }
