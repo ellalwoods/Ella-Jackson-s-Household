@@ -78,7 +78,9 @@ export default function Household({ data: D, update, status }: Props) {
               <h1 className="h1">{label}</h1>
             </div>
             <div className="row8">
-              <button className="pill dark" onClick={go('shop')}>Shopping list · {shop.items.length}</button>
+              <button className="pill ghost" onClick={go('shop')} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                Shopping list <span className="count-badge">{shop.items.length}</span>
+              </button>
               <button className="pill ghost" onClick={go('recipes')}>Recipes · {D.recipes.length}</button>
               <button className="pill ghost" onClick={go('pantry')}>Pantry</button>
               <button className="pill ghost" onClick={go('chores')}>Chores</button>

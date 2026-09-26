@@ -1,13 +1,59 @@
 import { useState } from 'react';
 import { key } from '../lib/dates';
-import { ChoreOwner, EXTRA_COLOR, Extra, HouseholdData, money, nextOwner, OWNERS, Spend, uid } from '../lib/model';
+import { ChoreOwner, donutOf, EXTRA_COLOR, Extra, HouseholdData, money, nextOwner, OWNERS, Slice, Spend, uid } from '../lib/model';
 import type { Update } from '../Household';
 import { CategoryWeek, weekBudget } from '../lib/food';
 
-export function Donut({ bg, size, hole, children }: { bg: string; size: number; hole: number; children?: React.ReactNode }) {
+/**
+ * Pie chart of `slices`. Hovering (or tapping) a segment shows its name,
+ * amount and share in the middle in place of `children`.
+ */
+export function Donut({ slices, size, hole, children }: { slices: Slice[]; size: number; hole: number; children?: React.ReactNode }) {
+  const [hover, setHover] = useState<number | null>(null);
+  const shown = slices.filter(s => s.total > 0);
+  const sum = shown.reduce((a, s) => a + s.total, 0);
+
+  const pick = (e: React.PointerEvent<HTMLDivElement>) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    const dx = e.clientX - r.left - r.width / 2, dy = e.clientY - r.top - r.height / 2;
+    const dist = Math.hypot(dx, dy), outer = r.width / 2;
+    if (!sum || dist > outer || dist < outer - hole) { setHover(null); return; }
+    const deg = (Math.atan2(dx, -dy) * 180 / Math.PI + 360) % 360; // 0° at the top, clockwise like conic-gradient
+    let acc = 0;
+    for (let i = 0; i < shown.length; i++) {
+      acc += shown[i].total / sum * 360;
+      if (deg < acc) { setHover(i); return; }
+    }
+    setHover(null);
+  };
+  const h = hover !== null ? shown[hover] : null;
+
   return (
-    <div className="donut" style={{ width: size, height: size, background: bg }}>
-      <div className="donut-hole" style={{ inset: hole }}>{children}</div>
+    <div className="donut" style={{ width: size, height: size, background: donutOf(shown) }}
+      onPointerMove={pick} onPointerDown={pick} onPointerLeave={e => { if (e.pointerType === 'mouse') setHover(null); }}
+      role="img" aria-label={shown.map(s => s.label + ' ' + money(s.total)).join(', ')}>
+      {h && (
+        <svg className="donut-ring" viewBox="0 0 100 100" aria-hidden>
+          {(() => {
+            const start = shown.slice(0, hover!).reduce((a, s) => a + s.total, 0) / sum, end = start + h.total / sum;
+            const pt = (f: number, rad: number) => [50 + rad * Math.sin(f * 2 * Math.PI), 50 - rad * Math.cos(f * 2 * Math.PI)];
+            const [x1, y1] = pt(start, 49), [x2, y2] = pt(end, 49);
+            const large = end - start > 0.5 ? 1 : 0;
+            return end - start >= 0.999
+              ? <circle cx="50" cy="50" r="49" fill="none" stroke="#23221F" strokeWidth="1.5" />
+              : <path d={'M' + x1 + ' ' + y1 + ' A49 49 0 ' + large + ' 1 ' + x2 + ' ' + y2} fill="none" stroke="#23221F" strokeWidth="2" strokeLinecap="round" />;
+          })()}
+        </svg>
+      )}
+      <div className="donut-hole" style={{ inset: hole }}>
+        {h ? (
+          <>
+            <span style={{ fontSize: 11, maxWidth: '90%', textAlign: 'center', lineHeight: 1.2 }} className="muted">{h.label}</span>
+            <span style={{ fontSize: size > 120 ? 18 : 15, fontWeight: 600 }}>{money(h.total)}</span>
+            <span style={{ fontSize: 11 }} className="muted">{Math.round(h.total / sum * 100)}%</span>
+          </>
+        ) : children}
+      </div>
     </div>
   );
 }
@@ -25,7 +71,7 @@ export default function BudgetCard({ D, update, mon, onEdit }: { D: HouseholdDat
         <button className="link-btn" style={{ fontSize: 13 }} onClick={onEdit}>Edit</button>
       </div>
       <div style={{ display: 'flex', gap: 20, alignItems: 'center', flexWrap: 'wrap', marginBottom: 16 }}>
-        <Donut bg={b.donut} size={140} hole={22}>
+        <Donut slices={b.slices} size={140} hole={22}>
           <span style={{ fontSize: 11 }} className="muted">Left over</span>
           <span style={{ fontSize: 20, fontWeight: 600 }}>{money(b.left)}</span>
         </Donut>

@@ -101,7 +101,7 @@ export default function BudgetPage({ D, update }: { D: HouseholdData; update: Up
           <button className="pill dark" style={{ height: 42 }} onClick={addCat}>Add category</button>
         </div>
         <div className="card" style={{ padding: 18, display: 'flex', gap: 16, alignItems: 'center' }}>
-          <Donut bg={b.donut} size={110} hole={18} />
+          <Donut slices={b.slices} size={110} hole={18} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13 }}>
             <span>Ella pays <strong>{money(b.ella)}</strong></span>
             <span>Jackson pays <strong>{money(b.jackson)}</strong></span>

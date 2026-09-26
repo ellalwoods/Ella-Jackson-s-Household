@@ -1,5 +1,5 @@
 import { addDays, DOW, key, MON, parse } from './dates';
-import { CAT_COLORS, donutOf, earnings, EXTRA_COLOR, HouseholdData, INCLUDE_LOW, Meal, MEALS, norm, num, shareOf, Spend, PantryItem, Price, Recipe, RecipeIngredient, STAPLE_COST, Unit } from './model';
+import { CAT_COLORS, earnings, EXTRA_COLOR, HouseholdData, INCLUDE_LOW, Meal, MEALS, norm, num, shareOf, Spend, PantryItem, Price, Recipe, RecipeIngredient, STAPLE_COST, Unit } from './model';
 
 // ── Plan ───────────────────────────────────────────────────────────────────
 
@@ -77,7 +77,7 @@ export function weekBudget(D: HouseholdData, mon: Date) {
     left: round(income - committed.total),
     ellaLeft: round(earnings(D, 'ella') - committed.e),
     jacksonLeft: round(earnings(D, 'jackson') - committed.j),
-    donut: donutOf([...cats.map(c => ({ total: c.counted.total, color: c.color })), { total: extra.total, color: EXTRA_COLOR }]),
+    slices: [...cats.map(c => ({ label: c.name, total: c.counted.total, color: c.color })), { label: 'This week only', total: extra.total, color: EXTRA_COLOR }],
   };
 }
 

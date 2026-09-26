@@ -235,6 +235,8 @@ export const shareOf = (who: ChoreOwner, amount: Amount, p: PersonId) =>
 export const earnings = (D: HouseholdData, p: PersonId) =>
   D.incomes.filter(i => i.person === p).reduce((a, i) => a + num(i.amount), 0);
 
+export interface Slice { label: string; total: number; color: string }
+
 /** Pie chart background for slices with a total and a colour. */
 export function donutOf(slices: { total: number; color: string }[]) {
   const sum = slices.reduce((a, c) => a + Math.max(0, c.total), 0);
@@ -263,6 +265,6 @@ export function budget(D: HouseholdData) {
     left: income - spend,
     ellaLeft: earnings(D, 'ella') - ella,
     jacksonLeft: earnings(D, 'jackson') - jackson,
-    donut: donutOf(cats),
+    slices: cats.map(c => ({ label: c.name, total: c.total, color: c.color })),
   };
 }
