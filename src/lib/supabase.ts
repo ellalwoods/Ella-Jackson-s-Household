@@ -24,6 +24,19 @@ export function householdKey(): string | null {
   }
 }
 
+/**
+ * Accepts a whole household link (…/#key) or just the key. Saves and returns
+ * the key, or null if it doesn't look like one.
+ */
+export function rememberHouseholdKey(input: string): string | null {
+  const t = input.trim();
+  const k = decodeURIComponent(t.includes('#') ? t.slice(t.indexOf('#') + 1) : t).trim();
+  if (!/^[A-Za-z0-9_-]{16,}$/.test(k)) return null;
+  try { localStorage.setItem(KEY_STORE, k); } catch { /* storage blocked */ }
+  try { history.replaceState(null, '', '#' + k); } catch { /* not available */ }
+  return k;
+}
+
 async function topicFor(key: string) {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('household:' + key));
   return 'household-' + Array.from(new Uint8Array(buf).slice(0, 16), b => b.toString(16).padStart(2, '0')).join('');

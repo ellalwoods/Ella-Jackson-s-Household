@@ -46,6 +46,15 @@ Open `http://localhost:5173/#<household key>`.
 
 On each phone, open the link once and optionally use **Share → Add to Home Screen**. The key is also remembered on that device, so the app still opens if a shortcut drops the `#…` part.
 
+## Install it as a phone app
+
+The site is an installable home-screen app (a progressive web app): it opens full screen with its own icon, works offline with your last-synced data, and updates itself whenever `main` is deployed.
+
+- **iPhone (Safari):** open your household link → Share → **Add to Home Screen**. The first time the home-screen app opens it may ask for your household link (iPhones keep home-screen apps separate from Safari); paste it once.
+- **Android (Chrome):** open your household link → ⋮ → **Install app** (or **Add to Home screen**).
+
+Icons are in `public/icons/` (built from `public/icons/icon-full.svg`), the app name and colours are in `public/manifest.webmanifest`, and offline caching is `public/sw.js`.
+
 ## How syncing works
 
 - The whole household is stored as one JSON document in a single row. The table has no public access rules; the app only reaches it through two database functions (`get_household`, `save_household`), and both require the household key.
