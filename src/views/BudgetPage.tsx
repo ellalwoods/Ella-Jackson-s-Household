@@ -78,11 +78,13 @@ export default function BudgetPage({ D, update }: { D: HouseholdData; update: Up
           </div>
         ))}
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, fontWeight: 600, padding: '10px 0', borderTop: '1px solid #23221F', marginTop: 6 }}>
-          <span>Committed {money(b.spend)}</span><span>Left {money(b.left)}</span>
+          <span>Committed</span><span>{money(b.spend)}</span>
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', fontSize: 13 }}>
-          <span style={{ color: '#A9477B' }}>Ella has left <strong>{money(b.ellaLeft)}</strong></span>
-          <span style={{ color: '#1B6B56' }}>Jackson has left <strong>{money(b.jacksonLeft)}</strong></span>
+        {/* Left over as a sum: each person's amount, a rule, then the total. */}
+        <div style={{ marginLeft: 'auto', width: 'min(100%, 260px)', display: 'flex', flexDirection: 'column', gap: 4, fontSize: 14 }}>
+          <div className="kv"><span style={{ color: '#A9477B' }}>Ella has left</span><span style={{ color: '#A9477B', fontWeight: 600 }}>{money(b.ellaLeft)}</span></div>
+          <div className="kv"><span style={{ color: '#1B6B56' }}>Jackson has left</span><span style={{ color: '#1B6B56', fontWeight: 600 }}>{money(b.jacksonLeft)}</span></div>
+          <div className="kv" style={{ borderTop: '1px solid #23221F', paddingTop: 6, marginTop: 2, fontWeight: 600 }}><span>Left</span><span>{money(b.left)}</span></div>
         </div>
       </section>
       <aside style={{ flex: '1 1 280px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
