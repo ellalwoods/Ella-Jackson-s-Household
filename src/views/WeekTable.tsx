@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { addDays, DOW, key } from '../lib/dates';
 import { HouseholdData, money, norm, occurs, OWNERS, uid } from '../lib/model';
-import { priceMap, recipeCost, searchRecipes } from '../lib/food';
+import { costContext, recipeCost, searchRecipes } from '../lib/food';
 import type { Update } from '../Household';
 
 interface Props { D: HouseholdData; update: Update; mon: Date }
@@ -13,7 +13,7 @@ export default function WeekTable({ D, update, mon }: Props) {
 
   const tk = key(new Date());
   const rBy = new Map(D.recipes.map(r => [r.id, r]));
-  const prices = priceMap(D);
+  const prices = costContext(D);
   const cost = (r: (typeof D.recipes)[number]) => recipeCost(r, prices);
 
   const days = DOW.map((dow, i) => {

@@ -1,5 +1,5 @@
 import { addDays, DOW, key, MON, parse } from './dates';
-import { HouseholdData, INCLUDE_LOW, norm, PantryItem, Price, Recipe, RecipeIngredient, Unit } from './model';
+import { HouseholdData, INCLUDE_LOW, norm, PantryItem, Price, Recipe, RecipeIngredient, STAPLE_COST, Unit } from './model';
 
 // ── Units ──────────────────────────────────────────────────────────────────
 
@@ -19,9 +19,9 @@ const fmtNum = (n: number) => round(n).toLocaleString('en-AU', { maximumFraction
 export function fmtAmount({ dim, v }: Amount) {
   if (dim === 'mass') return v >= 1000 ? fmtNum(v / 1000) + ' kg' : fmtNum(v) + ' g';
   if (dim === 'volume') return v >= 1000 ? fmtNum(v / 1000) + ' L' : fmtNum(v) + ' ml';
-  return fmtNum(v);
+  return fmtNum(v) + (v === 1 ? ' unit' : ' units');
 }
-export const fmtQty = (qty: number, unit: Unit) => (unit === 'each' ? fmtNum(qty) : fmtNum(qty) + ' ' + unit);
+export const fmtQty = (qty: number, unit: Unit) => (unit === 'each' ? fmtAmount({ dim: 'count', v: qty }) : fmtNum(qty) + ' ' + unit);
 
 const pantryAmount = (p: PantryItem | undefined): Amount | null => (p && p.qty != null && p.unit ? toBase(p.qty, p.unit) : null);
 
@@ -38,9 +38,18 @@ export function useCost(g: { qty?: number; unit?: Unit }, pr: Price | undefined)
 }
 
 /** Meal cost from its ingredients; falls back to the old flat cost until any ingredient is priced. */
-export function recipeCost(r: Recipe, prices: Map<string, Price>) {
-  const costs = r.ingredients.map(g => useCost(g, prices.get(norm(g.name)))).filter((c): c is number => c !== null);
-  return costs.length ? round(costs.reduce((a, c) => a + c, 0)) : r.cost ?? 0;
+export const stapleSet = (D: HouseholdData) => new Set(D.staples.map(norm));
+
+export interface CostContext { prices: Map<string, Price>; staples: Set<string> }
+export const costContext = (D: HouseholdData): CostContext => ({ prices: priceMap(D), staples: stapleSet(D) });
+
+/** Meal cost from its ingredients (staples at a nominal amount); falls back to the old flat cost until any ingredient is priced. */
+export function recipeCost(r: Recipe, { prices, staples }: CostContext) {
+  const isStaple = (n: string) => staples.has(norm(n));
+  const costs = r.ingredients.filter(g => !isStaple(g.name)).map(g => useCost(g, prices.get(norm(g.name)))).filter((c): c is number => c !== null);
+  const stapleCost = r.ingredients.filter(g => isStaple(g.name)).length * STAPLE_COST;
+  if (!costs.length && r.cost) return r.cost;
+  return round(costs.reduce((a, c) => a + c, 0) + stapleCost);
 }
 
 export function searchRecipes(recipes: Recipe[], q: string) {
@@ -118,7 +127,7 @@ export function shoppingList(D: HouseholdData, mon: Date, today = new Date()) {
   // Expired items don't count as stock.
   const pantry = new Map(D.pantry.filter(p => !expiry(p.expires, today)?.expired).map(p => [norm(p.name), p]));
   const expired = new Set(D.pantry.filter(p => expiry(p.expires, today)?.expired).map(p => norm(p.name)));
-  const prices = priceMap(D);
+  const prices = priceMap(D), staples = stapleSet(D);
   const items: ShopItem[] = [], skipped: Skipped[] = [];
 
   weekNeeds(D, mon).forEach((n, lk) => {
@@ -141,7 +150,8 @@ export function shoppingList(D: HouseholdData, mon: Date, today = new Date()) {
       status = expired.has(lk) ? 'Expired' : p ? p.state : 'Not stocked';
     }
 
-    const pr = prices.get(lk) ?? null;
+    // Staples are bought now and then, not per recipe, so they get no pack size or price.
+    const pr = staples.has(lk) ? null : prices.get(lk) ?? null;
     let packs = pr ? 1 : 0;
     if (pr && short && toBase(pr.qty, pr.unit).dim === short.dim) packs = Math.max(1, Math.ceil(short.v / toBase(pr.qty, pr.unit).v - 1e-9));
     items.push({
@@ -154,7 +164,7 @@ export function shoppingList(D: HouseholdData, mon: Date, today = new Date()) {
 }
 
 export const buyText = (i: ShopItem) =>
-  i.buy ? (i.packs > 1 ? i.packs + ' × ' : '') + fmtQty(i.buy.qty, i.buy.unit) : '';
+  !i.buy ? '' : i.buy.unit === 'each' ? fmtQty(i.buy.qty * i.packs, 'each') : (i.packs > 1 ? i.packs + ' × ' : '') + fmtQty(i.buy.qty, i.buy.unit);
 
 /**
  * Puts bought items in the pantry. When we know how much the week's dinners

@@ -34,6 +34,11 @@ export const num = (a: Amount | undefined) => +(a ?? 0) || 0;
 
 export const UNITS = ['g', 'kg', 'ml', 'L', 'each'] as const;
 export type Unit = (typeof UNITS)[number];
+/** 'each' is shown as "unit". */
+export const UNIT_LABEL: Record<Unit, string> = { g: 'g', kg: 'kg', ml: 'ml', L: 'L', each: 'unit' };
+
+/** Nominal cost each time a recipe uses a staple (salt, pepper, spices…). */
+export const STAPLE_COST = 0.05;
 
 /** How much of an ingredient a recipe uses (both optional: some things are "to taste"). */
 export interface RecipeIngredient { name: string; qty?: number; unit?: Unit }
@@ -76,6 +81,8 @@ export interface HouseholdData {
   /** Dinner per date key. */
   plan: Record<string, { r: string }>;
   prices: Price[];
+  /** Ingredients used without measuring (e.g. salt), shared across recipes. */
+  staples: string[];
   pantry: PantryItem[];
   chores: Chore[];
   /** `${dateKey}|${choreId}` → 1 when done. */
@@ -128,6 +135,7 @@ export function seed(today = new Date()): HouseholdData {
       { name: 'Lemon', qty: 1, unit: 'each', price: 0.9 }, { name: 'Rosemary', qty: 1, unit: 'each', price: 3 }, { name: 'Olive oil', qty: 1, unit: 'L', price: 12 },
       { name: 'Salmon', qty: 500, unit: 'g', price: 16 }, { name: 'Green beans', qty: 250, unit: 'g', price: 3 },
     ],
+    staples: [],
     plan,
     pantry: [
       { name: 'Olive oil', state: 'Full' }, { name: 'Soy sauce', state: 'Full' }, { name: 'Rice', state: 'Full', qty: 600, unit: 'g' },
@@ -156,7 +164,7 @@ export function migrate(d: any): HouseholdData | null {
     ];
   }
   delete d.income;
-  d.recipes ??= []; d.plan ??= {}; d.chores ??= []; d.done ??= {}; d.prices ??= [];
+  d.recipes ??= []; d.plan ??= {}; d.chores ??= []; d.done ??= {}; d.prices ??= []; d.staples ??= [];
   if (!Array.isArray(d.pantry)) d.pantry = Array.isArray(d.cupboard) ? d.cupboard : [];
   delete d.cupboard;
   for (const r of d.recipes) {

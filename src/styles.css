@@ -136,3 +136,4 @@ input:focus, textarea:focus, select:focus { outline: 2px solid var(--ink); outli
 .exp-chip { font-size: 11px; padding: 3px 8px; border-radius: 999px; background: var(--chip); color: var(--chip-ink); }
 .exp-chip.soon { background: #DCD690; color: var(--ink); }
 .exp-chip.expired { background: #F0A88C; color: var(--ink); }
+.ing-staple { order: 2; height: 30px; font-size: 12px; }

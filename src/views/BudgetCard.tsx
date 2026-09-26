@@ -1,6 +1,6 @@
 import { addDays, key } from '../lib/dates';
 import { budget, HouseholdData, money } from '../lib/model';
-import { priceMap, recipeCost } from '../lib/food';
+import { costContext, recipeCost } from '../lib/food';
 
 export function Donut({ bg, size, hole, children }: { bg: string; size: number; hole: number; children?: React.ReactNode }) {
   return (
@@ -13,7 +13,7 @@ export function Donut({ bg, size, hole, children }: { bg: string; size: number; 
 export default function BudgetCard({ D, mon, onEdit }: { D: HouseholdData; mon: Date; onEdit: () => void }) {
   const b = budget(D);
   const rBy = new Map(D.recipes.map(r => [r.id, r]));
-  const prices = priceMap(D);
+  const prices = costContext(D);
   let mealTotal = 0;
   for (let i = 0; i < 7; i++) {
     const r = rBy.get(D.plan[key(addDays(mon, i))]?.r ?? '');

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { HouseholdData, INCLUDE_LOW, norm, PantryItem, STATE_COLORS, STATES, StockState, Unit, UNITS } from '../lib/model';
+import { HouseholdData, INCLUDE_LOW, norm, PantryItem, STATE_COLORS, STATES, StockState, Unit, UNIT_LABEL, UNITS } from '../lib/model';
 import { expiry, fmtQty, priceMap } from '../lib/food';
 import type { Update } from '../Household';
 
@@ -107,7 +107,7 @@ export default function PantryPage({ D, update }: { D: HouseholdData; update: Up
 export function UnitSelect({ value, onChange, height = 40 }: { value: Unit; onChange: (u: Unit) => void; height?: number }) {
   return (
     <select className="field-sm" style={{ height, padding: '0 4px', width: 64 }} value={value} onChange={e => onChange(e.target.value as Unit)} aria-label="Unit">
-      {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+      {UNITS.map(u => <option key={u} value={u}>{UNIT_LABEL[u]}</option>)}
     </select>
   );
 }

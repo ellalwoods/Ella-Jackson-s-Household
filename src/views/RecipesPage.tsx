@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { addDays, DOW, key } from '../lib/dates';
 import { HouseholdData, money, norm, STATE_COLORS } from '../lib/model';
-import { fmtQty, isStocked, priceMap, recipeCost, searchRecipes } from '../lib/food';
+import { fmtQty, isStocked, costContext, recipeCost, searchRecipes } from '../lib/food';
 import type { Update } from '../Household';
 import RecipeEditor, { safeLink } from './RecipeEditor';
 
@@ -12,7 +12,7 @@ export default function RecipesPage({ D, update, mon }: { D: HouseholdData; upda
   const [openMethod, setOpenMethod] = useState<Record<string, boolean>>({});
 
   const pantry = new Map(D.pantry.map(c => [norm(c.name), c]));
-  const prices = priceMap(D);
+  const prices = costContext(D);
   const weekKeys = DOW.map((_, i) => key(addDays(mon, i)));
   const recipes = searchRecipes(D.recipes, q).slice().sort((a, b) => a.name.localeCompare(b.name));
   const editingRecipe = editing && editing !== 'new' ? D.recipes.find(r => r.id === editing) ?? null : null;
@@ -54,7 +54,7 @@ export default function RecipesPage({ D, update, mon }: { D: HouseholdData; upda
                   return (
                     <span key={i} className="ing-tag">
                       <span className="dot6" style={{ background: dot }} />{g.name}
-                      {g.qty && g.unit ? <span className="muted">· {fmtQty(g.qty, g.unit)}</span> : null}
+                      {prices.staples.has(norm(g.name)) ? <span className="muted">· staple</span> : g.qty && g.unit ? <span className="muted">· {fmtQty(g.qty, g.unit)}</span> : null}
                     </span>
                   );
                 })}

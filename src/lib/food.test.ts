@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
 import { addDays, key, mondayOf } from './dates';
 import { HouseholdData, seed } from './model';
-import { expiry, fmtAmount, priceMap, recipeCost, shoppingList, stockUp, toBase } from './food';
+import { costContext, expiry, fmtAmount, recipeCost, shoppingList, stockUp, toBase } from './food';
 
 const mon = mondayOf(new Date(2026, 8, 23)); // Mon 21 Sep 2026
 const wk = key(mon);
@@ -27,11 +27,12 @@ it('converts and formats units', () => {
   expect(toBase(1.5, 'kg')).toEqual({ dim: 'mass', v: 1500 });
   expect(fmtAmount({ dim: 'mass', v: 1500 })).toBe('1.5 kg');
   expect(fmtAmount({ dim: 'volume', v: 250 })).toBe('250 ml');
-  expect(fmtAmount({ dim: 'count', v: 3 })).toBe('3');
+  expect(fmtAmount({ dim: 'count', v: 3 })).toBe('3 units');
+  expect(fmtAmount({ dim: 'count', v: 1 })).toBe('1 unit');
 });
 
 it('works out meal cost from the amount of each ingredient used', () => {
-  const D = household(), prices = priceMap(D);
+  const D = household(), prices = costContext(D);
   expect(recipeCost(D.recipes[0], prices)).toBe(0.75); // 250 g of $3/kg
   expect(recipeCost(D.recipes[1], prices)).toBe(1.6); // 200 g rice + 2 of 12 eggs
   expect(recipeCost(D.recipes[2], prices)).toBe(12); // unpriced: keeps the old flat cost
@@ -89,4 +90,15 @@ it('carries expiry dates from the shopping list into the pantry', () => {
   stockUp(D, items, wk, { egg: '2026-10-05' });
   expect(D.pantry.find(p => p.name === 'Egg')!.expires).toBe('2026-10-05');
   expect(D.pantry.find(p => p.name === 'Rice')!.expires).toBeUndefined();
+});
+
+it('costs staples at a nominal amount and leaves them off pack sizes', () => {
+  const D = household();
+  D.staples = ['Salt'];
+  D.prices.push({ name: 'Salt', qty: 1, unit: 'kg', price: 2 });
+  expect(recipeCost(D.recipes[0], costContext(D))).toBe(0.8); // 250 g rice + salt $0.05
+  D.pantry = [];
+  const salt = shoppingList(D, mon).items.find(i => i.name === 'Salt')!;
+  expect(salt.buy).toBeNull();
+  expect(salt.cost).toBeNull();
 });
