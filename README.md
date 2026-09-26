@@ -1,25 +1,65 @@
-# CODING AGENTS: READ THIS FIRST
+# Ella & Jackson · Household
 
-This is a **handoff bundle** from Claude Design (claude.ai/design).
+A one-page household dashboard for a week at a time: dinners and chores side by side, the weekly budget, and full pages for the shopping list, recipes, cupboard, chores, budget and a month view. It is built from the Claude Design handoff in `project/Household v2.dc.html` (see `HANDOFF.md` and `chats/`).
 
-A user mocked up designs in HTML/CSS/JS using an AI design tool, then exported this bundle so a coding agent can implement the designs for real.
+Data is synced between devices through Supabase, and saves appear on the other person's phone within about a second. If Supabase isn't configured, the app still runs and saves on that one device.
 
-## What you should do — IMPORTANT
+## Run it locally
 
-**Read the chat transcripts first.** There are 1 chat transcript(s) in `chats/`. The transcripts show the full back-and-forth between the user and the design assistant — they tell you **what the user actually wants** and **where they landed** after iterating. Don't skip them. The final HTML files are the output, but the chat is where the intent lives.
+```sh
+npm install
+npm run dev        # http://localhost:5173
+npm test
+```
 
-**Read `project/Household v2.dc.html` in full.** The user had this file open when they triggered the handoff, so it's almost certainly the primary design they want built. Read it top to bottom — don't skim. Then **follow its imports**: open every file it pulls in (shared components, CSS, scripts) so you understand how the pieces fit together before you start implementing.
+Without a `.env` file this runs in device-only mode with the sample data from the design.
 
-**If anything is ambiguous, ask the user to confirm before you start implementing.** It's much cheaper to clarify scope up front than to build the wrong thing.
+## One-time setup for syncing
 
-## About the design files
+### 1. Supabase
 
-The design medium is **HTML/CSS/JS** — these are prototypes, not production code. Your job is to **recreate them pixel-perfectly** in whatever technology makes sense for the target codebase (React, Vue, native, whatever fits). Match the visual output; don't copy the prototype's internal structure unless it happens to fit.
+1. Open your Supabase project and go to **SQL Editor → New query**. Paste in `supabase/schema.sql`, change the two example emails at the bottom to Ella's and Jackson's real addresses, and click **Run**.
+   - To add or change someone later: `insert into public.household_members (email) values ('someone@example.com');`
+2. Go to **Authentication → URL Configuration**:
+   - Set **Site URL** to where the app will live, e.g. `https://<your-github-username>.github.io/<repo-name>/`.
+   - Add the same URL under **Redirect URLs**. Also add `http://localhost:5173/` if you'll run it locally.
+3. Optional, but useful if you add the app to your phone's home screen: go to **Authentication → Emails → Magic Link** and add `{{ .Token }}` to the template (e.g. `Or enter this code: {{ .Token }}`). You can then sign in by typing the 6-digit code instead of tapping the link, which avoids the link opening in a different browser.
+4. Go to **Project Settings → API** and copy the **Project URL** and the **anon public** key.
 
-**Don't render these files in a browser or take screenshots unless the user asks you to.** Everything you need — dimensions, colors, layout rules — is spelled out in the source. Read the HTML and CSS directly; a screenshot won't tell you anything they don't.
+Only the emails in `household_members` can read or change the household data; this is enforced by row-level security in the database. Once you've both signed in, you can also turn off new sign-ups under **Authentication → Sign In / Providers**.
 
-## Bundle contents
+### 2. Local `.env` (optional)
 
-- `README.md` — this file
-- `chats/` — conversation transcripts (read these!)
-- `project/` — the `Ella and Jackson's household app` project files (HTML prototypes, assets, components)
+```sh
+cp .env.example .env   # then paste the URL and anon key
+```
+
+### 3. Host it on GitHub Pages
+
+1. Push this repo to GitHub.
+2. Go to **Settings → Secrets and variables → Actions → Variables** and add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`. The anon key is meant to be public; the database rules above keep the data private.
+3. Go to **Settings → Pages** and set **Source** to **GitHub Actions**.
+4. Push to `main`, or run the **Deploy to GitHub Pages** workflow by hand. The app will be published at the Pages URL.
+
+On each phone, open the URL, sign in with your email, and optionally use **Share → Add to Home Screen**.
+
+## How syncing works
+
+- The whole household is stored as one JSON document in a single row (`household`, id `home`). The first person to sign in creates it; they start with that device's saved data if there is any, otherwise the sample data.
+- Each save only succeeds if nobody else has saved since. If someone has, the app loads their version and reapplies your changes on top, so edits made at the same moment on two phones are both kept (`src/lib/store.ts`).
+- Changes from the other device arrive live over Supabase Realtime. The app also refreshes when it comes back to the foreground.
+- If a phone is offline, its changes are kept and sent once it reconnects. Changes are lost only if the app is closed before that happens.
+- Shopping-list ticks are stored on each device, so ticking items off at the shops doesn't affect the other phone.
+
+## Layout
+
+```
+src/
+  App.tsx            sign-in gate, sets up syncing
+  Household.tsx      header, week navigation, page switching
+  lib/model.ts       types, sample data, chore schedules, shopping list and budget maths
+  lib/store.ts       Supabase sync (conflict-safe saves, realtime, offline retry)
+  views/             week table, budget card, and each full page
+  styles.css         design values from Household v2
+supabase/schema.sql  tables, access rules, realtime
+```
