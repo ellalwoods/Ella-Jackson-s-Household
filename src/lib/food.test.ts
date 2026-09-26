@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
 import { addDays, key, mondayOf } from './dates';
 import { HouseholdData, seed } from './model';
-import { fmtAmount, priceMap, recipeCost, shoppingList, stockUp, toBase } from './food';
+import { expiry, fmtAmount, priceMap, recipeCost, shoppingList, stockUp, toBase } from './food';
 
 const mon = mondayOf(new Date(2026, 8, 23)); // Mon 21 Sep 2026
 const wk = key(mon);
@@ -68,4 +68,25 @@ it('puts the leftover in the pantry after shopping, allowing for the week', () =
   expect(shoppingList(D, mon).items).toEqual([]);
   D.plan = { [key(addDays(mon, 7))]: { r: 'a' } };
   expect(shoppingList(D, addDays(mon, 7)).items.some(i => i.name === 'Rice')).toBe(false);
+});
+
+it('labels expiry dates and treats expired pantry items as not in stock', () => {
+  const today = new Date(2026, 8, 23);
+  expect(expiry('2026-09-22', today)).toMatchObject({ expired: true, label: 'Expired 22 Sep' });
+  expect(expiry('2026-09-24', today)).toMatchObject({ soon: true, label: 'Expires tomorrow' });
+  expect(expiry('2026-10-10', today)).toMatchObject({ soon: false, expired: false, label: 'Use by 10 Oct' });
+
+  const D = household();
+  D.pantry.push({ name: 'Rice', state: 'Full', qty: 900, unit: 'g', expires: '2026-09-20' });
+  const rice = shoppingList(D, mon, today).items.find(i => i.name === 'Rice')!;
+  expect(rice.status).toBe('Expired');
+  expect(rice.have).toBeNull();
+});
+
+it('carries expiry dates from the shopping list into the pantry', () => {
+  const D = household();
+  const { items } = shoppingList(D, mon);
+  stockUp(D, items, wk, { egg: '2026-10-05' });
+  expect(D.pantry.find(p => p.name === 'Egg')!.expires).toBe('2026-10-05');
+  expect(D.pantry.find(p => p.name === 'Rice')!.expires).toBeUndefined();
 });

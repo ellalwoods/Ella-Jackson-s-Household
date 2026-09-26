@@ -7,19 +7,22 @@ import { stockRule } from './PantryPage';
 
 const TICKS_KEY = 'hh-shop-ticks';
 
-/** Ticks are per device (whoever is at the shops), remembered across reloads. */
-function useTicks() {
-  const [ticks, setTicks] = useState<Record<string, boolean>>(() => {
-    try { return JSON.parse(localStorage.getItem(TICKS_KEY) || '{}'); } catch { return {}; }
+const EXPIRY_KEY = 'hh-shop-expiry';
+
+/** Ticks and expiry dates are per device (whoever is at the shops), remembered across reloads. */
+function useStored<T>(storageKey: string) {
+  const [v, setV] = useState<Record<string, T>>(() => {
+    try { return JSON.parse(localStorage.getItem(storageKey) || '{}'); } catch { return {}; }
   });
-  useEffect(() => { try { localStorage.setItem(TICKS_KEY, JSON.stringify(ticks)); } catch { /* blocked */ } }, [ticks]);
-  return [ticks, setTicks] as const;
+  useEffect(() => { try { localStorage.setItem(storageKey, JSON.stringify(v)); } catch { /* blocked */ } }, [storageKey, v]);
+  return [v, setV] as const;
 }
 
 interface Props { update: Update; mon: Date; label: string; items: ShopItem[]; skipped: Skipped[] }
 
 export default function ShopPage({ update, mon, label, items, skipped }: Props) {
-  const [ticks, setTicks] = useTicks();
+  const [ticks, setTicks] = useStored<boolean>(TICKS_KEY);
+  const [dates, setDates] = useStored<string>(EXPIRY_KEY);
   const [copied, setCopied] = useState(false);
   const wk = key(mon);
   const isTicked = (i: ShopItem) => !!ticks[wk + '|' + i.lk];
@@ -50,7 +53,10 @@ export default function ShopPage({ update, mon, label, items, skipped }: Props) 
   };
   const stockTicked = () => {
     const got = items.filter(isTicked);
-    update(x => stockUp(x, got, wk));
+    const exp: Record<string, string> = {};
+    got.forEach(i => { const d = dates[wk + '|' + i.lk]; if (d) exp[i.lk] = d; });
+    update(x => stockUp(x, got, wk, exp));
+    setDates(ds => { const n = { ...ds }; got.forEach(i => delete n[wk + '|' + i.lk]); return n; });
   };
 
   return (
@@ -64,7 +70,8 @@ export default function ShopPage({ update, mon, label, items, skipped }: Props) 
         {items.map(i => {
           const ck = isTicked(i);
           return (
-            <button key={i.lk} className="shop-item" style={{ opacity: ck ? 0.55 : 1 }}
+            <div key={i.lk} className="shop-row">
+            <button className="shop-item" style={{ opacity: ck ? 0.55 : 1 }}
               onClick={() => setTicks(t => ({ ...t, [wk + '|' + i.lk]: !t[wk + '|' + i.lk] }))}>
               <span className="box-check" style={{ background: ck ? '#23221F' : 'transparent' }}>{ck ? '✓' : ''}</span>
               <span style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, whiteSpace: 'normal' }}>
@@ -78,6 +85,14 @@ export default function ShopPage({ update, mon, label, items, skipped }: Props) 
                 {i.cost !== null && <span style={{ fontSize: 12 }} className="muted">{money(i.cost)}</span>}
               </span>
             </button>
+            {ck && (
+              <label className="shop-expiry">
+                Expires <input type="date" className="field-sm" style={{ height: 34 }} value={dates[wk + '|' + i.lk] ?? ''}
+                  onChange={e => { const v = e.target.value; setDates(ds => ({ ...ds, [wk + '|' + i.lk]: v })); }} />
+                <span className="note">optional</span>
+              </label>
+            )}
+            </div>
           );
         })}
         {total > 0 && (

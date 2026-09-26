@@ -130,3 +130,9 @@ input:focus, textarea:focus, select:focus { outline: 2px solid var(--ink); outli
   .ing-name { flex-basis: calc(100% - 44px); }
   .ing-row > .x-btn { order: 0; }
 }
+.shop-row { border-top: 1px solid #EFEBE3; }
+.shop-row > .shop-item { border-top: none; }
+.shop-expiry { display: flex; gap: 8px; align-items: center; padding: 0 0 10px 34px; font-size: 13px; color: var(--muted); }
+.exp-chip { font-size: 11px; padding: 3px 8px; border-radius: 999px; background: var(--chip); color: var(--chip-ink); }
+.exp-chip.soon { background: #DCD690; color: var(--ink); }
+.exp-chip.expired { background: #F0A88C; color: var(--ink); }

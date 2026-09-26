@@ -59,6 +59,8 @@ export interface PantryItem {
   unit?: Unit;
   /** Set when stocked from a week's shopping list: the amount already allows for that week's dinners. */
   forWeek?: string;
+  /** Use-by date key, e.g. 2026-10-02. */
+  expires?: string;
 }
 export type Schedule =
   | { type: 'weekly'; days: number[] }

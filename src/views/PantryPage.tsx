@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { HouseholdData, INCLUDE_LOW, norm, PantryItem, STATE_COLORS, STATES, StockState, Unit, UNITS } from '../lib/model';
-import { fmtQty, priceMap } from '../lib/food';
+import { expiry, fmtQty, priceMap } from '../lib/food';
 import type { Update } from '../Household';
 
 export const stockRule = (INCLUDE_LOW
@@ -10,15 +10,17 @@ export const stockRule = (INCLUDE_LOW
 
 export default function PantryPage({ D, update }: { D: HouseholdData; update: Update }) {
   const [q, setQ] = useState('');
-  const [filter, setFilter] = useState<'All' | StockState>('All');
+  const [filter, setFilter] = useState<'All' | StockState | 'Expiring'>('All');
   const prices = priceMap(D);
 
   const cq = norm(q);
   const exists = D.pantry.some(c => norm(c.name) === cq);
   const canAdd = !!cq && !exists;
   const levelOf = (c: PantryItem) => (c.qty != null ? null : c.state);
+  const expiring = (c: PantryItem) => { const e = expiry(c.expires); return !!e && (e.soon || e.expired); };
+  const matches = (c: PantryItem, f: typeof filter) => f === 'All' || (f === 'Expiring' ? expiring(c) : levelOf(c) === f);
   const items = D.pantry
-    .filter(c => (!cq || norm(c.name).includes(cq)) && (filter === 'All' || levelOf(c) === filter))
+    .filter(c => (!cq || norm(c.name).includes(cq)) && matches(c, filter))
     .sort((a, b) => a.name.localeCompare(b.name));
 
   const add = () => {
@@ -39,9 +41,9 @@ export default function PantryPage({ D, update }: { D: HouseholdData; update: Up
         {canAdd && <button className="pill dark" style={{ height: 44, padding: '0 18px' }} onClick={add}>+ Add “{q}”</button>}
       </div>
       <div className="row" style={{ marginBottom: 14 }}>
-        {(['All', ...STATES] as const).map(f => {
+        {(['All', ...STATES, 'Expiring'] as const).map(f => {
           const on = filter === f;
-          const cnt = f === 'All' ? D.pantry.length : D.pantry.filter(c => levelOf(c) === f).length;
+          const cnt = D.pantry.filter(c => matches(c, f)).length;
           return (
             <button key={f} className="filter" onClick={() => setFilter(f)}
               style={{ borderColor: on ? '#23221F' : '#DDD8CC', background: on ? '#23221F' : '#fff', color: on ? '#fff' : '#23221F' }}>{f} · {cnt}</button>
@@ -78,6 +80,13 @@ export default function PantryPage({ D, update }: { D: HouseholdData; update: Up
                   })}
                 </div>
               )}
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', fontSize: 12 }} className="muted">
+                <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  Use by <input type="date" className="field-sm" style={{ height: 32, fontSize: 13 }} value={c.expires ?? ''}
+                    onChange={e => { const v = e.target.value; edit(c.name, z => { if (v) z.expires = v; else delete z.expires; }); }} />
+                </label>
+                {(() => { const e = expiry(c.expires); return e && (e.soon || e.expired) ? <span className={'exp-chip ' + (e.expired ? 'expired' : 'soon')}>{e.label}</span> : null; })()}
+              </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
                 <span className="note">{pr ? 'Buy ' + fmtQty(pr.qty, pr.unit) + ' for $' + pr.price.toFixed(2) : ''}</span>
                 <button className="link-btn" onClick={() => edit(c.name, z => {
@@ -90,7 +99,7 @@ export default function PantryPage({ D, update }: { D: HouseholdData; update: Up
         })}
       </div>
       {!items.length && <p className="empty">Nothing here. Add what you have so the shopping list can skip it.</p>}
-      <p className="note" style={{ marginTop: 14 }}>{stockRule} Amounts added from the shopping list already allow for that week’s dinners.</p>
+      <p className="note" style={{ marginTop: 14 }}>{stockRule} Amounts added from the shopping list already allow for that week’s dinners. Expired items go back on the shopping list.</p>
     </>
   );
 }

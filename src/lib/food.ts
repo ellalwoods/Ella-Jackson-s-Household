@@ -1,4 +1,4 @@
-import { addDays, DOW, key } from './dates';
+import { addDays, DOW, key, MON, parse } from './dates';
 import { HouseholdData, INCLUDE_LOW, norm, PantryItem, Price, Recipe, RecipeIngredient, Unit } from './model';
 
 // ── Units ──────────────────────────────────────────────────────────────────
@@ -55,6 +55,19 @@ export function isStocked(p: PantryItem | undefined) {
   return a ? a.v > 0 : p.state === 'Full' || p.state === 'Half' || (!INCLUDE_LOW && p.state === 'Low');
 }
 
+// ── Expiry ─────────────────────────────────────────────────────────────────
+
+/** Days before the use-by date that count as "expiring soon". */
+export const SOON_DAYS = 3;
+
+export function expiry(expires: string | undefined, today = new Date()) {
+  if (!expires) return null;
+  const days = Math.round((+parse(expires) - +parse(key(today))) / 864e5);
+  const d = parse(expires), date = d.getDate() + ' ' + MON[d.getMonth()];
+  const label = days < 0 ? 'Expired ' + date : days === 0 ? 'Expires today' : days === 1 ? 'Expires tomorrow' : days <= SOON_DAYS ? 'Expires in ' + days + ' days' : 'Use by ' + date;
+  return { days, label, expired: days < 0, soon: days >= 0 && days <= SOON_DAYS };
+}
+
 // ── Shopping list ──────────────────────────────────────────────────────────
 
 export interface ShopItem {
@@ -100,9 +113,11 @@ function addNeed(needs: Map<string, Need>, g: RecipeIngredient, day: string) {
 }
 
 /** What to buy for the week's dinners, after what's already in the pantry. */
-export function shoppingList(D: HouseholdData, mon: Date) {
+export function shoppingList(D: HouseholdData, mon: Date, today = new Date()) {
   const wk = key(mon);
-  const pantry = new Map(D.pantry.map(p => [norm(p.name), p]));
+  // Expired items don't count as stock.
+  const pantry = new Map(D.pantry.filter(p => !expiry(p.expires, today)?.expired).map(p => [norm(p.name), p]));
+  const expired = new Set(D.pantry.filter(p => expiry(p.expires, today)?.expired).map(p => norm(p.name)));
   const prices = priceMap(D);
   const items: ShopItem[] = [], skipped: Skipped[] = [];
 
@@ -123,7 +138,7 @@ export function shoppingList(D: HouseholdData, mon: Date) {
     } else if (isStocked(p)) {
       skipped.push({ name: n.name, note: p!.state }); return;
     } else {
-      status = p ? p.state : 'Not stocked';
+      status = expired.has(lk) ? 'Expired' : p ? p.state : 'Not stocked';
     }
 
     const pr = prices.get(lk) ?? null;
@@ -146,13 +161,16 @@ export const buyText = (i: ShopItem) =>
  * use, the pantry gets the leftover (what was there + what was bought − what
  * the dinners use) and is marked as already allowing for that week.
  */
-export function stockUp(x: HouseholdData, items: ShopItem[], wk: string) {
+export function stockUp(x: HouseholdData, items: ShopItem[], wk: string, expires: Record<string, string> = {}) {
   for (const i of items) {
     let p = x.pantry.find(c => norm(c.name) === i.lk);
     if (!p) { p = { name: i.name, state: 'Full' }; x.pantry.push(p); }
+    const wasExpired = !!expiry(p.expires)?.expired;
+    if (expires[i.lk]) p.expires = expires[i.lk];
+    else if (wasExpired) delete p.expires;
     const bought = i.buy ? toBase(i.buy.qty * i.packs, i.buy.unit) : null;
     if (!bought) { p.state = 'Full'; delete p.qty; delete p.unit; delete p.forWeek; continue; }
-    const had = pantryAmount(p);
+    const had = wasExpired ? null : pantryAmount(p);
     const start = had && had.dim === bought.dim ? had.v : 0;
     const used = i.need && i.need.dim === bought.dim ? i.need.v : 0;
     p.qty = round(Math.max(0, start + bought.v - used));
