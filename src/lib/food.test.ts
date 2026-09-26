@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
 import { addDays, key, mondayOf } from './dates';
 import { HouseholdData, seed } from './model';
-import { costContext, expiry, groceryEstimate, fmtAmount, recipeCost, shoppingList, stockUp, toBase } from './food';
+import { costContext, expiry, weekBudget, fmtAmount, recipeCost, shoppingList, stockUp, toBase } from './food';
 
 const mon = mondayOf(new Date(2026, 8, 23)); // Mon 21 Sep 2026
 const wk = key(mon);
@@ -103,19 +103,28 @@ it('costs staples at a nominal amount and leaves them off pack sizes', () => {
   expect(salt.cost).toBeNull();
 });
 
-it('blends planned meal costs with the grocery placeholder for empty slots', () => {
+it('fills budgets from spends and meals, fixed categories in full, and counts overspend', () => {
   const D = household();
-  D.cats = [{ id: 'g', name: 'Groceries', ella: 105, jackson: 105 }]; // $210 placeholder = $10 per slot
-  D.plan = {};
-  expect(groceryEstimate(D, mon)).toMatchObject({ status: 'placeholder', ella: 105, jackson: 105 });
-
-  D.plan = { [key(mon)]: { dinner: 'a', other: 'b' } }; // $0.75 dinner + $1.60 other
-  const g = groceryEstimate(D, mon)!;
-  expect(g.status).toBe('partial');
-  expect(g.filled).toBe(1); // "Other" doesn't use up a slot
-  expect(g.ella + g.jackson).toBeCloseTo(2.35 + 200, 1); // meals + 20 empty slots × $10
-
-  D.plan = {};
-  for (let i = 0; i < 7; i++) D.plan[key(addDays(mon, i))] = { breakfast: 'a', lunch: 'a', dinner: 'a' };
-  expect(groceryEstimate(D, mon)).toMatchObject({ status: 'planned', ella: 7.88, jackson: 7.88 }); // 21 × $0.75 split
+  D.incomes = [{ id: 'i1', name: 'Pay', person: 'ella', amount: 1000 }, { id: 'i2', name: 'Pay', person: 'jackson', amount: 1000 }];
+  D.cats = [
+    { id: 'rent', name: 'Rent', ella: 300, jackson: 300, fixed: true },
+    { id: 'g', name: 'Groceries', ella: 50, jackson: 50 },
+    { id: 'fun', name: 'Leisure', ella: 40, jackson: 40 },
+  ];
+  // Meals: Mon dinner $0.75 + Wed lunch $1.60 = $2.35 → groceries 50/50.
+  D.spends = { [wk]: [
+    { id: 's1', cat: 'fun', amount: 25, who: 'ella', note: 'Movies' },
+    { id: 's2', cat: 'fun', amount: 60, who: 'jackson' },
+  ] };
+  D.extras = { [wk]: [{ id: 'x', name: 'Gift', amount: 20, who: 'both' }] };
+  const b = weekBudget(D, mon);
+  const [rent, groc, fun] = b.cats;
+  expect(rent.spent).toEqual({ e: 300, j: 300, total: 600 });
+  expect(groc.spent.total).toBe(2.35);
+  expect(groc.counted.total).toBe(100); // under budget: the budget counts
+  expect(fun.spent).toEqual({ e: 25, j: 60, total: 85 });
+  expect(fun.over).toBe(5);
+  expect(fun.counted).toEqual({ e: 40, j: 60, total: 100 }); // Jackson went $20 over his share
+  expect(b.committed.total).toBe(600 + 100 + 100 + 20);
+  expect([b.ellaLeft, b.jacksonLeft]).toEqual([1000 - 300 - 50 - 40 - 10, 1000 - 300 - 50 - 60 - 10]);
 });

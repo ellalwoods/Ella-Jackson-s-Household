@@ -50,7 +50,7 @@ export default function Household({ data: D, update, status }: Props) {
     recipes: ['Recipes', D.recipes.length + ' saved · search by name or ingredient'],
     pantry: ['Pantry', D.pantry.length + ' ingredients tracked'],
     chores: ['Chores', D.chores.length + ' tasks · recurring & one-off'],
-    budget: ['Budget', 'Weekly amounts, per person'],
+    budget: ['Budget', 'Your regular weekly budget, per person'],
     calendar: ['Month view', 'Plan ahead'],
   };
 
@@ -111,7 +111,7 @@ export default function Household({ data: D, update, status }: Props) {
           {page === 'recipes' && <RecipesPage D={D} update={update} mon={mon} />}
           {page === 'pantry' && <PantryPage D={D} update={update} />}
           {page === 'chores' && <ChoresPage D={D} update={update} />}
-          {page === 'budget' && <BudgetPage D={D} update={update} mon={mon} />}
+          {page === 'budget' && <BudgetPage D={D} update={update} />}
           {page === 'calendar' && (
             <CalendarPage D={D} mon={mon} calOff={calOff} setCalOff={setCalOff}
               onPickWeek={w => { setWeek(w); setPage(null); setCalOff(0); }} />

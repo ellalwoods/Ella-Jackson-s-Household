@@ -162,3 +162,11 @@ input:focus, textarea:focus, select:focus { outline: 2px solid var(--ink); outli
 }
 .chore-chip { max-width: 100%; height: auto; min-height: 32px; padding-top: 4px; padding-bottom: 4px; white-space: normal; text-align: left; line-height: 1.2; }
 .chore-check { flex: none; }
+
+/* Budget card: tap a category to log spends */
+.cat-toggle { display: flex; flex-direction: column; gap: 6px; width: 100%; padding: 0; border: none; background: none; text-align: left; font: inherit; color: inherit; }
+.cat-chevron { font-size: 12px; color: var(--muted); width: 14px; text-align: center; }
+.split-bar > div { height: 100%; }
+.split-bar > div:first-child { border-radius: 3px 0 0 3px; overflow: hidden; }
+.split-bar > div:last-child { border-radius: 0 3px 3px 0; overflow: hidden; }
+.spend-panel { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; margin-top: 2px; border-radius: 10px; background: #FBFAF7; border: 1px solid var(--line-soft); }

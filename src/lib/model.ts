@@ -62,7 +62,15 @@ export interface Recipe {
 }
 /** What you buy, shared by every recipe using the ingredient: e.g. Rice, 1 kg for $3. */
 export interface Price { name: string; qty: number; unit: Unit; price: number }
-export interface Category { id: string; name: string; ella: Amount; jackson: Amount }
+export interface Category {
+  id: string;
+  name: string;
+  /** Weekly budget per person. */
+  ella: Amount;
+  jackson: Amount;
+  /** Always spent in full (e.g. rent), so its bar is always filled. */
+  fixed?: boolean;
+}
 export interface Income { id: string; name: string; person: PersonId; amount: Amount }
 /** Tracked by amount (qty + unit) when known, otherwise by level (state). */
 export interface PantryItem {
@@ -81,6 +89,8 @@ export type Schedule =
   | { type: 'monthly'; dom: number }
   | { type: 'once'; date: string };
 export interface Chore { id: string; name: string; person: ChoreOwner; sched: Schedule }
+/** Money spent in a budget category during a week; `who: 'both'` splits it 50/50. */
+export interface Spend { id: string; cat: string; amount: Amount; who: ChoreOwner; note?: string }
 /** A one-off cost for a single week; `who: 'both'` splits it 50/50. */
 export interface Extra { id: string; name: string; amount: Amount; who: ChoreOwner }
 
@@ -99,6 +109,8 @@ export interface HouseholdData {
   done: Record<string, 1>;
   /** One-off costs by week (Monday's date key). Not part of the recurring budget. */
   extras: Record<string, Extra[]>;
+  /** Logged spending by week (Monday's date key). */
+  spends: Record<string, Spend[]>;
 }
 
 export const uid = () => Math.random().toString(36).slice(2, 9);
@@ -118,7 +130,7 @@ export function seed(today = new Date()): HouseholdData {
       { id: uid(), name: 'Salary', person: 'jackson', amount: 1250 },
     ],
     cats: [
-      { id: uid(), name: 'Rent', ella: 380, jackson: 380 },
+      { id: uid(), name: 'Rent', ella: 380, jackson: 380, fixed: true },
       { id: uid(), name: 'Groceries', ella: 90, jackson: 90 },
       { id: uid(), name: 'Utilities', ella: 35, jackson: 35 },
       { id: uid(), name: 'Transport', ella: 45, jackson: 45 },
@@ -163,6 +175,7 @@ export function seed(today = new Date()): HouseholdData {
     ],
     done: {},
     extras: {},
+    spends: {},
   };
 }
 
@@ -177,7 +190,8 @@ export function migrate(d: any): HouseholdData | null {
     ];
   }
   delete d.income;
-  d.recipes ??= []; d.plan ??= {}; d.chores ??= []; d.done ??= {}; d.prices ??= []; d.staples ??= []; d.extras ??= {};
+  d.recipes ??= []; d.plan ??= {}; d.chores ??= []; d.done ??= {}; d.prices ??= []; d.staples ??= []; d.extras ??= {}; d.spends ??= {};
+  for (const c of d.cats) if (c.fixed === undefined && /\brent\b/i.test(c.name)) c.fixed = true;
   if (!Array.isArray(d.pantry)) d.pantry = Array.isArray(d.cupboard) ? d.cupboard : [];
   delete d.cupboard;
   for (const r of d.recipes) {
@@ -212,37 +226,43 @@ export function describe(s: Schedule) {
   return 'Once · ' + f(s.date);
 }
 
-/** Replaces one category's amounts, e.g. groceries worked out from the meal plan. */
-export interface CategoryOverride { id: string; ella: number; jackson: number }
-
 export const EXTRA_COLOR = '#BFB8AA';
 
-export function budget(D: HouseholdData, override?: CategoryOverride | null, extras: Extra[] = []) {
+/** Ella's or Jackson's part of an amount paid by `who`. */
+export const shareOf = (who: ChoreOwner, amount: Amount, p: PersonId) =>
+  who === p ? num(amount) : who === 'both' ? num(amount) / 2 : 0;
+
+export const earnings = (D: HouseholdData, p: PersonId) =>
+  D.incomes.filter(i => i.person === p).reduce((a, i) => a + num(i.amount), 0);
+
+/** Pie chart background for slices with a total and a colour. */
+export function donutOf(slices: { total: number; color: string }[]) {
+  const sum = slices.reduce((a, c) => a + Math.max(0, c.total), 0);
+  if (!sum) return '#EAE6DD';
+  let acc = 0;
+  const stops = slices.filter(c => c.total > 0).map(c => {
+    const a = acc / sum * 360;
+    acc += c.total;
+    return c.color + ' ' + a + 'deg ' + (acc / sum * 360) + 'deg';
+  });
+  return 'conic-gradient(' + stops.join(',') + ')';
+}
+
+/** The recurring weekly budget, as set on the Budget page. */
+export function budget(D: HouseholdData) {
   const cats = D.cats.map((c, i) => {
-    const o = override && override.id === c.id ? override : null;
-    const e = o ? o.ella : num(c.ella), j = o ? o.jackson : num(c.jackson);
+    const e = num(c.ella), j = num(c.jackson);
     return { ...c, e, j, total: e + j, color: CAT_COLORS[i % CAT_COLORS.length] };
   });
-  const share = (x: Extra, p: PersonId) => (x.who === p ? num(x.amount) : x.who === 'both' ? num(x.amount) / 2 : 0);
-  const extraE = extras.reduce((a, x) => a + share(x, 'ella'), 0), extraJ = extras.reduce((a, x) => a + share(x, 'jackson'), 0);
-  const extraTotal = extraE + extraJ;
-  const spend = cats.reduce((a, c) => a + c.total, 0) + extraTotal;
+  const spend = cats.reduce((a, c) => a + c.total, 0);
   const income = D.incomes.reduce((a, i) => a + num(i.amount), 0);
-  const earns = (p: PersonId) => D.incomes.filter(i => i.person === p).reduce((a, i) => a + num(i.amount), 0);
-  const ella = cats.reduce((a, c) => a + c.e, 0) + extraE, jackson = cats.reduce((a, c) => a + c.j, 0) + extraJ;
-  let acc = 0;
-  const slices = [...cats, { total: extraTotal, color: EXTRA_COLOR }];
-  const stops = slices.filter(c => c.total > 0).map(c => {
-    const a = acc / spend * 360;
-    acc += c.total;
-    return c.color + ' ' + a + 'deg ' + (acc / spend * 360) + 'deg';
-  });
+  const ella = cats.reduce((a, c) => a + c.e, 0), jackson = cats.reduce((a, c) => a + c.j, 0);
   return {
-    cats, spend, income, extraTotal,
+    cats, spend, income,
     ella, jackson,
     left: income - spend,
-    ellaLeft: earns('ella') - ella,
-    jacksonLeft: earns('jackson') - jackson,
-    donut: spend ? 'conic-gradient(' + stops.join(',') + ')' : '#EAE6DD',
+    ellaLeft: earnings(D, 'ella') - ella,
+    jacksonLeft: earnings(D, 'jackson') - jackson,
+    donut: donutOf(cats),
   };
 }

@@ -1,5 +1,5 @@
 import { addDays, DOW, key, MON, parse } from './dates';
-import { HouseholdData, INCLUDE_LOW, Meal, MEALS, norm, num, PantryItem, Price, Recipe, RecipeIngredient, STAPLE_COST, Unit } from './model';
+import { CAT_COLORS, donutOf, earnings, EXTRA_COLOR, HouseholdData, INCLUDE_LOW, Meal, MEALS, norm, num, shareOf, Spend, PantryItem, Price, Recipe, RecipeIngredient, STAPLE_COST, Unit } from './model';
 
 // ── Plan ───────────────────────────────────────────────────────────────────
 
@@ -19,36 +19,67 @@ export function weekMeals(D: HouseholdData, mon: Date): PlannedMeal[] {
   return out;
 }
 
-// ── Grocery budget ─────────────────────────────────────────────────────────
+// ── This week's budget ────────────────────────────────────────────────────
 
-/** Breakfast, lunch and dinner for 7 days. "Other" meals add on top at their real cost. */
-export const PLAN_SLOTS = 21;
+export interface Split { e: number; j: number; total: number }
+const split = (e: number, j: number): Split => ({ e: round(e), j: round(j), total: round(e + j) });
+
+export interface CategoryWeek {
+  id: string;
+  name: string;
+  color: string;
+  fixed: boolean;
+  /** Filled by the meal plan (the "Groceries" category). */
+  grocery: boolean;
+  budget: Split;
+  /** Spent so far this week: logged spends, plus planned meals for groceries; fixed = budget. */
+  spent: Split;
+  /** What counts towards the totals: the budget, or the spend where it's gone over. */
+  counted: Split;
+  over: number;
+  mealCost: number;
+  spends: Spend[];
+}
 
 /**
- * The week's grocery spend: planned meals at their real cost, plus the
- * placeholder typed into the Groceries category for each breakfast, lunch
- * or dinner slot still empty. Meals are split 50/50; the placeholder part
- * keeps the split entered on the budget page.
+ * The week's budget against what's been spent. Each person's budget counts
+ * until their spending goes over it; planned meals fill Groceries 50/50.
  */
-export function groceryEstimate(D: HouseholdData, mon: Date) {
-  const cat = D.cats.find(c => /grocer/i.test(c.name));
-  if (!cat) return null;
-  const ctx = costContext(D), meals = weekMeals(D, mon);
-  const filled = Math.min(PLAN_SLOTS, meals.filter(m => m.meal !== 'other').length);
-  const mealCost = meals.reduce((a, m) => a + recipeCost(m.recipe, ctx), 0);
-  const rest = (PLAN_SLOTS - filled) / PLAN_SLOTS;
-  const pe = num(cat.ella), pj = num(cat.jackson);
+export function weekBudget(D: HouseholdData, mon: Date) {
+  const wk = key(mon);
+  const spends = D.spends[wk] ?? [], extras = D.extras[wk] ?? [];
+  const ctx = costContext(D);
+  const mealCost = round(weekMeals(D, mon).reduce((a, m) => a + recipeCost(m.recipe, ctx), 0));
+  const grocId = D.cats.find(c => /grocer/i.test(c.name))?.id;
+
+  const cats: CategoryWeek[] = D.cats.map((c, i) => {
+    const be = num(c.ella), bj = num(c.jackson), fixed = !!c.fixed, grocery = c.id === grocId;
+    const mine = spends.filter(s => s.cat === c.id);
+    let se = mine.reduce((a, s) => a + shareOf(s.who, s.amount, 'ella'), 0);
+    let sj = mine.reduce((a, s) => a + shareOf(s.who, s.amount, 'jackson'), 0);
+    if (grocery) { se += mealCost / 2; sj += mealCost / 2; }
+    if (fixed) { se = Math.max(se, be); sj = Math.max(sj, bj); }
+    const counted = split(Math.max(be, se), Math.max(bj, sj));
+    const budget = split(be, bj);
+    return {
+      id: c.id, name: c.name, color: CAT_COLORS[i % CAT_COLORS.length], fixed, grocery,
+      budget, spent: split(se, sj), counted, over: round(Math.max(0, se + sj - budget.total)),
+      mealCost: grocery ? mealCost : 0, spends: mine,
+    };
+  });
+
+  const extra = split(extras.reduce((a, x) => a + shareOf(x.who, x.amount, 'ella'), 0), extras.reduce((a, x) => a + shareOf(x.who, x.amount, 'jackson'), 0));
+  const sum = (f: (c: CategoryWeek) => Split) => split(cats.reduce((a, c) => a + f(c).e, 0) + extra.e, cats.reduce((a, c) => a + f(c).j, 0) + extra.j);
+  const committed = sum(c => c.counted), spent = sum(c => c.spent);
+  const income = D.incomes.reduce((a, i) => a + num(i.amount), 0);
   return {
-    id: cat.id,
-    placeholder: pe + pj,
-    mealCost: round(mealCost),
-    filled,
-    ella: round(mealCost / 2 + pe * rest),
-    jackson: round(mealCost / 2 + pj * rest),
-    status: (!meals.length ? 'placeholder' : rest > 0 ? 'partial' : 'planned') as 'placeholder' | 'partial' | 'planned',
+    cats, extra, committed, spent, income,
+    left: round(income - committed.total),
+    ellaLeft: round(earnings(D, 'ella') - committed.e),
+    jacksonLeft: round(earnings(D, 'jackson') - committed.j),
+    donut: donutOf([...cats.map(c => ({ total: c.counted.total, color: c.color })), { total: extra.total, color: EXTRA_COLOR }]),
   };
 }
-export type GroceryEstimate = NonNullable<ReturnType<typeof groceryEstimate>>;
 
 // ── Units ──────────────────────────────────────────────────────────────────
 

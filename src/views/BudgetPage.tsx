@@ -1,12 +1,10 @@
 import { useState } from 'react';
 import { budget, Category, HouseholdData, Income, money, otherPerson, PEOPLE, PersonId, uid } from '../lib/model';
 import type { Update } from '../Household';
-import { Donut, GroceryTag } from './BudgetCard';
-import { groceryEstimate } from '../lib/food';
+import { Donut } from './BudgetCard';
 
-export default function BudgetPage({ D, update, mon }: { D: HouseholdData; update: Update; mon: Date }) {
-  const g = groceryEstimate(D, mon);
-  const b = budget(D, g);
+export default function BudgetPage({ D, update }: { D: HouseholdData; update: Update }) {
+  const b = budget(D);
   const [incName, setIncName] = useState('');
   const [incAmt, setIncAmt] = useState('');
   const [incPerson, setIncPerson] = useState<PersonId>('ella');
@@ -77,15 +75,11 @@ export default function BudgetPage({ D, update, mon }: { D: HouseholdData; updat
             <input className="field-sm" value={String(c.ella)} onChange={setCat(c.id, 'ella')} inputMode="decimal" />
             <input className="field-sm" value={String(c.jackson)} onChange={setCat(c.id, 'jackson')} inputMode="decimal" />
             <button className="x-btn" aria-label="Remove" onClick={() => update(x => { x.cats = x.cats.filter(z => z.id !== c.id); })}>×</button>
-            {g && g.id === c.id && (
-              <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 3, padding: '2px 0 6px 14px' }}>
-                <GroceryTag g={g} />
-                <span className="note">
-                  The amounts above are your placeholder. This week counts as {money(b.cats.find(z => z.id === c.id)!.total)}
-                  {' '}(Ella {money(g.ella)} · Jackson {money(g.jackson)}), going by the meals you’ve planned.
-                </span>
-              </div>
-            )}
+            <div style={{ gridColumn: '1 / -1', display: 'flex', gap: 8, alignItems: 'center', padding: '0 0 4px 14px' }}>
+              <button className="filter" aria-pressed={!!c.fixed} onClick={() => update(x => { const z = x.cats.find(z => z.id === c.id); if (z) z.fixed = !z.fixed; })}
+                style={{ height: 26, fontSize: 12, borderColor: c.fixed ? '#23221F' : '#DDD8CC', background: c.fixed ? '#23221F' : '#fff', color: c.fixed ? '#fff' : '#23221F' }}>Fixed</button>
+              <span className="note">{c.fixed ? 'Always spent in full, like rent.' : /grocer/i.test(c.name) ? 'Fills up from your planned meals and anything you log.' : 'Fills up as you log spends on the week page.'}</span>
+            </div>
           </div>
         ))}
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, fontWeight: 600, padding: '10px 0', borderTop: '1px solid #23221F', marginTop: 6 }}>
