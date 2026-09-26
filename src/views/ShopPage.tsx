@@ -8,6 +8,10 @@ import { ExpiryInput, stockRule, UnitSelect } from './PantryPage';
 const TICKS_KEY = 'hh-shop-ticks';
 
 const EXPIRY_KEY = 'hh-shop-expiry';
+const VIEW_KEY = 'hh-shop-view';
+
+type SortBy = 'type' | 'day' | 'az';
+const SORTS: [SortBy, string][] = [['type', 'By type'], ['day', 'By day'], ['az', 'A–Z']];
 
 /** Ticks and expiry dates are per device (whoever is at the shops), remembered across reloads. */
 function useStored<T>(storageKey: string) {
@@ -23,6 +27,9 @@ interface Props { update: Update; mon: Date; label: string; items: ShopItem[]; s
 export default function ShopPage({ update, mon, label, items, skipped }: Props) {
   const [ticks, setTicks] = useStored<boolean>(TICKS_KEY);
   const [dates, setDates] = useStored<string>(EXPIRY_KEY);
+  const [view, setView] = useStored<string>(VIEW_KEY);
+  const sortBy = (view.sort as SortBy) || 'type';
+  const only = (view.only as ShopSection | 'all') || 'all';
   const [copied, setCopied] = useState(false);
   const wk = key(mon);
   const tick = (i: ShopItem) => wk + '|' + i.id;
@@ -64,7 +71,11 @@ export default function ShopPage({ update, mon, label, items, skipped }: Props) 
     x.shopSections[norm(m.name)] = section;
   });
   const setSection = (i: ShopItem, section: ShopSection) => update(x => { x.shopSections[i.lk] = section; });
-  const groups = SHOP_SECTIONS.map(sec => ({ sec, list: items.filter(i => i.section === sec) })).filter(g => g.list.length);
+  // Type filter, then either grouped by type or one list in day or A–Z order.
+  const shown = items.filter(i => only === 'all' || i.section === only);
+  const groups: { sec: ShopSection | null; list: ShopItem[] }[] = sortBy === 'type'
+    ? SHOP_SECTIONS.map(sec => ({ sec, list: shown.filter(i => i.section === sec) })).filter(g => g.list.length)
+    : [{ sec: null, list: sortBy === 'az' ? shown.slice().sort((a, b) => a.name.localeCompare(b.name)) : shown }];
 
   return (
     <div className="flow">
@@ -74,12 +85,35 @@ export default function ShopPage({ update, mon, label, items, skipped }: Props) 
           <button className="pill plain" onClick={print}>Print</button>
         </div>
         <AddItem onAdd={addManual} />
-        {groups.map(({ sec, list }) => (
-          <div key={sec} className="shop-group">
-            <div className="shop-group-head">
-              <span>{SHOP_SECTION_LABEL[sec]}</span>
-              <span className="muted">{list.length}</span>
+        {items.length > 0 && (
+          <div className="shop-controls">
+            <div className="seg" role="group" aria-label="Sort">
+              {SORTS.map(([k, l]) => (
+                <button key={k} aria-pressed={sortBy === k} className={sortBy === k ? 'on' : ''} onClick={() => setView(v => ({ ...v, sort: k }))}>{l}</button>
+              ))}
             </div>
+            <div className="row" style={{ gap: 4 }}>
+              {(['all', ...SHOP_SECTIONS] as const).map(f => {
+                const on = only === f, n = f === 'all' ? items.length : items.filter(i => i.section === f).length;
+                if (f !== 'all' && !n) return null;
+                return (
+                  <button key={f} className="filter" onClick={() => setView(v => ({ ...v, only: f }))}
+                    style={{ height: 28, fontSize: 12, borderColor: on ? '#23221F' : '#DDD8CC', background: on ? '#23221F' : '#fff', color: on ? '#fff' : '#23221F' }}>
+                    {f === 'all' ? 'All' : SHOP_SECTION_LABEL[f]} · {n}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+        {groups.map(({ sec, list }) => (
+          <div key={sec ?? 'all'} className="shop-group">
+            {sec && (
+              <div className="shop-group-head">
+                <span>{SHOP_SECTION_LABEL[sec]}</span>
+                <span className="muted">{list.length}</span>
+              </div>
+            )}
             {list.map(i => {
               const ck = isTicked(i);
               return (
@@ -120,6 +154,7 @@ export default function ShopPage({ update, mon, label, items, skipped }: Props) 
             <span>Estimated total</span><span>{money(total)}</span>
           </div>
         )}
+        {items.length > 0 && !shown.length && <p className="empty" style={{ padding: '12px 0', margin: 0 }}>Nothing in this section.</p>}
         {!items.length && <p className="empty" style={{ padding: '16px 0', margin: 0 }}>Nothing to buy — plan some meals, add an item above, or everything's already in the pantry.</p>}
         {items.some(isTicked) && (
           <button className="pill outline-dark" style={{ marginTop: 12 }} onClick={stockTicked}>Add ticked items to pantry</button>
