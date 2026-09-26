@@ -1,4 +1,7 @@
-import { budget, HouseholdData, money } from '../lib/model';
+import { useState } from 'react';
+import { key } from '../lib/dates';
+import { budget, ChoreOwner, EXTRA_COLOR, Extra, HouseholdData, money, nextOwner, OWNERS, uid } from '../lib/model';
+import type { Update } from '../Household';
 import { GroceryEstimate, groceryEstimate, PLAN_SLOTS } from '../lib/food';
 
 export function Donut({ bg, size, hole, children }: { bg: string; size: number; hole: number; children?: React.ReactNode }) {
@@ -9,9 +12,11 @@ export function Donut({ bg, size, hole, children }: { bg: string; size: number; 
   );
 }
 
-export default function BudgetCard({ D, mon, onEdit }: { D: HouseholdData; mon: Date; onEdit: () => void }) {
+export default function BudgetCard({ D, update, mon, onEdit }: { D: HouseholdData; update: Update; mon: Date; onEdit: () => void }) {
+  const wk = key(mon);
+  const extras = D.extras[wk] ?? [];
   const g = groceryEstimate(D, mon);
-  const b = budget(D, g);
+  const b = budget(D, g, extras);
 
   return (
     <section className="card" style={{ flex: '1 1 300px', padding: 20 }}>
@@ -50,7 +55,67 @@ export default function BudgetCard({ D, mon, onEdit }: { D: HouseholdData; mon: 
         </div>
       ))}
       {!b.cats.length && <p style={{ fontSize: 13, margin: 0 }} className="muted">No categories yet.</p>}
+      <WeekExtras extras={extras} total={b.extraTotal} update={update} wk={wk} />
     </section>
+  );
+}
+
+/** One-off costs for the week on screen; they don't touch the recurring budget. */
+function WeekExtras({ extras, total, update, wk }: { extras: Extra[]; total: number; update: Update; wk: string }) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState('');
+  const [amount, setAmount] = useState('');
+  const [who, setWho] = useState<ChoreOwner>('both');
+
+  const edit = (id: string, f: (x: Extra) => void) => update(d => { const x = (d.extras[wk] ?? []).find(z => z.id === id); if (x) f(x); });
+  const add = () => {
+    const n = name.trim();
+    if (!n) return;
+    const x: Extra = { id: uid(), name: n, amount: parseFloat(amount) || 0, who };
+    update(d => { d.extras[wk] = [...(d.extras[wk] ?? []), x]; });
+    setName(''); setAmount(''); setOpen(false);
+  };
+  const remove = (id: string) => update(d => {
+    const left = (d.extras[wk] ?? []).filter(z => z.id !== id);
+    if (left.length) d.extras[wk] = left; else delete d.extras[wk];
+  });
+  const tag = (o: ChoreOwner, onClick: () => void) => (
+    <button className="person-tag" title="Who pays" onClick={onClick}
+      style={{ height: 26, minWidth: 64, padding: '0 8px', flex: 'none', fontSize: 11, background: OWNERS[o].tint, color: OWNERS[o].ink }}>{OWNERS[o].name}</button>
+  );
+
+  return (
+    <div style={{ borderTop: '1px solid #F0ECE4', paddingTop: 10, marginTop: 2, display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+        <span style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 14 }}>
+          <span className="swatch" style={{ background: EXTRA_COLOR }} />This week only
+        </span>
+        <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {total > 0 && <span style={{ fontWeight: 600, fontSize: 14 }}>{money(total)}</span>}
+          <button className="x-btn" aria-label="Add a one-off cost" title="Add a one-off cost this week" onClick={() => setOpen(o => !o)}
+            style={{ width: 28, height: 28, fontSize: 16, lineHeight: 1 }}>{open ? '×' : '+'}</button>
+        </span>
+      </div>
+      {extras.map(x => (
+        <div key={x.id} style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13 }}>
+          {tag(x.who, () => edit(x.id, z => { z.who = nextOwner(z.who); }))}
+          <span style={{ flex: 1, minWidth: 0 }}>{x.name}</span>
+          <span>{money(+x.amount || 0)}</span>
+          <button className="link-btn" aria-label={'Remove ' + x.name} onClick={() => remove(x.id)}>Remove</button>
+        </div>
+      ))}
+      {open && (
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+          {tag(who, () => setWho(nextOwner(who)))}
+          <input className="field-sm" style={{ flex: '1 1 120px', height: 34 }} autoFocus value={name} onChange={e => setName(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') add(); }} placeholder="e.g. Birthday gift" />
+          <input className="field-sm" style={{ width: 80, height: 34 }} inputMode="decimal" value={amount} onChange={e => setAmount(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') add(); }} placeholder="$" />
+          <button className="pill-sm dark" onClick={add}>Add</button>
+        </div>
+      )}
+      {!extras.length && !open && <span className="note">One-off costs for this week. They don’t change your regular budget.</span>}
+    </div>
   );
 }
 

@@ -31,6 +31,16 @@ group('budget', () => {
     expect(money(b.income - b.spend)).toBe('$1,640');
     expect(money(-12.5)).toBe('−$12.50');
   });
+  it('adds one-off extras for the week, split by who pays', () => {
+    const D: HouseholdData = { ...seed(mon), cats: [{ id: 'x', name: 'Rent', ella: 380, jackson: 380 }] };
+    const b = budget(D, null, [
+      { id: '1', name: 'Gift', amount: 50, who: 'ella' },
+      { id: '2', name: 'Plumber', amount: '120', who: 'both' },
+    ]);
+    expect(b.extraTotal).toBe(170);
+    expect(b.spend).toBe(930);
+    expect([b.ellaLeft, b.jacksonLeft]).toEqual([1150 - 380 - 50 - 60, 1250 - 380 - 60]);
+  });
 });
 
 group('migrate', () => {

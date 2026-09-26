@@ -81,6 +81,8 @@ export type Schedule =
   | { type: 'monthly'; dom: number }
   | { type: 'once'; date: string };
 export interface Chore { id: string; name: string; person: ChoreOwner; sched: Schedule }
+/** A one-off cost for a single week; `who: 'both'` splits it 50/50. */
+export interface Extra { id: string; name: string; amount: Amount; who: ChoreOwner }
 
 export interface HouseholdData {
   incomes: Income[];
@@ -95,6 +97,8 @@ export interface HouseholdData {
   chores: Chore[];
   /** `${dateKey}|${choreId}` → 1 when done. */
   done: Record<string, 1>;
+  /** One-off costs by week (Monday's date key). Not part of the recurring budget. */
+  extras: Record<string, Extra[]>;
 }
 
 export const uid = () => Math.random().toString(36).slice(2, 9);
@@ -158,6 +162,7 @@ export function seed(today = new Date()): HouseholdData {
       { id: uid(), name: 'Change sheets', person: 'ella', sched: { type: 'every', n: 14, start: k(6) } },
     ],
     done: {},
+    extras: {},
   };
 }
 
@@ -172,7 +177,7 @@ export function migrate(d: any): HouseholdData | null {
     ];
   }
   delete d.income;
-  d.recipes ??= []; d.plan ??= {}; d.chores ??= []; d.done ??= {}; d.prices ??= []; d.staples ??= [];
+  d.recipes ??= []; d.plan ??= {}; d.chores ??= []; d.done ??= {}; d.prices ??= []; d.staples ??= []; d.extras ??= {};
   if (!Array.isArray(d.pantry)) d.pantry = Array.isArray(d.cupboard) ? d.cupboard : [];
   delete d.cupboard;
   for (const r of d.recipes) {
@@ -210,24 +215,30 @@ export function describe(s: Schedule) {
 /** Replaces one category's amounts, e.g. groceries worked out from the meal plan. */
 export interface CategoryOverride { id: string; ella: number; jackson: number }
 
-export function budget(D: HouseholdData, override?: CategoryOverride | null) {
+export const EXTRA_COLOR = '#BFB8AA';
+
+export function budget(D: HouseholdData, override?: CategoryOverride | null, extras: Extra[] = []) {
   const cats = D.cats.map((c, i) => {
     const o = override && override.id === c.id ? override : null;
     const e = o ? o.ella : num(c.ella), j = o ? o.jackson : num(c.jackson);
     return { ...c, e, j, total: e + j, color: CAT_COLORS[i % CAT_COLORS.length] };
   });
-  const spend = cats.reduce((a, c) => a + c.total, 0);
+  const share = (x: Extra, p: PersonId) => (x.who === p ? num(x.amount) : x.who === 'both' ? num(x.amount) / 2 : 0);
+  const extraE = extras.reduce((a, x) => a + share(x, 'ella'), 0), extraJ = extras.reduce((a, x) => a + share(x, 'jackson'), 0);
+  const extraTotal = extraE + extraJ;
+  const spend = cats.reduce((a, c) => a + c.total, 0) + extraTotal;
   const income = D.incomes.reduce((a, i) => a + num(i.amount), 0);
   const earns = (p: PersonId) => D.incomes.filter(i => i.person === p).reduce((a, i) => a + num(i.amount), 0);
-  const ella = cats.reduce((a, c) => a + c.e, 0), jackson = cats.reduce((a, c) => a + c.j, 0);
+  const ella = cats.reduce((a, c) => a + c.e, 0) + extraE, jackson = cats.reduce((a, c) => a + c.j, 0) + extraJ;
   let acc = 0;
-  const stops = cats.filter(c => c.total > 0).map(c => {
+  const slices = [...cats, { total: extraTotal, color: EXTRA_COLOR }];
+  const stops = slices.filter(c => c.total > 0).map(c => {
     const a = acc / spend * 360;
     acc += c.total;
     return c.color + ' ' + a + 'deg ' + (acc / spend * 360) + 'deg';
   });
   return {
-    cats, spend, income,
+    cats, spend, income, extraTotal,
     ella, jackson,
     left: income - spend,
     ellaLeft: earns('ella') - ella,

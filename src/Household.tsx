@@ -87,7 +87,7 @@ export default function Household({ data: D, update, status }: Props) {
           </div>
           <div className="flow">
             <WeekTable key={+mon} D={D} update={update} mon={mon} />
-            <BudgetCard D={D} mon={mon} onEdit={go('budget')} />
+            <BudgetCard D={D} update={update} mon={mon} onEdit={go('budget')} />
           </div>
         </>
       ) : (
