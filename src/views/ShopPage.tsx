@@ -3,7 +3,7 @@ import { addDays, key } from '../lib/dates';
 import { ManualShopItem, money, Unit, uid } from '../lib/model';
 import { buyText, fmtAmount, ShopItem, shoppingText, Skipped, stockUp } from '../lib/food';
 import type { Update } from '../Household';
-import { stockRule, UnitSelect } from './PantryPage';
+import { ExpiryInput, stockRule, UnitSelect } from './PantryPage';
 
 const TICKS_KEY = 'hh-shop-ticks';
 
@@ -91,11 +91,10 @@ export default function ShopPage({ update, mon, label, items, skipped }: Props) 
               <button className="link-btn shop-remove" aria-label={'Remove ' + i.name} onClick={() => removeManual(i.manual!)}>Remove</button>
             )}
             {ck && (
-              <label className="shop-expiry">
-                Expires <input type="date" className="field-sm" style={{ height: 34 }} value={dates[tick(i)] ?? ''}
-                  onChange={e => { const v = e.target.value; setDates(ds => ({ ...ds, [tick(i)]: v })); }} />
+              <div className="shop-expiry">
+                <ExpiryInput label="Expires" value={dates[tick(i)] ?? ''} onChange={v => setDates(ds => ({ ...ds, [tick(i)]: v }))} />
                 <span className="note">optional</span>
-              </label>
+              </div>
             )}
             </div>
           );

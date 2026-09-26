@@ -76,6 +76,7 @@ it('labels expiry dates and treats expired pantry items as not in stock', () => 
   expect(expiry('2026-09-22', today)).toMatchObject({ expired: true, label: 'Expired 22 Sep' });
   expect(expiry('2026-09-24', today)).toMatchObject({ soon: true, label: 'Expires tomorrow' });
   expect(expiry('2026-10-10', today)).toMatchObject({ soon: false, expired: false, label: 'Use by 10 Oct' });
+  expect(expiry('none', today)).toBeNull(); // N/A: never expires
 
   const D = household();
   D.pantry.push({ name: 'Rice', state: 'Full', qty: 900, unit: 'g', expires: '2026-09-20' });

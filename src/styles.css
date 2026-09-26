@@ -203,3 +203,4 @@ input:focus, textarea:focus, select:focus { outline: 2px solid var(--ink); outli
   .picker-list { max-height: min(50vh, 360px); }
   .scrim { background: rgba(35, 34, 31, .18); }
 }
+.expiry-input { display: inline-flex; gap: 6px; align-items: center; flex-wrap: wrap; }

@@ -1,5 +1,5 @@
 import { addDays, DOW, key, MON, parse } from './dates';
-import { CAT_COLORS, earnings, EXTRA_COLOR, HouseholdData, INCLUDE_LOW, Meal, MEALS, norm, num, shareOf, Spend, PantryItem, Price, Recipe, RecipeIngredient, STAPLE_COST, Unit } from './model';
+import { CAT_COLORS, earnings, NO_EXPIRY, EXTRA_COLOR, HouseholdData, INCLUDE_LOW, Meal, MEALS, norm, num, shareOf, Spend, PantryItem, Price, Recipe, RecipeIngredient, STAPLE_COST, Unit } from './model';
 
 // ── Plan ───────────────────────────────────────────────────────────────────
 
@@ -150,7 +150,7 @@ export function isStocked(p: PantryItem | undefined) {
 export const SOON_DAYS = 3;
 
 export function expiry(expires: string | undefined, today = new Date()) {
-  if (!expires) return null;
+  if (!expires || expires === NO_EXPIRY) return null;
   const days = Math.round((+parse(expires) - +parse(key(today))) / 864e5);
   const d = parse(expires), date = d.getDate() + ' ' + MON[d.getMonth()];
   const label = days < 0 ? 'Expired ' + date : days === 0 ? 'Expires today' : days === 1 ? 'Expires tomorrow' : days <= SOON_DAYS ? 'Expires in ' + days + ' days' : 'Use by ' + date;

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { HouseholdData, INCLUDE_LOW, norm, PantryItem, STATE_COLORS, STATES, StockState, Unit, UNIT_LABEL, UNITS } from '../lib/model';
+import { HouseholdData, INCLUDE_LOW, NO_EXPIRY, norm, PantryItem, STATE_COLORS, STATES, StockState, Unit, UNIT_LABEL, UNITS } from '../lib/model';
 import { addToPantry, expiry, fmtQty, priceMap } from '../lib/food';
 import type { Update } from '../Household';
 
@@ -72,10 +72,8 @@ export default function PantryPage({ D, update }: { D: HouseholdData; update: Up
                 </div>
               )}
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', fontSize: 12 }} className="muted">
-                <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                  Use by <input type="date" className="field-sm" style={{ height: 32, fontSize: 13 }} value={c.expires ?? ''}
-                    onChange={e => { const v = e.target.value; edit(c.name, z => { if (v) z.expires = v; else delete z.expires; }); }} />
-                </label>
+                <ExpiryInput label="Use by" height={32} value={c.expires ?? ''}
+                  onChange={v => edit(c.name, z => { if (v) z.expires = v; else delete z.expires; })} />
                 {(() => { const e = expiry(c.expires); return e && (e.soon || e.expired) ? <span className={'exp-chip ' + (e.expired ? 'expired' : 'soon')}>{e.label}</span> : null; })()}
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
@@ -132,15 +130,31 @@ function AddToPantry({ D, update }: { D: HouseholdData; update: Update }) {
           <input className="field-sm" style={{ width: 56, height: 40 }} inputMode="decimal" value={qty} onChange={e => setQty(e.target.value)} onKeyDown={onKey} placeholder="qty" aria-label="Amount" />
           <UnitSelect value={unit} onChange={setUnit} />
         </span>
-        <label className="ing-group">
-          <span className="ing-label">Use by</span>
-          <input type="date" className="field-sm" style={{ height: 40, fontSize: 13 }} value={expires} onChange={e => setExpires(e.target.value)} aria-label="Use by" />
-        </label>
+        <span className="ing-group"><ExpiryInput label="Use by" height={40} value={expires} onChange={setExpires} /></span>
         <button className="pill-sm dark" style={{ height: 40 }} onClick={add}>Add</button>
       </div>
       <span className="note">
         {existing ? existing.name + ' is already in the pantry — an amount here is added to what’s there.' : 'Amount and use-by date are optional. Without an amount it’s marked Full.'}
       </span>
     </div>
+  );
+}
+
+/**
+ * A use-by date box with an "N/A" button for things that don't expire.
+ * The value is a date key, NO_EXPIRY, or '' for not set.
+ */
+export function ExpiryInput({ label, value, onChange, height = 34 }: { label: string; value: string; onChange: (v: string) => void; height?: number }) {
+  const none = value === NO_EXPIRY;
+  return (
+    <span className="expiry-input">
+      <span className="ing-label">{label}</span>
+      {none
+        ? <span className="exp-chip" style={{ height: Math.min(height, 30), display: 'inline-flex', alignItems: 'center' }}>No expiry</span>
+        : <input type="date" className="field-sm" style={{ height, fontSize: 13 }} value={value} onChange={e => onChange(e.target.value)} aria-label={label} />}
+      <button className={'filter' + (none ? ' on' : '')} aria-pressed={none} title={none ? 'Set a date instead' : 'Doesn’t expire'}
+        onClick={() => onChange(none ? '' : NO_EXPIRY)}
+        style={{ height: Math.min(height, 30), fontSize: 12, padding: '0 10px', borderColor: none ? '#23221F' : '#DDD8CC', background: none ? '#23221F' : '#fff', color: none ? '#fff' : '#23221F' }}>N/A</button>
+    </span>
   );
 }

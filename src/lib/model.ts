@@ -80,7 +80,7 @@ export interface PantryItem {
   unit?: Unit;
   /** Set when stocked from a week's shopping list: the amount already allows for that week's dinners. */
   forWeek?: string;
-  /** Use-by date key, e.g. 2026-10-02. */
+  /** Use-by date key, e.g. 2026-10-02, or NO_EXPIRY for things that don't go off. */
   expires?: string;
 }
 export type Schedule =
@@ -89,6 +89,9 @@ export type Schedule =
   | { type: 'monthly'; dom: number }
   | { type: 'once'; date: string };
 export interface Chore { id: string; name: string; person: ChoreOwner; sched: Schedule }
+/** Stored as an item's expiry when it doesn't expire (the "N/A" option). */
+export const NO_EXPIRY = 'none';
+
 /** Something added to the shopping list by hand (not from a recipe). */
 export interface ManualShopItem { id: string; name: string; qty?: number; unit?: Unit; price?: number }
 
