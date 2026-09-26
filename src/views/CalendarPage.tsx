@@ -48,7 +48,8 @@ export default function CalendarPage({ D, update, mon, calOff, setCalOff, onPick
                 <button key={ev.id} className="cal-event" title={[ev.time, ev.title, ev.place].filter(Boolean).join(' · ')}
                   onClick={e => { e.stopPropagation(); setDialog({ date: ev.date, event: ev }); }}
                   style={{ background: soft(eventColor(ev)), borderLeft: '3px solid ' + eventColor(ev) }}>
-                  {ev.time && <span className="cal-event-time">{ev.time}</span>}{ev.title}
+                  <span className="cal-event-text">{ev.time && <span className="cal-event-time">{ev.time}</span>}{ev.title}</span>
+                  <span className="cal-event-who" style={{ background: OWNERS[ev.who].color }} aria-label={OWNERS[ev.who].name} title={OWNERS[ev.who].name} />
                 </button>
               ))}
               <span className="cal-meal">{c.meal}</span>
