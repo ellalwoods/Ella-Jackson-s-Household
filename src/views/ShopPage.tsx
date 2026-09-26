@@ -141,7 +141,7 @@ export default function ShopPage({ update, mon, label, items, skipped }: Props) 
                   {ck && (
                     <div className="shop-expiry">
                       <ExpiryInput label="Expires" value={dates[tick(i)] ?? ''} onChange={v => setDates(ds => ({ ...ds, [tick(i)]: v }))} />
-                      <span className="note">optional</span>
+                      {!dates[tick(i)] && <span className="note">optional</span>}
                     </div>
                   )}
                 </div>

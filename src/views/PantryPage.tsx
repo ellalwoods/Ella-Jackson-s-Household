@@ -1,4 +1,7 @@
 import { useState } from 'react';
+import { MON, parse } from '../lib/dates';
+
+const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 import { HouseholdData, INCLUDE_LOW, NO_EXPIRY, norm, PantryItem, STATE_COLORS, STATES, StockState, Unit, UNIT_LABEL, UNITS } from '../lib/model';
 import { addToPantry, expiry, fmtQty, priceMap } from '../lib/food';
 import type { Update } from '../Household';
@@ -145,16 +148,33 @@ function AddToPantry({ D, update }: { D: HouseholdData; update: Update }) {
  * The value is a date key, NO_EXPIRY, or '' for not set.
  */
 export function ExpiryInput({ label, value, onChange, height = 34 }: { label: string; value: string; onChange: (v: string) => void; height?: number }) {
-  const none = value === NO_EXPIRY;
+  const [editing, setEditing] = useState(false);
+  const none = value === NO_EXPIRY, dated = !!value && !none;
+  const pillH = Math.min(height, 30);
+  const d = dated ? parse(value) : null;
+
+  // A chosen date (or N/A) shows as a filled pill; tap it to change, × to clear.
+  if ((dated && !editing) || none) {
+    return (
+      <span className="expiry-input">
+        <span className="ing-label">{label}</span>
+        <span className="date-pill" style={{ height: pillH }}>
+          <button className="date-pill-main" onClick={() => { if (dated) setEditing(true); }} disabled={none}
+            title={dated ? 'Change date' : undefined} aria-label={dated ? label + ' ' + value + ', change' : 'No expiry'}>
+            <span aria-hidden>✓</span>{none ? 'No expiry' : DAYS[d!.getDay()] + ' ' + d!.getDate() + ' ' + MON[d!.getMonth()]}
+          </button>
+          <button className="date-pill-x" aria-label={'Clear ' + label.toLowerCase()} onClick={() => onChange('')}>×</button>
+        </span>
+      </span>
+    );
+  }
   return (
     <span className="expiry-input">
       <span className="ing-label">{label}</span>
-      {none
-        ? <span className="exp-chip" style={{ height: Math.min(height, 30), display: 'inline-flex', alignItems: 'center' }}>No expiry</span>
-        : <input type="date" className="field-sm" style={{ height, fontSize: 13 }} value={value} onChange={e => onChange(e.target.value)} aria-label={label} />}
-      <button className={'filter' + (none ? ' on' : '')} aria-pressed={none} title={none ? 'Set a date instead' : 'Doesn’t expire'}
-        onClick={() => onChange(none ? '' : NO_EXPIRY)}
-        style={{ height: Math.min(height, 30), fontSize: 12, padding: '0 10px', borderColor: none ? '#23221F' : '#DDD8CC', background: none ? '#23221F' : '#fff', color: none ? '#fff' : '#23221F' }}>N/A</button>
+      <input type="date" className="field-sm" style={{ height, fontSize: 13 }} value={value} autoFocus={editing} aria-label={label}
+        onChange={e => { onChange(e.target.value); if (e.target.value) setEditing(false); }} onBlur={() => setEditing(false)} />
+      <button className="filter" aria-pressed={false} title="Doesn’t expire" onClick={() => { setEditing(false); onChange(NO_EXPIRY); }}
+        style={{ height: pillH, fontSize: 12, padding: '0 10px', borderColor: '#DDD8CC', background: '#fff', color: '#23221F' }}>N/A</button>
     </span>
   );
 }
