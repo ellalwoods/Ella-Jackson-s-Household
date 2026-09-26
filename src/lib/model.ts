@@ -9,6 +9,15 @@ export const PEOPLE: Record<PersonId, { name: string; color: string; ink: string
 
 export const otherPerson = (p: PersonId): PersonId => (p === 'ella' ? 'jackson' : 'ella');
 
+/** Chores can also be shared, shown in dusty blue. */
+export type ChoreOwner = PersonId | 'both';
+export const OWNERS: Record<ChoreOwner, { name: string; color: string; ink: string; tint: string }> = {
+  ...PEOPLE,
+  both: { name: 'Both', color: '#8FB0CF', ink: '#3F6A8F', tint: '#E3EDF6' },
+};
+export const CHORE_OWNERS: ChoreOwner[] = ['ella', 'jackson', 'both'];
+export const nextOwner = (o: ChoreOwner) => CHORE_OWNERS[(CHORE_OWNERS.indexOf(o) + 1) % CHORE_OWNERS.length];
+
 /** Pie chart / category colours, assigned by category order. */
 export const CAT_COLORS = ['#8FB0CF', '#C4A8D4', '#86C2BF', '#DCD690', '#F0A88C', '#E3CBC6', '#6F93B5', '#A98BBA'];
 
@@ -56,7 +65,7 @@ export type Schedule =
   | { type: 'every'; n: number; start: string }
   | { type: 'monthly'; dom: number }
   | { type: 'once'; date: string };
-export interface Chore { id: string; name: string; person: PersonId; sched: Schedule }
+export interface Chore { id: string; name: string; person: ChoreOwner; sched: Schedule }
 
 export interface HouseholdData {
   incomes: Income[];

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { addDays, DOW, key } from '../lib/dates';
-import { HouseholdData, money, norm, occurs, PEOPLE, uid } from '../lib/model';
+import { HouseholdData, money, norm, occurs, OWNERS, uid } from '../lib/model';
 import { priceMap, recipeCost, searchRecipes } from '../lib/food';
 import type { Update } from '../Household';
 
@@ -21,7 +21,7 @@ export default function WeekTable({ D, update, mon }: Props) {
     const r = rBy.get(D.plan[k]?.r ?? '');
     const chores = D.chores.filter(c => occurs(c, d)).map(c => {
       const dk = k + '|' + c.id;
-      return { c, dk, done: !!D.done[dk], p: PEOPLE[c.person] };
+      return { c, dk, done: !!D.done[dk], p: OWNERS[c.person] };
     });
     return { k, dow, dateNum: d.getDate(), r, isToday: k === tk, chores };
   });
@@ -124,6 +124,7 @@ export default function WeekTable({ D, update, mon }: Props) {
         <span style={{ display: 'flex', gap: 12 }}>
           <span className="legend"><span className="dot8" style={{ background: '#E886B8' }} />Ella</span>
           <span className="legend"><span className="dot8" style={{ background: '#2A9E80' }} />Jackson</span>
+          <span className="legend"><span className="dot8" style={{ background: '#8FB0CF' }} />Both</span>
         </span>
       </div>
     </section>
