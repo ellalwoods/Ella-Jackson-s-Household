@@ -40,12 +40,20 @@ export const UNIT_LABEL: Record<Unit, string> = { g: 'g', kg: 'kg', ml: 'ml', L:
 /** Nominal cost each time a recipe uses a staple (salt, pepper, spices…). */
 export const STAPLE_COST = 0.05;
 
+export const MEALS = ['breakfast', 'lunch', 'dinner', 'other'] as const;
+export type Meal = (typeof MEALS)[number];
+export const MEAL_LABEL: Record<Meal, string> = { breakfast: 'Breakfast', lunch: 'Lunch', dinner: 'Dinner', other: 'Other' };
+/** Recipe planned for each meal of a day. */
+export type DayPlan = Partial<Record<Meal, string>>;
+
 /** How much of an ingredient a recipe uses (both optional: some things are "to taste"). */
 export interface RecipeIngredient { name: string; qty?: number; unit?: Unit }
 export interface Recipe {
   id: string;
   name: string;
   ingredients: RecipeIngredient[];
+  /** Which meals it's for; shown first when planning that meal. */
+  meals: Meal[];
   link?: string;
   /** Free-text method. */
   method?: string;
@@ -78,8 +86,8 @@ export interface HouseholdData {
   incomes: Income[];
   cats: Category[];
   recipes: Recipe[];
-  /** Dinner per date key. */
-  plan: Record<string, { r: string }>;
+  /** Meals per date key. */
+  plan: Record<string, DayPlan>;
   prices: Price[];
   /** Ingredients used without measuring (e.g. salt), shared across recipes. */
   staples: string[];
@@ -99,7 +107,7 @@ export const money = (v: number) => {
 
 export function seed(today = new Date()): HouseholdData {
   const m = mondayOf(today), k = (i: number) => key(addDays(m, i));
-  const plan: HouseholdData['plan'] = { [k(0)]: { r: 'bol' }, [k(1)]: { r: 'stir' }, [k(3)]: { r: 'tray' } };
+  const plan: HouseholdData['plan'] = { [k(0)]: { dinner: 'bol' }, [k(1)]: { dinner: 'stir' }, [k(3)]: { dinner: 'tray' } };
   return {
     incomes: [
       { id: uid(), name: 'Salary', person: 'ella', amount: 1150 },
@@ -113,16 +121,16 @@ export function seed(today = new Date()): HouseholdData {
       { id: uid(), name: 'Leisure', ella: 60, jackson: 60 },
     ],
     recipes: [
-      { id: 'bol', name: 'Spaghetti bolognese', ingredients: [
+      { id: 'bol', name: 'Spaghetti bolognese', meals: ['dinner'], ingredients: [
         { name: 'Spaghetti', qty: 400, unit: 'g' }, { name: 'Beef mince', qty: 500, unit: 'g' }, { name: 'Passata', qty: 700, unit: 'ml' },
         { name: 'Onion', qty: 1, unit: 'each' }, { name: 'Garlic', qty: 0.25, unit: 'each' }, { name: 'Carrot', qty: 150, unit: 'g' }, { name: 'Parmesan', qty: 40, unit: 'g' }] },
-      { id: 'stir', name: 'Veggie stir-fry', ingredients: [
+      { id: 'stir', name: 'Veggie stir-fry', meals: ['dinner', 'lunch'], ingredients: [
         { name: 'Rice', qty: 200, unit: 'g' }, { name: 'Broccoli', qty: 1, unit: 'each' }, { name: 'Capsicum', qty: 1, unit: 'each' }, { name: 'Soy sauce', qty: 30, unit: 'ml' },
         { name: 'Ginger', qty: 20, unit: 'g' }, { name: 'Garlic', qty: 0.25, unit: 'each' }, { name: 'Tofu', qty: 450, unit: 'g' }] },
-      { id: 'tray', name: 'Lemon chicken tray bake', ingredients: [
+      { id: 'tray', name: 'Lemon chicken tray bake', meals: ['dinner'], ingredients: [
         { name: 'Chicken thighs', qty: 600, unit: 'g' }, { name: 'Potatoes', qty: 600, unit: 'g' }, { name: 'Lemon', qty: 1, unit: 'each' },
         { name: 'Garlic', qty: 0.25, unit: 'each' }, { name: 'Rosemary', qty: 0.5, unit: 'each' }, { name: 'Olive oil', qty: 30, unit: 'ml' }] },
-      { id: 'salmon', name: 'Salmon, rice & greens', ingredients: [
+      { id: 'salmon', name: 'Salmon, rice & greens', meals: ['dinner', 'lunch'], ingredients: [
         { name: 'Salmon', qty: 250, unit: 'g' }, { name: 'Rice', qty: 150, unit: 'g' }, { name: 'Green beans', qty: 250, unit: 'g' },
         { name: 'Lemon', qty: 0.5, unit: 'each' }, { name: 'Soy sauce', qty: 20, unit: 'ml' }] },
     ],
@@ -153,7 +161,7 @@ export function seed(today = new Date()): HouseholdData {
   };
 }
 
-/** Upgrades older saved data: the prototype's single income, `cupboard` → `pantry`, plain-text ingredients. */
+/** Upgrades older saved data: the prototype's single income, `cupboard` → `pantry`, plain-text ingredients, dinner-only plans. */
 export function migrate(d: any): HouseholdData | null {
   if (!d || typeof d !== 'object' || !Array.isArray(d.cats)) return null;
   if (!Array.isArray(d.incomes)) {
@@ -169,6 +177,12 @@ export function migrate(d: any): HouseholdData | null {
   delete d.cupboard;
   for (const r of d.recipes) {
     r.ingredients = (r.ingredients ?? []).map((g: unknown) => (typeof g === 'string' ? { name: g } : g));
+    if (!Array.isArray(r.meals)) r.meals = ['dinner'];
+  }
+  // Older plans held one dinner per day as { r }.
+  for (const k of Object.keys(d.plan)) {
+    const v = d.plan[k];
+    if (v && typeof v.r === 'string') d.plan[k] = { dinner: v.r };
   }
   return d as HouseholdData;
 }

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { HouseholdData, money, norm, Price, Recipe, RecipeIngredient, STAPLE_COST, uid, Unit } from '../lib/model';
+import { HouseholdData, Meal, MEAL_LABEL, MEALS, money, norm, Price, Recipe, RecipeIngredient, STAPLE_COST, uid, Unit } from '../lib/model';
 import { priceMap, stapleSet, useCost } from '../lib/food';
 import type { Update } from '../Household';
 import { UnitSelect } from './PantryPage';
@@ -41,6 +41,7 @@ export default function RecipeEditor({ D, update, recipe, onDone }: Props) {
   const [name, setName] = useState(recipe?.name ?? '');
   const [link, setLink] = useState(recipe?.link ?? '');
   const [method, setMethod] = useState(recipe?.method ?? '');
+  const [meals, setMeals] = useState<Meal[]>(recipe?.meals ?? ['dinner']);
   const [rows, setRows] = useState<Row[]>(() => {
     const rs = (recipe?.ingredients ?? []).map(g => fromPrice({ ...blankRow(), name: g.name, qty: g.qty != null ? String(g.qty) : '', unit: g.unit ?? 'g', staple: staples.has(norm(g.name)) }, prices.get(norm(g.name))));
     return rs.length ? rs : [blankRow()];
@@ -78,7 +79,7 @@ export default function RecipeEditor({ D, update, recipe, onDone }: Props) {
       const bq = numOr(r.buyQty), pr = numOr(r.price);
       return bq && pr != null && !isNaN(pr) ? [{ name: r.name.trim(), qty: bq, unit: r.buyUnit, price: pr }] : [];
     });
-    const out: Recipe = { id: recipe?.id ?? uid(), name: n, ingredients };
+    const out: Recipe = { id: recipe?.id ?? uid(), name: n, meals: MEALS.filter(m => meals.includes(m)), ingredients };
     if (safeLink(link)) out.link = safeLink(link);
     if (method.trim()) out.method = method;
     if (!priced.length && recipe?.cost) out.cost = recipe.cost;
@@ -102,6 +103,16 @@ export default function RecipeEditor({ D, update, recipe, onDone }: Props) {
     <div style={{ background: '#fff', border: '1px solid #23221F', borderRadius: 16, padding: 16, marginBottom: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
       <div style={{ fontWeight: 600 }}>{recipe ? 'Edit recipe' : 'New recipe'}</div>
       <input className="field" value={name} onChange={e => setName(e.target.value)} placeholder="Recipe name" />
+      <div className="row" style={{ alignItems: 'center' }}>
+        <span className="ing-label" style={{ marginRight: 2 }}>For</span>
+        {MEALS.map(m => {
+          const on = meals.includes(m);
+          return (
+            <button key={m} className="filter" aria-pressed={on} onClick={() => setMeals(on ? meals.filter(z => z !== m) : [...meals, m])}
+              style={{ borderColor: on ? '#23221F' : '#DDD8CC', background: on ? '#23221F' : '#fff', color: on ? '#fff' : '#23221F' }}>{MEAL_LABEL[m]}</button>
+          );
+        })}
+      </div>
       <input className="field" value={link} onChange={e => setLink(e.target.value)} placeholder="Link to recipe (optional)" inputMode="url" autoCapitalize="off" />
 
       <div className="eyebrow" style={{ fontSize: 11, marginTop: 6 }}>Ingredients</div>

@@ -1,5 +1,23 @@
 import { addDays, DOW, key, MON, parse } from './dates';
-import { HouseholdData, INCLUDE_LOW, norm, PantryItem, Price, Recipe, RecipeIngredient, STAPLE_COST, Unit } from './model';
+import { HouseholdData, INCLUDE_LOW, Meal, MEALS, norm, PantryItem, Price, Recipe, RecipeIngredient, STAPLE_COST, Unit } from './model';
+
+// ── Plan ───────────────────────────────────────────────────────────────────
+
+export interface PlannedMeal { day: number; dateKey: string; meal: Meal; recipe: Recipe }
+
+/** Every planned meal in the week starting `mon`, in day then meal order. */
+export function weekMeals(D: HouseholdData, mon: Date): PlannedMeal[] {
+  const rBy = new Map(D.recipes.map(r => [r.id, r]));
+  const out: PlannedMeal[] = [];
+  for (let day = 0; day < 7; day++) {
+    const dateKey = key(addDays(mon, day)), p = D.plan[dateKey] ?? {};
+    for (const meal of MEALS) {
+      const recipe = rBy.get(p[meal] ?? '');
+      if (recipe) out.push({ day, dateKey, meal, recipe });
+    }
+  }
+  return out;
+}
 
 // ── Units ──────────────────────────────────────────────────────────────────
 
@@ -97,13 +115,8 @@ export interface Skipped { name: string; note: string }
 interface Need { name: string; days: string[]; need: Amount | null; exact: boolean }
 
 function weekNeeds(D: HouseholdData, mon: Date) {
-  const rBy = new Map(D.recipes.map(r => [r.id, r]));
   const needs = new Map<string, Need>();
-  for (let i = 0; i < 7; i++) {
-    const r = rBy.get(D.plan[key(addDays(mon, i))]?.r ?? '');
-    if (!r) continue;
-    for (const g of r.ingredients) addNeed(needs, g, DOW[i]);
-  }
+  for (const m of weekMeals(D, mon)) for (const g of m.recipe.ingredients) addNeed(needs, g, DOW[m.day]);
   return needs;
 }
 

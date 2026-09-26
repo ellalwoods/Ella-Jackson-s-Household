@@ -45,6 +45,11 @@ group('migrate', () => {
     expect('cupboard' in d).toBe(false);
     expect(d.recipes[0].ingredients).toEqual([{ name: 'Rice' }]);
     expect(d.prices).toEqual([]);
+    expect(d.recipes[0].meals).toEqual(['dinner']);
+  });
+  it('moves dinner-only plans into the dinner slot', () => {
+    const d = migrate({ cats: [], incomes: [], plan: { '2026-09-21': { r: 'bol' }, '2026-09-22': { lunch: 'x' } } })!;
+    expect(d.plan).toEqual({ '2026-09-21': { dinner: 'bol' }, '2026-09-22': { lunch: 'x' } });
   });
 });
 

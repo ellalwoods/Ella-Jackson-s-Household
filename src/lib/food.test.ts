@@ -9,11 +9,11 @@ const wk = key(mon);
 function household(): HouseholdData {
   return {
     ...seed(mon),
-    plan: { [key(mon)]: { r: 'a' }, [key(addDays(mon, 2))]: { r: 'b' } },
+    plan: { [key(mon)]: { dinner: 'a' }, [key(addDays(mon, 2))]: { lunch: 'b' } },
     recipes: [
-      { id: 'a', name: 'Rice bowl', ingredients: [{ name: 'Rice', qty: 250, unit: 'g' }, { name: 'Salt' }] },
-      { id: 'b', name: 'Fried rice', ingredients: [{ name: 'Rice', qty: 0.2, unit: 'kg' }, { name: 'Egg', qty: 2, unit: 'each' }] },
-      { id: 'c', name: 'Old', cost: 12, ingredients: [{ name: 'Mystery' }] },
+      { id: 'a', name: 'Rice bowl', meals: ['dinner'], ingredients: [{ name: 'Rice', qty: 250, unit: 'g' }, { name: 'Salt' }] },
+      { id: 'b', name: 'Fried rice', meals: ['lunch'], ingredients: [{ name: 'Rice', qty: 0.2, unit: 'kg' }, { name: 'Egg', qty: 2, unit: 'each' }] },
+      { id: 'c', name: 'Old', meals: ['dinner'], cost: 12, ingredients: [{ name: 'Mystery' }] },
     ],
     prices: [
       { name: 'Rice', qty: 1, unit: 'kg', price: 3 },
@@ -67,7 +67,7 @@ it('puts the leftover in the pantry after shopping, allowing for the week', () =
   expect(D.pantry.find(p => p.name === 'Egg')).toMatchObject({ qty: 10, unit: 'each' });
   // Same week: nothing left to buy. Next week the 650 g counts as stock.
   expect(shoppingList(D, mon).items).toEqual([]);
-  D.plan = { [key(addDays(mon, 7))]: { r: 'a' } };
+  D.plan = { [key(addDays(mon, 7))]: { dinner: 'a' } };
   expect(shoppingList(D, addDays(mon, 7)).items.some(i => i.name === 'Rice')).toBe(false);
 });
 

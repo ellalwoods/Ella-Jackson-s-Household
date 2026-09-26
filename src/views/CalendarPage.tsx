@@ -1,5 +1,5 @@
 import { addDays, DOW, key, MONL, mondayOf, weekOffsetOf } from '../lib/dates';
-import { HouseholdData, occurs, OWNERS } from '../lib/model';
+import { HouseholdData, MEALS, occurs, OWNERS } from '../lib/model';
 
 interface Props { D: HouseholdData; mon: Date; calOff: number; setCalOff: (f: (n: number) => number) => void; onPickWeek: (week: number) => void }
 
@@ -12,7 +12,7 @@ export default function CalendarPage({ D, mon, calOff, setCalOff, onPickWeek }: 
   for (let i = 0; i < 42; i++) {
     const d = addDays(start, i), k = key(d), inM = d.getMonth() === base.getMonth(), inW = d >= mon && d <= end;
     if (i === 35 && !inM) break;
-    cells.push({ d, k, inM, inW, meal: rBy.get(D.plan[k]?.r ?? '')?.name ?? '', dots: D.chores.filter(c => occurs(c, d)).map(c => OWNERS[c.person].color) });
+    cells.push({ d, k, inM, inW, meal: MEALS.map(m => rBy.get(D.plan[k]?.[m] ?? '')?.name).filter(Boolean).join(' · '), dots: D.chores.filter(c => occurs(c, d)).map(c => OWNERS[c.person].color) });
   }
 
   return (

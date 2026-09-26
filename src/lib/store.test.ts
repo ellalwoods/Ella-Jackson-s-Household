@@ -32,7 +32,7 @@ it('fills a brand-new household and saves edits', async () => {
   await wait(50);
   expect(server.version).toBe(1);
   expect(server.data?.recipes.length).toBeGreaterThan(0);
-  store.update(d => { d.recipes.push({ id: 'new', name: 'Laksa', cost: 20, ingredients: [] }); });
+  store.update(d => { d.recipes.push({ id: 'new', name: 'Laksa', meals: ['dinner'], ingredients: [] }); });
   await wait(600);
   expect(server.version).toBe(2);
   expect(server.data!.recipes.some(r => r.name === 'Laksa')).toBe(true);
