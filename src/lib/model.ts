@@ -89,6 +89,30 @@ export type Schedule =
   | { type: 'monthly'; dom: number }
   | { type: 'once'; date: string };
 export interface Chore { id: string; name: string; person: ChoreOwner; sched: Schedule }
+/** A calendar tag: the name is whatever you type; colour is picked automatically. */
+export interface Tag { name: string; color: string }
+export interface CalEvent {
+  id: string;
+  /** Date key, e.g. 2026-10-03. */
+  date: string;
+  title: string;
+  /** 24h "HH:MM" from a time input. */
+  time?: string;
+  place?: string;
+  who: ChoreOwner;
+  notes?: string;
+  /** Tag names; the first one colours the event. */
+  tags: string[];
+}
+export const TAG_COLORS = ['#8FB0CF', '#C4A8D4', '#86C2BF', '#DCD690', '#F0A88C', '#E3CBC6', '#6F93B5', '#A98BBA', '#E886B8', '#2A9E80'];
+
+/** Soft version of a colour for event boxes: mixed `t` of the way to white. */
+export function soft(hex: string, t = 0.72) {
+  const n = parseInt(hex.replace('#', ''), 16);
+  const mix = (v: number) => Math.round(v + (255 - v) * t);
+  return 'rgb(' + mix(n >> 16) + ',' + mix((n >> 8) & 255) + ',' + mix(n & 255) + ')';
+}
+
 /** Money spent in a budget category during a week; `who: 'both'` splits it 50/50. */
 export interface Spend { id: string; cat: string; amount: Amount; who: ChoreOwner; note?: string }
 /** A one-off cost for a single week; `who: 'both'` splits it 50/50. */
@@ -111,6 +135,8 @@ export interface HouseholdData {
   extras: Record<string, Extra[]>;
   /** Logged spending by week (Monday's date key). */
   spends: Record<string, Spend[]>;
+  events: CalEvent[];
+  tags: Tag[];
 }
 
 export const uid = () => Math.random().toString(36).slice(2, 9);
@@ -176,6 +202,8 @@ export function seed(today = new Date()): HouseholdData {
     done: {},
     extras: {},
     spends: {},
+    events: [],
+    tags: [],
   };
 }
 
@@ -190,7 +218,7 @@ export function migrate(d: any): HouseholdData | null {
     ];
   }
   delete d.income;
-  d.recipes ??= []; d.plan ??= {}; d.chores ??= []; d.done ??= {}; d.prices ??= []; d.staples ??= []; d.extras ??= {}; d.spends ??= {};
+  d.recipes ??= []; d.plan ??= {}; d.chores ??= []; d.done ??= {}; d.prices ??= []; d.staples ??= []; d.extras ??= {}; d.spends ??= {}; d.events ??= []; d.tags ??= [];
   for (const c of d.cats) if (c.fixed === undefined && /\brent\b/i.test(c.name)) c.fixed = true;
   if (!Array.isArray(d.pantry)) d.pantry = Array.isArray(d.cupboard) ? d.cupboard : [];
   delete d.cupboard;

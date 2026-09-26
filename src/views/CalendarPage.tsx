@@ -1,9 +1,18 @@
 import { addDays, DOW, key, MONL, mondayOf, weekOffsetOf } from '../lib/dates';
-import { HouseholdData, MEALS, occurs, OWNERS } from '../lib/model';
+import { useState } from 'react';
+import { CalEvent, HouseholdData, MEALS, norm, occurs, OWNERS, soft } from '../lib/model';
+import type { Update } from '../Household';
+import EventDialog from './EventDialog';
 
-interface Props { D: HouseholdData; mon: Date; calOff: number; setCalOff: (f: (n: number) => number) => void; onPickWeek: (week: number) => void }
+interface Props { D: HouseholdData; update: Update; mon: Date; calOff: number; setCalOff: (f: (n: number) => number) => void; onPickWeek: (week: number) => void }
 
-export default function CalendarPage({ D, mon, calOff, setCalOff, onPickWeek }: Props) {
+export default function CalendarPage({ D, update, mon, calOff, setCalOff, onPickWeek }: Props) {
+  const [dialog, setDialog] = useState<{ date: string; event: CalEvent | null } | null>(null);
+  const tagColor = (n: string) => D.tags.find(t => norm(t.name) === norm(n))?.color;
+  const eventColor = (e: CalEvent) => (e.tags.length && tagColor(e.tags[0])) || OWNERS[e.who].color;
+  const byDate = new Map<string, CalEvent[]>();
+  for (const e of D.events) byDate.set(e.date, [...(byDate.get(e.date) ?? []), e]);
+  byDate.forEach(list => list.sort((a, b) => (a.time ?? '99').localeCompare(b.time ?? '99')));
   const today = new Date(), tk = key(today), end = addDays(mon, 6);
   const rBy = new Map(D.recipes.map(r => [r.id, r]));
   const base = new Date(mon.getFullYear(), mon.getMonth() + calOff, 1);
@@ -24,18 +33,34 @@ export default function CalendarPage({ D, mon, calOff, setCalOff, onPickWeek }: 
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,minmax(0,1fr))', gap: 6 }}>
         {DOW.map(h => <span key={h} style={{ fontSize: 11, textAlign: 'center', fontWeight: 600, paddingBottom: 4 }} className="muted">{h}</span>)}
-        {cells.map(c => (
-          <button key={c.k} className="cal-cell" onClick={() => onPickWeek(weekOffsetOf(c.d, today))}
-            style={{ opacity: c.inM ? 1 : 0.4, borderColor: c.k === tk ? '#23221F' : c.inW ? '#CFC9BC' : '#EFEBE3', background: c.inW ? '#F6F3EC' : '#fff' }}>
-            <span style={{ fontSize: 13, fontWeight: 600 }}>{c.d.getDate()}</span>
-            <span className="cal-meal">{c.meal}</span>
-            <span style={{ display: 'flex', gap: 3, flexWrap: 'wrap', marginTop: 'auto' }}>
-              {c.dots.map((dt, i) => <span key={i} style={{ width: 7, height: 7, borderRadius: '50%', background: dt }} />)}
-            </span>
-          </button>
-        ))}
+        {cells.map(c => {
+          const evs = byDate.get(c.k) ?? [];
+          return (
+            <div key={c.k} className="cal-cell" onClick={() => onPickWeek(weekOffsetOf(c.d, today))} role="button" tabIndex={0}
+              onKeyDown={e => { if (e.key === 'Enter' && e.target === e.currentTarget) onPickWeek(weekOffsetOf(c.d, today)); }}
+              style={{ opacity: c.inM ? 1 : 0.4, borderColor: c.k === tk ? '#23221F' : c.inW ? '#CFC9BC' : '#EFEBE3', background: c.inW ? '#F6F3EC' : '#fff' }}>
+              <span style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <span style={{ fontSize: 13, fontWeight: 600 }}>{c.d.getDate()}</span>
+                <button className="cal-add" aria-label={'Add event on ' + c.d.getDate()} title="Add event"
+                  onClick={e => { e.stopPropagation(); setDialog({ date: c.k, event: null }); }}>+</button>
+              </span>
+              {evs.map(ev => (
+                <button key={ev.id} className="cal-event" title={[ev.time, ev.title, ev.place].filter(Boolean).join(' · ')}
+                  onClick={e => { e.stopPropagation(); setDialog({ date: ev.date, event: ev }); }}
+                  style={{ background: soft(eventColor(ev)), borderLeft: '3px solid ' + eventColor(ev) }}>
+                  {ev.time && <span className="cal-event-time">{ev.time}</span>}{ev.title}
+                </button>
+              ))}
+              <span className="cal-meal">{c.meal}</span>
+              <span style={{ display: 'flex', gap: 3, flexWrap: 'wrap', marginTop: 'auto' }}>
+                {c.dots.map((dt, i) => <span key={i} style={{ width: 7, height: 7, borderRadius: '50%', background: dt }} />)}
+              </span>
+            </div>
+          );
+        })}
       </div>
-      <p className="note" style={{ margin: '12px 0 0' }}>Tap a day to jump to its week. Dots are chores in each person's colour, blue for shared.</p>
+      {dialog && <EventDialog D={D} update={update} date={dialog.date} event={dialog.event} onClose={() => setDialog(null)} />}
+      <p className="note" style={{ margin: '12px 0 0' }}>Tap + to add an event, or an event to edit it. Tap a day to jump to its week. Dots are chores in each person's colour, blue for shared.</p>
     </div>
   );
 }

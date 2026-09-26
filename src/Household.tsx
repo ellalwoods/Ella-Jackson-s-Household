@@ -115,7 +115,7 @@ export default function Household({ data: D, update, status }: Props) {
           {page === 'chores' && <ChoresPage D={D} update={update} />}
           {page === 'budget' && <BudgetPage D={D} update={update} />}
           {page === 'calendar' && (
-            <CalendarPage D={D} mon={mon} calOff={calOff} setCalOff={setCalOff}
+            <CalendarPage D={D} update={update} mon={mon} calOff={calOff} setCalOff={setCalOff}
               onPickWeek={w => { setWeek(w); setPage(null); setCalOff(0); }} />
           )}
         </div>
