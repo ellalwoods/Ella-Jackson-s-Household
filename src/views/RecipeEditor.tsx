@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Bucket, BucketUse, HouseholdData, Meal, MEAL_LABEL, MEALS, money, norm, Price, Recipe, RecipeIngredient, STAPLE_COST, uid, Unit } from '../lib/model';
+import { Bucket, BucketItem, BucketUse, HouseholdData, Meal, MEAL_LABEL, MEALS, money, norm, Price, Recipe, RecipeIngredient, STAPLE_COST, uid, Unit } from '../lib/model';
 import { bucketAverage, costContext, priceMap, stapleSet, useCost } from '../lib/food';
 import type { Update } from '../Household';
 import { UnitSelect } from './PantryPage';
@@ -16,9 +16,11 @@ interface Row {
   auto: boolean;
   /** Used without measuring; costs a nominal amount. */
   staple: boolean;
+  /** Bucket items only: this bucket's tags that apply. */
+  tags: string[];
 }
 
-const blankRow = (): Row => ({ key: uid(), name: '', qty: '', unit: 'g', buyQty: '', buyUnit: 'g', price: '', auto: false, staple: false });
+const blankRow = (): Row => ({ key: uid(), name: '', qty: '', unit: 'g', buyQty: '', buyUnit: 'g', price: '', auto: false, staple: false, tags: [] });
 const numOr = (s: string) => (s.trim() === '' ? undefined : parseFloat(s));
 
 function fromPrice(row: Row, pr: Price | undefined): Row {
@@ -43,11 +45,26 @@ export default function RecipeEditor({ D, update, recipe, bucket = null, kind = 
   const [name, setName] = useState((isBucket ? bucket?.name : recipe?.name) ?? '');
   const [uses, setUses] = useState<BucketUse[]>(recipe?.buckets ?? []);
   const [choosing, setChoosing] = useState(false);
+  const [perMeal, setPerMeal] = useState(String(bucket?.perMeal ?? 1));
+  const [bucketTags, setBucketTags] = useState<string[]>(bucket?.tags ?? []);
+  const [tags, setTags] = useState<string[]>(recipe?.tags ?? []);
+  const [newTag, setNewTag] = useState('');
+  const allRecipeTags = Array.from(new Set([...D.recipeTags, ...tags])).sort((a, b) => a.localeCompare(b));
+  const addTag = () => {
+    const t = newTag.trim();
+    if (!t) return;
+    if (isBucket) { if (!bucketTags.some(x => norm(x) === norm(t))) setBucketTags(ts => [...ts, t]); }
+    else {
+      const existing = allRecipeTags.find(x => norm(x) === norm(t)) ?? t;
+      if (!tags.some(x => norm(x) === norm(existing))) setTags(ts => [...ts, existing]);
+    }
+    setNewTag('');
+  };
   const [link, setLink] = useState(recipe?.link ?? '');
   const [method, setMethod] = useState(recipe?.method ?? '');
   const [meals, setMeals] = useState<Meal[]>(recipe?.meals ?? ['dinner']);
   const [rows, setRows] = useState<Row[]>(() => {
-    const rs = ((isBucket ? bucket?.items : recipe?.ingredients) ?? []).map(g => fromPrice({ ...blankRow(), name: g.name, qty: g.qty != null ? String(g.qty) : '', unit: g.unit ?? 'g', staple: staples.has(norm(g.name)) }, prices.get(norm(g.name))));
+    const rs = ((isBucket ? bucket?.items : recipe?.ingredients) ?? []).map(g => fromPrice({ ...blankRow(), name: g.name, qty: g.qty != null ? String(g.qty) : '', unit: g.unit ?? 'g', staple: staples.has(norm(g.name)), tags: (g as BucketItem).tags ?? [] }, prices.get(norm(g.name))));
     return rs.length ? rs : [blankRow()];
   });
 
@@ -91,7 +108,13 @@ export default function RecipeEditor({ D, update, recipe, bucket = null, kind = 
     if (safeLink(link)) out.link = safeLink(link);
     if (method.trim()) out.method = method;
     if (!priced.length && !keptUses.length && recipe?.cost) out.cost = recipe.cost;
-    const outBucket: Bucket = { id: bucket?.id ?? uid(), name: n, items: ingredients };
+    if (tags.length) out.tags = tags;
+    const items: BucketItem[] = ingredients.map((g, i) => {
+      const t = used[i].tags.filter(x => bucketTags.some(b => norm(b) === norm(x)));
+      return t.length ? { ...g, tags: t } : g;
+    });
+    const outBucket: Bucket = { id: bucket?.id ?? uid(), name: n, items, perMeal: Math.max(1, parseInt(perMeal) || 1) };
+    if (bucketTags.length) outBucket.tags = bucketTags;
 
     update(x => {
       if (isBucket) {
@@ -100,6 +123,7 @@ export default function RecipeEditor({ D, update, recipe, bucket = null, kind = 
       } else {
         const i = x.recipes.findIndex(z => z.id === out.id);
         if (i >= 0) x.recipes[i] = out; else x.recipes.push(out);
+        for (const t of tags) if (!x.recipeTags.some(z => norm(z) === norm(t))) x.recipeTags.push(t);
       }
       // Staple status is shared: marking or unmarking it here applies to every recipe.
       const staples = x.staples.filter(n => !used.some(r => !r.staple && norm(r.name) === norm(n)));
@@ -118,6 +142,17 @@ export default function RecipeEditor({ D, update, recipe, bucket = null, kind = 
       <div style={{ fontWeight: 600 }}>{isBucket ? (bucket ? 'Edit bucket' : 'New bucket') : recipe ? 'Edit recipe' : 'New recipe'}</div>
       <input className="field" value={name} onChange={e => setName(e.target.value)} placeholder={isBucket ? 'Bucket title, e.g. Vegetables' : 'Recipe name'} />
       {isBucket && <p className="note" style={{ margin: 0 }}>Add the interchangeable items in this bucket and how much of each a meal uses. Recipes use a number of them, picked when you plan the meal.</p>}
+      {isBucket && (
+        <label style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 14 }}>Items per meal</span>
+          <input className="field-sm ing-num" inputMode="numeric" value={perMeal} onChange={e => setPerMeal(e.target.value)} aria-label="Items per meal" />
+          <span className="note">The usual number; each recipe can change it.</span>
+        </label>
+      )}
+      <TagRow label={isBucket ? 'Tags in this bucket (optional)' : 'Tags'}
+        tags={isBucket ? bucketTags : allRecipeTags} selected={isBucket ? bucketTags : tags}
+        onToggle={t => isBucket ? setBucketTags(ts => ts.filter(x => x !== t)) : setTags(ts => ts.some(x => norm(x) === norm(t)) ? ts.filter(x => norm(x) !== norm(t)) : [...ts, t])}
+        removable={isBucket} value={newTag} onValue={setNewTag} onAdd={addTag} placeholder={isBucket ? '+ Tag, e.g. Greens' : '+ New tag, e.g. Quick'} />
       {!isBucket && <div className="row" style={{ alignItems: 'center' }}>
         <span className="ing-label" style={{ marginRight: 2 }}>For</span>
         {MEALS.map(m => {
@@ -154,6 +189,15 @@ export default function RecipeEditor({ D, update, recipe, bucket = null, kind = 
               <input className="field-sm ing-num" inputMode="decimal" value={r.price} placeholder="0.00" aria-label="Price" onChange={e => setRow(r.key, { price: e.target.value })} />
             </span>
             </>)}
+            {isBucket && bucketTags.length > 0 && (
+              <span className="ing-group row-tags">
+                {bucketTags.map(t => {
+                  const on = r.tags.some(x => norm(x) === norm(t));
+                  return <button key={t} className={'mini-tag' + (on ? ' on' : '')} aria-pressed={on}
+                    onClick={() => setRow(r.key, { tags: on ? r.tags.filter(x => norm(x) !== norm(t)) : [...r.tags, t] })}>{t}</button>;
+                })}
+              </span>
+            )}
             {!isBucket && <button className={'pill-sm ing-staple' + (r.staple ? ' dark' : '')} aria-pressed={r.staple} onClick={() => setRow(r.key, { staple: !r.staple })}>Staple</button>}
             <span className="ing-cost" title={mismatch ? 'Units don’t match (e.g. g vs ml)' : undefined}>{c !== null ? money(c) : mismatch ? 'units?' : '—'}</span>
             <button className="x-btn" aria-label="Remove ingredient" onClick={() => setRows(rs => (rs.length > 1 ? rs.filter(z => z.key !== r.key) : [blankRow()]))}>×</button>
@@ -181,7 +225,7 @@ export default function RecipeEditor({ D, update, recipe, bucket = null, kind = 
           {choosing && (
             <div className="row" style={{ alignItems: 'center', padding: '6px 0' }}>
               {D.buckets.filter(b => !uses.some(u => u.bucket === b.id)).map(b => (
-                <button key={b.id} className="filter" onClick={() => { setUses(us => [...us, { bucket: b.id, count: 1 }]); setChoosing(false); }}>
+                <button key={b.id} className="filter" onClick={() => { setUses(us => [...us, { bucket: b.id, count: b.perMeal ?? 1 }]); setChoosing(false); }}>
                   🪣 {b.name} · {b.items.length}
                 </button>
               ))}
@@ -208,6 +252,27 @@ export default function RecipeEditor({ D, update, recipe, bucket = null, kind = 
         <button className="pill dark" style={{ padding: '0 18px' }} onClick={save}>{isBucket ? 'Save bucket' : 'Save recipe'}</button>
         <button className="pill plain" onClick={onDone}>Cancel</button>
       </div>
+    </div>
+  );
+}
+
+/** Tag chips (tap to toggle, or × to remove in a bucket) plus a box to add a new one. */
+function TagRow({ label, tags, selected, onToggle, removable, value, onValue, onAdd, placeholder }: {
+  label: string; tags: string[]; selected: string[]; onToggle: (t: string) => void; removable: boolean;
+  value: string; onValue: (v: string) => void; onAdd: () => void; placeholder: string;
+}) {
+  return (
+    <div className="row" style={{ alignItems: 'center' }}>
+      <span className="ing-label" style={{ marginRight: 2 }}>{label}</span>
+      {tags.map(t => {
+        const on = selected.some(x => norm(x) === norm(t));
+        return removable
+          ? <span key={t} className="mini-tag on">{t}<button className="mini-tag-x" aria-label={'Remove tag ' + t} onClick={() => onToggle(t)}>×</button></span>
+          : <button key={t} className={'mini-tag' + (on ? ' on' : '')} aria-pressed={on} onClick={() => onToggle(t)}>{t}</button>;
+      })}
+      <input className="field-sm" style={{ height: 30, width: 150, fontSize: 13 }} value={value} placeholder={placeholder} aria-label="New tag"
+        onChange={e => onValue(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); onAdd(); } }} />
+      {value.trim() && <button className="pill-sm" style={{ height: 30 }} onClick={onAdd}>Add</button>}
     </div>
   );
 }

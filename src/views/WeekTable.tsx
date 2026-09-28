@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { addDays, DOW, key } from '../lib/dates';
-import { HouseholdData, Meal, MEAL_LABEL, MEALS, money, norm, occurs, OWNERS, Recipe, uid } from '../lib/model';
+import { BLANK_PICK, HouseholdData, Meal, MEAL_LABEL, MEALS, money, norm, occurs, OWNERS, Recipe, uid } from '../lib/model';
 import { costContext, recipeCost, searchRecipes } from '../lib/food';
 import BucketPickDialog from './BucketPickDialog';
 import type { Update } from '../Household';
@@ -171,16 +171,17 @@ export default function WeekTable({ D, update, mon }: Props) {
 /** Under a planned meal: what's been picked from each bucket, or how many are still to pick. */
 function BucketLine({ D, recipe, picks, onOpen }: { D: HouseholdData; recipe: Recipe; picks: Record<string, string[]>; onOpen: () => void }) {
   const parts = (recipe.buckets ?? []).map(u => {
-    const b = D.buckets.find(z => z.id === u.bucket), got = (picks[u.bucket] ?? []).slice(0, u.count);
-    return b ? { name: b.name, got, missing: u.count - got.length } : null;
-  }).filter((x): x is { name: string; got: string[]; missing: number } => !!x);
+    const b = D.buckets.find(z => z.id === u.bucket), all = (picks[u.bucket] ?? []).slice(0, u.count);
+    const got = all.filter(n => n !== BLANK_PICK);
+    return b ? { name: b.name, got, blanks: all.length - got.length, missing: u.count - all.length } : null;
+  }).filter((x): x is { name: string; got: string[]; blanks: number; missing: number } => !!x);
   if (!parts.length) return null;
   const todo = parts.some(p => p.missing > 0);
   return (
     <button className={'bucket-line' + (todo ? ' todo' : '')} onClick={onOpen} title="Choose bucket items">
       {parts.map((p, i) => (
         <span key={i}>
-          🪣 {p.got.length ? p.name + ': ' + p.got.join(', ') : ''}{p.missing > 0 ? (p.got.length ? ' · ' : '') + 'Pick ' + p.missing + (p.got.length ? ' more' : ' ' + p.name.toLowerCase()) : ''}
+          🪣 {p.got.length ? p.name + ': ' + p.got.join(', ') : ''}{p.blanks ? (p.got.length ? ' + ' : p.name + ': ') + p.blanks + ' blank' + (p.blanks > 1 ? 's' : '') : ''}{p.missing > 0 ? (p.got.length || p.blanks ? ' · ' : '') + 'Pick ' + p.missing + (p.got.length || p.blanks ? ' more' : ' ' + p.name.toLowerCase()) : ''}
         </span>
       ))}
     </button>

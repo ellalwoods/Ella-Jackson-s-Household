@@ -232,3 +232,9 @@ input:focus, textarea:focus, select:focus { outline: 2px solid var(--ink); outli
 .pick-item.on { border-color: var(--ink); background: #FBFAF7; }
 .pending-picks { font-size: 12px; color: #7A6A2E; background: #F7EFD9; border-radius: 10px; padding: 8px 12px; margin-bottom: 10px; }
 .pending-picks ul { margin: 4px 0 0; padding-left: 18px; }
+/* Small custom tags (recipe tags, bucket item tags) */
+.mini-tag { display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 10px; border-radius: 999px; border: 1px solid var(--border); background: #fff; color: var(--chip-ink); font-size: 12px; cursor: pointer; }
+.mini-tag.on { background: #EFE8F3; border-color: #C4A8D4; color: var(--ink); }
+.mini-tag-x { border: none; background: none; color: var(--faint); cursor: pointer; padding: 0 0 0 2px; font-size: 13px; line-height: 1; }
+.mini-tag-x:hover { color: var(--ink); }
+.row-tags { order: 1; flex-wrap: wrap; }

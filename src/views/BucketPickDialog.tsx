@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { HouseholdData, money, norm, Recipe } from '../lib/model';
+import { BLANK_PICK, HouseholdData, money, norm, Recipe } from '../lib/model';
 import { costContext, fmtQty, ingredientCost } from '../lib/food';
 
 interface Props {
@@ -18,6 +18,17 @@ export default function BucketPickDialog({ D, recipe, label, picks, onSave, onCl
   const uses = (recipe.buckets ?? []).map(u => ({ u, b: D.buckets.find(b => b.id === u.bucket) })).filter(x => x.b);
   const [chosen, setChosen] = useState<Record<string, string[]>>(() =>
     Object.fromEntries(uses.map(({ u }) => [u.bucket, (picks[u.bucket] ?? []).slice(0, u.count)])));
+
+  /** Tag filter per bucket ('' = all items). */
+  const [filter, setFilter] = useState<Record<string, string>>({});
+  const addBlank = (bucket: string, max: number) => setChosen(c => {
+    const list = c[bucket] ?? [];
+    return { ...c, [bucket]: [...(list.length >= max ? list.slice(1) : list), BLANK_PICK] };
+  });
+  const removeBlank = (bucket: string) => setChosen(c => {
+    const list = c[bucket] ?? [], i = list.lastIndexOf(BLANK_PICK);
+    return i < 0 ? c : { ...c, [bucket]: [...list.slice(0, i), ...list.slice(i + 1)] };
+  });
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -42,14 +53,25 @@ export default function BucketPickDialog({ D, recipe, label, picks, onSave, onCl
         </div>
         {uses.map(({ u, b }) => {
           const list = chosen[u.bucket] ?? [];
+          const blanks = list.filter(n => n === BLANK_PICK).length;
+          const tag = filter[u.bucket] ?? '';
+          const items = b!.items.filter(g => !tag || (g.tags ?? []).some(t => norm(t) === norm(tag)));
           return (
             <div key={u.bucket} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
                 <span style={{ fontSize: 14 }}>Select {u.count} item{u.count === 1 ? '' : 's'} from your <strong>{b!.name}</strong> bucket</span>
                 <span className="note" style={{ color: list.length === u.count ? '#1B6B56' : undefined }}>{list.length} of {u.count}</span>
               </div>
+              {(b!.tags ?? []).length > 0 && (
+                <div className="row" style={{ gap: 4 }}>
+                  {['', ...b!.tags!].map(t => (
+                    <button key={t || 'all'} className={'mini-tag' + (tag === t ? ' on' : '')} aria-pressed={tag === t}
+                      onClick={() => setFilter(f => ({ ...f, [u.bucket]: t }))}>{t || 'All'}</button>
+                  ))}
+                </div>
+              )}
               <div className="pick-grid">
-                {b!.items.map(g => {
+                {items.map(g => {
                   const on = list.some(n => norm(n) === norm(g.name)), c = ingredientCost(g, ctx);
                   return (
                     <button key={g.name} className={'pick-item' + (on ? ' on' : '')} aria-pressed={on} onClick={() => toggle(u.bucket, g.name, u.count)}>
@@ -63,6 +85,16 @@ export default function BucketPickDialog({ D, recipe, label, picks, onSave, onCl
                   );
                 })}
                 {!b!.items.length && <span className="note">This bucket is empty. Add items to it on the Recipes page.</span>}
+                {b!.items.length > 0 && !items.length && <span className="note">No items tagged {tag}.</span>}
+              </div>
+              <div className="row" style={{ alignItems: 'center', gap: 6 }}>
+                <button className="mini-tag" onClick={() => addBlank(u.bucket, u.count)} title="Leave a spot empty: nothing bought, costs nothing">+ Blank</button>
+                {blanks > 0 && (
+                  <span className="mini-tag on">{blanks} blank{blanks > 1 ? 's' : ''}
+                    <button className="mini-tag-x" aria-label="Remove a blank" onClick={() => removeBlank(u.bucket)}>×</button>
+                  </span>
+                )}
+                <span className="note">Blanks leave a spot empty.</span>
               </div>
             </div>
           );

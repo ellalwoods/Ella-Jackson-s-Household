@@ -48,8 +48,20 @@ export type DayPlan = Partial<Record<Meal, string>>;
 
 /** How much of an ingredient a recipe uses (both optional: some things are "to taste"). */
 export interface RecipeIngredient { name: string; qty?: number; unit?: Unit }
+/** An ingredient in a bucket, with any of that bucket's own tags (e.g. "Greens"). */
+export interface BucketItem extends RecipeIngredient { tags?: string[] }
 /** A named group of interchangeable ingredients, e.g. "Vegetables". */
-export interface Bucket { id: string; name: string; items: RecipeIngredient[] }
+export interface Bucket {
+  id: string;
+  name: string;
+  items: BucketItem[];
+  /** How many items a meal usually uses; the starting count when adding the bucket to a recipe. */
+  perMeal?: number;
+  /** Tags unique to this bucket, for filtering its items. */
+  tags?: string[];
+}
+/** A deliberately empty bucket pick: omitted from the meal, costs nothing. */
+export const BLANK_PICK = '';
 /** A recipe uses `count` items of its choosing from a bucket, picked when the meal is planned. */
 export interface BucketUse { bucket: string; count: number }
 
@@ -58,6 +70,8 @@ export interface Recipe {
   name: string;
   ingredients: RecipeIngredient[];
   buckets?: BucketUse[];
+  /** Your own tags, e.g. "Quick" or "Date night". */
+  tags?: string[];
   /** Which meals it's for; shown first when planning that meal. */
   meals: Meal[];
   link?: string;
@@ -158,6 +172,8 @@ export interface HouseholdData {
   /** Shopping list section chosen for an item, by normalised name. */
   shopSections: Record<string, ShopSection>;
   buckets: Bucket[];
+  /** Every recipe tag you've made, so they can be reused. */
+  recipeTags: string[];
   /** Bucket items picked for a planned meal: `${dateKey}|${meal}` → bucket id → item names. */
   picks: Record<string, Record<string, string[]>>;
 }
@@ -230,6 +246,7 @@ export function seed(today = new Date()): HouseholdData {
     shopExtras: {},
     shopSections: {},
     buckets: [],
+    recipeTags: [],
     picks: {},
   };
 }
@@ -245,7 +262,7 @@ export function migrate(d: any): HouseholdData | null {
     ];
   }
   delete d.income;
-  d.recipes ??= []; d.plan ??= {}; d.chores ??= []; d.done ??= {}; d.prices ??= []; d.staples ??= []; d.extras ??= {}; d.spends ??= {}; d.events ??= []; d.tags ??= []; d.shopExtras ??= {}; d.shopSections ??= {}; d.buckets ??= []; d.picks ??= {};
+  d.recipes ??= []; d.plan ??= {}; d.chores ??= []; d.done ??= {}; d.prices ??= []; d.staples ??= []; d.extras ??= {}; d.spends ??= {}; d.events ??= []; d.tags ??= []; d.shopExtras ??= {}; d.shopSections ??= {}; d.buckets ??= []; d.recipeTags ??= []; d.picks ??= {};
   for (const c of d.cats) if (c.fixed === undefined && /\brent\b/i.test(c.name)) c.fixed = true;
   if (!Array.isArray(d.pantry)) d.pantry = Array.isArray(d.cupboard) ? d.cupboard : [];
   delete d.cupboard;

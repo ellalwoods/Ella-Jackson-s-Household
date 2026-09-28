@@ -11,11 +11,16 @@ export default function RecipesPage({ D, update, mon }: { D: HouseholdData; upda
   const [editing, setEditing] = useState<string | null>(null);
   const [openMethod, setOpenMethod] = useState<Record<string, boolean>>({});
   const [mealFilter, setMealFilter] = useState<Meal | 'all'>('all');
+  const [tagFilter, setTagFilter] = useState('');
+  /** Tag filter per bucket card ('' = all). */
+  const [bucketTag, setBucketTag] = useState<Record<string, string>>({});
 
   const pantry = new Map(D.pantry.map(c => [norm(c.name), c]));
   const prices = costContext(D);
   const weekKeys = DOW.map((_, i) => key(addDays(mon, i)));
-  const recipes = searchRecipes(D.recipes, q).filter(r => mealFilter === 'all' || r.meals.includes(mealFilter)).sort((a, b) => a.name.localeCompare(b.name));
+  const usedTags = D.recipeTags.filter(t => D.recipes.some(r => (r.tags ?? []).some(x => norm(x) === norm(t))));
+  const recipes = searchRecipes(D.recipes, q).filter(r => mealFilter === 'all' || r.meals.includes(mealFilter))
+    .filter(r => !tagFilter || (r.tags ?? []).some(x => norm(x) === norm(tagFilter))).sort((a, b) => a.name.localeCompare(b.name));
   const editingBucket = editing?.startsWith('bucket:');
   const editingRecipe = editing && editing !== 'new' && !editingBucket ? D.recipes.find(r => r.id === editing) ?? null : null;
   const bucketBeingEdited = editingBucket ? D.buckets.find(b => 'bucket:' + b.id === editing) ?? null : null;
@@ -56,6 +61,16 @@ export default function RecipesPage({ D, update, mon }: { D: HouseholdData; upda
           );
         })}
       </div>
+      {usedTags.length > 0 && (
+        <div className="row" style={{ marginBottom: 14, gap: 4, alignItems: 'center' }}>
+          <span className="ing-label" style={{ marginRight: 4 }}>Tags</span>
+          {['', ...usedTags].map(t => (
+            <button key={t || 'all'} className={'mini-tag' + (tagFilter === t ? ' on' : '')} aria-pressed={tagFilter === t} onClick={() => setTagFilter(t)}>
+              {t || 'Any'}{t && ' · ' + D.recipes.filter(r => (r.tags ?? []).some(x => norm(x) === norm(t))).length}
+            </button>
+          ))}
+        </div>
+      )}
       {editing && <RecipeEditor key={editing} D={D} update={update} recipe={editingRecipe} kind={editingBucket ? 'bucket' : 'recipe'} bucket={bucketBeingEdited} onDone={() => setEditing(null)} />}
       <div className="auto-grid" style={{ gridTemplateColumns: 'repeat(auto-fill,minmax(min(100%,280px),1fr))' }}>
         {recipes.map(r => {
@@ -69,6 +84,11 @@ export default function RecipesPage({ D, update, mon }: { D: HouseholdData; upda
                   <div style={{ fontSize: 16, fontWeight: 600 }}>{r.name}</div>
                   <div style={{ fontSize: 13 }} className="muted">{money(recipeCost(r, prices))} · {planned.length ? 'On ' + planned.join(', ') : 'Not this week'}</div>
                   {r.meals.length > 0 && <div className="note" style={{ marginTop: 2 }}>{r.meals.map(m => MEAL_LABEL[m]).join(' · ')}</div>}
+                  {(r.tags ?? []).length > 0 && (
+                    <div className="row" style={{ gap: 4, marginTop: 4 }}>
+                      {r.tags!.map(t => <button key={t} className={'mini-tag' + (norm(tagFilter) === norm(t) ? ' on' : '')} style={{ height: 22, fontSize: 11 }} onClick={() => setTagFilter(norm(tagFilter) === norm(t) ? '' : t)}>{t}</button>)}
+                    </div>
+                  )}
                 </div>
                 <span style={{ display: 'flex', gap: 10 }}>
                   <button className="link-btn" onClick={() => edit(r.id)}>Edit</button>
@@ -130,7 +150,7 @@ export default function RecipesPage({ D, update, mon }: { D: HouseholdData; upda
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontSize: 16, fontWeight: 600 }}>🪣 {b.name}</div>
                   <div style={{ fontSize: 13 }} className="muted">
-                    {b.items.length} item{b.items.length === 1 ? '' : 's'} · avg {money(bucketAverage(b, prices))} each{usedBy ? ' · in ' + usedBy + ' recipe' + (usedBy > 1 ? 's' : '') : ''}
+                    {b.items.length} item{b.items.length === 1 ? '' : 's'} · {b.perMeal ?? 1} per meal · avg {money(bucketAverage(b, prices))} each{usedBy ? ' · in ' + usedBy + ' recipe' + (usedBy > 1 ? 's' : '') : ''}
                   </div>
                 </div>
                 <span style={{ display: 'flex', gap: 10 }}>
@@ -138,8 +158,17 @@ export default function RecipesPage({ D, update, mon }: { D: HouseholdData; upda
                   <button className="link-btn" onClick={() => removeBucket(b.id)}>Remove</button>
                 </span>
               </div>
+              {(b.tags ?? []).length > 0 && (
+                <div className="row" style={{ gap: 4 }}>
+                  {['', ...b.tags!].map(t => {
+                    const on = (bucketTag[b.id] ?? '') === t;
+                    return <button key={t || 'all'} className={'mini-tag' + (on ? ' on' : '')} style={{ height: 24, fontSize: 11 }} aria-pressed={on}
+                      onClick={() => setBucketTag(f => ({ ...f, [b.id]: t }))}>{t || 'All'}</button>;
+                  })}
+                </div>
+              )}
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-                {b.items.map((g, i) => {
+                {b.items.filter(g => !bucketTag[b.id] || (g.tags ?? []).some(t => norm(t) === norm(bucketTag[b.id]))).map((g, i) => {
                   const c = ingredientCost(g, prices);
                   return <span key={i} className="ing-tag">{g.name}{c !== null ? <span className="muted">· {money(c)}</span> : g.qty && g.unit ? <span className="muted">· {fmtQty(g.qty, g.unit)}</span> : null}</span>;
                 })}

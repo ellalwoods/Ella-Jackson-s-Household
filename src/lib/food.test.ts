@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
 import { addDays, key, mondayOf } from './dates';
 import { HouseholdData, seed } from './model';
-import { addToPantry, bucketAverage, costContext, guessSection, expiry, weekBudget, fmtAmount, recipeCost, shoppingList, stockUp, toBase } from './food';
+import { addToPantry, bucketAverage, costContext, pendingPicks, searchRecipes, weekMeals, guessSection, expiry, weekBudget, fmtAmount, recipeCost, shoppingList, stockUp, toBase } from './food';
 
 const mon = mondayOf(new Date(2026, 8, 23)); // Mon 21 Sep 2026
 const wk = key(mon);
@@ -189,4 +189,18 @@ it('costs buckets at their average until items are picked, and shops for the pic
   const names = shoppingList(D, mon).items.map(i => i.name);
   expect(names).toEqual(['Carrot', 'Potato']);
   expect(shoppingList(D, mon).items[0].need).toEqual({ dim: 'mass', v: 200 });
+});
+
+it('treats blank bucket picks as omitted: no cost, not shopped, not pending', () => {
+  const D = household();
+  D.prices.push({ name: 'Carrot', qty: 1, unit: 'kg', price: 2 }, { name: 'Potato', qty: 2, unit: 'kg', price: 4 });
+  D.buckets = [{ id: 'veg', name: 'Vegetables', perMeal: 3, items: [{ name: 'Carrot', qty: 200, unit: 'g' }, { name: 'Potato', qty: 300, unit: 'g', tags: ['Roots'] }] }];
+  D.recipes.push({ id: 'sv', name: 'Steak and Veg', meals: ['dinner'], ingredients: [], buckets: [{ bucket: 'veg', count: 3 }], tags: ['Quick'] });
+  D.plan = { [wk]: { dinner: 'sv' } };
+  D.pantry = [];
+  D.picks = { [wk + '|dinner']: { veg: ['Carrot', '', ''] } };
+  expect(recipeCost(D.recipes[3], costContext(D), D.picks[wk + '|dinner'])).toBe(0.4); // carrot only
+  expect(shoppingList(D, mon).items.map(i => i.name)).toEqual(['Carrot']);
+  expect(pendingPicks(weekMeals(D, mon)[0], D)).toEqual([]);
+  expect(searchRecipes(D.recipes, 'quick').map(r => r.name)).toEqual(['Steak and Veg']);
 });

@@ -1,5 +1,5 @@
 import { addDays, DOW, key, MON, parse } from './dates';
-import { Bucket, CAT_COLORS, earnings, NO_EXPIRY, SHOP_SECTION_LABEL, SHOP_SECTIONS, ShopSection, EXTRA_COLOR, HouseholdData, INCLUDE_LOW, Meal, MEALS, norm, num, shareOf, Spend, PantryItem, Price, Recipe, RecipeIngredient, STAPLE_COST, Unit } from './model';
+import { BLANK_PICK, Bucket, CAT_COLORS, earnings, NO_EXPIRY, SHOP_SECTION_LABEL, SHOP_SECTIONS, ShopSection, EXTRA_COLOR, HouseholdData, INCLUDE_LOW, Meal, MEALS, norm, num, shareOf, Spend, PantryItem, Price, Recipe, RecipeIngredient, STAPLE_COST, Unit } from './model';
 
 // ── Plan ───────────────────────────────────────────────────────────────────
 
@@ -155,6 +155,7 @@ export function recipeCost(r: Recipe, ctx: CostContext, picks: Record<string, st
   for (const u of r.buckets ?? []) {
     const b = ctx.buckets.get(u.bucket), chosen = (picks[u.bucket] ?? []).slice(0, u.count);
     for (const n of chosen) {
+      if (n === BLANK_PICK) continue; // left blank on purpose: omitted
       const item = b?.items.find(g => norm(g.name) === norm(n));
       bucketCost += (item && ingredientCost(item, ctx)) ?? bucketAverage(b, ctx);
     }
@@ -172,7 +173,7 @@ export function pendingPicks(m: PlannedMeal, D: HouseholdData) {
 
 export function searchRecipes(recipes: Recipe[], q: string) {
   const pq = norm(q);
-  return recipes.filter(r => !pq || norm(r.name).includes(pq) || r.ingredients.some(g => norm(g.name).includes(pq)));
+  return recipes.filter(r => !pq || norm(r.name).includes(pq) || r.ingredients.some(g => norm(g.name).includes(pq)) || (r.tags ?? []).some(t => norm(t).includes(pq)));
 }
 
 /** In stock for the "dots" on recipe cards. */
@@ -243,6 +244,7 @@ function weekNeeds(D: HouseholdData, mon: Date) {
     // Items picked from buckets for this meal, with the amounts set in the bucket.
     for (const u of m.recipe.buckets ?? []) {
       for (const n of (m.picks[u.bucket] ?? []).slice(0, u.count)) {
+        if (n === BLANK_PICK) continue;
         const item = bBy.get(u.bucket)?.items.find(g => norm(g.name) === norm(n));
         addNeed(needs, item ?? { name: n }, DOW[m.day]);
       }
