@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { addDays, DOW, key } from '../lib/dates';
-import { BLANK_PICK, HouseholdData, Meal, MEAL_LABEL, MEALS, money, norm, occurs, OWNERS, Recipe, uid } from '../lib/model';
+import { BLANK_PICK, EAT_OUT, HouseholdData, Meal, MEAL_LABEL, MEALS, money, norm, occurs, OWNERS, Recipe, uid } from '../lib/model';
 import { costContext, recipeCost, searchRecipes } from '../lib/food';
 import BucketPickDialog from './BucketPickDialog';
 import type { Update } from '../Household';
@@ -22,7 +22,7 @@ export default function WeekTable({ D, update, mon }: Props) {
 
   const days = DOW.map((dow, i) => {
     const d = addDays(mon, i), k = key(d);
-    const meals = MEALS.map(meal => ({ meal, slot: k + '|' + meal, r: rBy.get(D.plan[k]?.[meal] ?? '') }));
+    const meals = MEALS.map(meal => ({ meal, slot: k + '|' + meal, r: rBy.get(D.plan[k]?.[meal] ?? ''), out: D.plan[k]?.[meal] === EAT_OUT }));
     const chores = D.chores.filter(c => occurs(c, d)).map(c => {
       const dk = k + '|' + c.id;
       return { c, dk, done: !!D.done[dk], p: OWNERS[c.person] };
@@ -31,6 +31,7 @@ export default function WeekTable({ D, update, mon }: Props) {
   });
 
   const planned = days.flatMap(d => d.meals.filter(m => m.r));
+  const eatingOut = days.reduce((a, d) => a + d.meals.filter(m => m.out).length, 0);
   const mealTotal = planned.reduce((a, m) => a + cost(m.r!, m.slot), 0);
   const allChores = days.flatMap(d => d.chores);
 
@@ -54,7 +55,7 @@ export default function WeekTable({ D, update, mon }: Props) {
       if (rid) p[meal] = rid; else delete p[meal];
       if (Object.keys(p).length) x.plan[k] = p; else delete x.plan[k];
       // Picks belong to the recipe that was there.
-      if (changed) delete x.picks[slot];
+      if (changed) { delete x.picks[slot]; delete x.eatOut[slot]; }
     });
     close();
     // A recipe with buckets asks straight away which items to use.
@@ -92,13 +93,18 @@ export default function WeekTable({ D, update, mon }: Props) {
           </div>
 
           <div className="meal-slots">
-            {d.meals.map(({ meal, slot, r }, mi) => (
+            {d.meals.map(({ meal, slot, r, out }, mi) => (
               <div key={meal} style={{ position: 'relative', minWidth: 0 }}>
                 <button className="slot-btn" onClick={() => { setPicker(slot); setQuery(''); setIdx(0); }}
-                  style={{ borderColor: r ? '#E8E4DB' : '#EFEBE3', background: r ? '#FBFAF7' : 'transparent' }}>
+                  style={{ borderColor: r || out ? '#E8E4DB' : '#EFEBE3', background: out ? '#F6F1EA' : r ? '#FBFAF7' : 'transparent' }}>
                   <span className="slot-label">{MEAL_LABEL[meal]}</span>
-                  <span className="slot-name" style={{ fontWeight: r ? 500 : 400, color: r ? '#23221F' : '#A39D90' }}>{r ? r.name : '+'}</span>
-                  {r && <span className="slot-cost">{money(cost(r, slot))}</span>}
+                  {out ? (<>
+                    <span className="slot-name" style={{ fontWeight: 500, color: '#23221F' }}>🍽 Eating out</span>
+                    {D.eatOut[slot] && <span className="slot-cost">{D.eatOut[slot]}</span>}
+                  </>) : (<>
+                    <span className="slot-name" style={{ fontWeight: r ? 500 : 400, color: r ? '#23221F' : '#A39D90' }}>{r ? r.name : '+'}</span>
+                    {r && <span className="slot-cost">{money(cost(r, slot))}</span>}
+                  </>)}
                 </button>
                 {r?.buckets?.length ? <BucketLine D={D} recipe={r} picks={D.picks[slot] ?? {}} onOpen={() => setPicking(slot)} /> : null}
                 {picker === slot && (
@@ -123,9 +129,15 @@ export default function WeekTable({ D, update, mon }: Props) {
                         ))}
                         {!matches.length && <span style={{ fontSize: 13, padding: '8px 10px' }} className="muted">No recipes match.</span>}
                       </div>
+                      {out && (
+                        <input className="field-sm" style={{ height: 36 }} placeholder="Where? (optional)" aria-label="Where you're eating out"
+                          value={D.eatOut[slot] ?? ''} onChange={e => { const v = e.target.value; update(x => { if (v.trim()) x.eatOut[slot] = v; else delete x.eatOut[slot]; }); }}
+                          onKeyDown={e => { if (e.key === 'Enter') close(); }} />
+                      )}
                       <div className="picker-actions">
                         {canCreate && <button className="pill-sm dark" onClick={createFromPick}>+ New “{query}”</button>}
-                        {r && <button className="pill-sm" onClick={() => setMeal(slot, null)}>Clear</button>}
+                        {!out && <button className="pill-sm" onClick={() => { setMeal(slot, EAT_OUT); setPicker(slot); }}>🍽 Eat out</button>}
+                        {(r || out) && <button className="pill-sm" onClick={() => setMeal(slot, null)}>Clear</button>}
                       </div>
                     </div>
                   </>
@@ -148,7 +160,7 @@ export default function WeekTable({ D, update, mon }: Props) {
       ))}
 
       <div className="week-foot">
-        <span>{planned.length} meal{planned.length === 1 ? '' : 's'} planned · {money(mealTotal)} · {money(mealTotal / 2)} each</span>
+        <span>{planned.length} meal{planned.length === 1 ? '' : 's'} planned · {money(mealTotal)} · {money(mealTotal / 2)} each{eatingOut ? ' · ' + eatingOut + ' eating out' : ''}</span>
         <span style={{ display: 'flex', gap: 12 }}>
           <span className="legend"><span className="dot8" style={{ background: '#E886B8' }} />Ella</span>
           <span className="legend"><span className="dot8" style={{ background: '#2A9E80' }} />Jackson</span>
