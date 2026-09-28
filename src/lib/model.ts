@@ -52,7 +52,11 @@ export const EAT_OUT = 'eat-out';
 /** How much of an ingredient a recipe uses (both optional: some things are "to taste"). */
 export interface RecipeIngredient { name: string; qty?: number; unit?: Unit }
 /** An ingredient in a bucket, with any of that bucket's own tags (e.g. "Greens"). */
-export interface BucketItem extends RecipeIngredient { tags?: string[] }
+export interface BucketItem extends RecipeIngredient {
+  tags?: string[];
+  /** A mini recipe (e.g. Salsa verde) used as one item: picking it adds its ingredients. */
+  recipe?: string;
+}
 /** A named group of interchangeable ingredients, e.g. "Vegetables". */
 export interface Bucket {
   id: string;
@@ -82,6 +86,8 @@ export interface Recipe {
   method?: string;
   /** Legacy total cost, used only until the recipe's ingredients have prices. */
   cost?: number;
+  /** A mini recipe (a garnish, sauce or dressing): used inside buckets, not planned as a meal. */
+  mini?: boolean;
 }
 /** What you buy, shared by every recipe using the ingredient: e.g. Rice, 1 kg for $3. */
 export interface Price { name: string; qty: number; unit: Unit; price: number }
@@ -195,6 +201,10 @@ export const money = (v: number) => {
   const n = Math.round((+v || 0) * 100) / 100;
   return (n < 0 ? '−$' : '$') + Math.abs(n).toLocaleString('en-AU', { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 });
 };
+
+/** Recipes you plan as meals (not mini recipes). */
+export const mealRecipes = (D: HouseholdData) => D.recipes.filter(r => !r.mini);
+export const miniRecipes = (D: HouseholdData) => D.recipes.filter(r => r.mini);
 
 export function seed(today = new Date()): HouseholdData {
   const m = mondayOf(today), k = (i: number) => key(addDays(m, i));

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { addDays, DOW, key } from '../lib/dates';
-import { BLANK_PICK, EAT_OUT, HouseholdData, Meal, MEAL_LABEL, MEALS, money, norm, occurs, OWNERS, Recipe, uid } from '../lib/model';
+import { BLANK_PICK, EAT_OUT, HouseholdData, Meal, MEAL_LABEL, MEALS, money, norm, occurs, OWNERS, Recipe, uid, mealRecipes } from '../lib/model';
 import { costContext, recipeCost, searchRecipes } from '../lib/food';
 import BucketPickDialog from './BucketPickDialog';
 import type { Update } from '../Household';
@@ -39,12 +39,13 @@ export default function WeekTable({ D, update, mon }: Props) {
   const pickMeal = (picker?.split('|')[1] ?? 'dinner') as Meal;
   const pq = norm(query);
   const tagged = (r: Recipe) => r.meals.includes(pickMeal);
-  const anyTagged = D.recipes.some(tagged);
-  const matches = searchRecipes(D.recipes, query)
+  const meals = mealRecipes(D);
+  const anyTagged = meals.some(tagged);
+  const matches = searchRecipes(meals, query)
     .filter(r => pq || !anyTagged || tagged(r))
     .sort((a, b) => (+tagged(b) - +tagged(a)) || (norm(b.name).startsWith(pq) ? 1 : 0) - (norm(a.name).startsWith(pq) ? 1 : 0) || a.name.localeCompare(b.name));
   const pIdx = Math.min(idx, Math.max(0, matches.length - 1));
-  const canCreate = !!pq && !D.recipes.some(r => norm(r.name) === pq);
+  const canCreate = !!pq && !meals.some(r => norm(r.name) === pq);
 
   const close = () => { setPicker(null); setQuery(''); };
   const setMeal = (slot: string, rid: string | null) => {

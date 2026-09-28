@@ -3,7 +3,7 @@ import { addDays, isoWeek, mondayOf, weekLabel as fmtWeek } from './lib/dates';
 import type { HouseholdData } from './lib/model';
 import { pendingPicks, shoppingList, weekMeals } from './lib/food';
 import { DOW } from './lib/dates';
-import { MEAL_LABEL } from './lib/model';
+import { MEAL_LABEL, mealRecipes } from './lib/model';
 import type { Mutation, SyncStatus } from './lib/store';
 import { Logo } from './views/Logo';
 import WeekTable from './views/WeekTable';
@@ -52,7 +52,7 @@ export default function Household({ data: D, update, status }: Props) {
 
   const titles: Record<Page, [string, string]> = {
     shop: ['Shopping list', label + ' · excludes what’s in the pantry'],
-    recipes: ['Recipes', D.recipes.length + ' saved · search by name or ingredient'],
+    recipes: ['Recipes', mealRecipes(D).length + ' saved · search by name or ingredient'],
     pantry: ['Pantry', D.pantry.length + ' ingredients tracked'],
     chores: ['Chores', D.chores.length + ' tasks · recurring & one-off'],
     budget: ['Budget', 'Your regular weekly budget, per person'],
@@ -90,7 +90,7 @@ export default function Household({ data: D, update, status }: Props) {
                 style={p === 'shop' ? { display: 'flex', gap: 8, alignItems: 'center' } : undefined}>
                 {text}
                 {p === 'shop' && <span className="count-badge">{shop.items.length}</span>}
-                {p === 'recipes' && ' · ' + D.recipes.length}
+                {p === 'recipes' && ' · ' + mealRecipes(D).length}
               </button>
             );
           })}

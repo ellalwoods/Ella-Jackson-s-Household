@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Bucket, BucketItem, BucketUse, HouseholdData, Meal, MEAL_LABEL, MEALS, money, norm, Price, Recipe, RecipeIngredient, STAPLE_COST, uid, Unit } from '../lib/model';
-import { bucketAverage, costContext, priceMap, stapleSet, useCost } from '../lib/food';
+import { Bucket, BucketItem, BucketUse, HouseholdData, Meal, MEAL_LABEL, MEALS, miniRecipes, money, norm, Price, Recipe, RecipeIngredient, STAPLE_COST, uid, Unit } from '../lib/model';
+import { bucketAverage, costContext, itemCost, priceMap, stapleSet, useCost } from '../lib/food';
 import type { Update } from '../Household';
 import { UnitSelect } from './PantryPage';
 
@@ -18,6 +18,8 @@ interface Row {
   staple: boolean;
   /** Bucket items only: this bucket's tags that apply. */
   tags: string[];
+  /** Bucket items only: the mini recipe this item is. */
+  recipe?: string;
 }
 
 const blankRow = (): Row => ({ key: uid(), name: '', qty: '', unit: 'g', buyQty: '', buyUnit: 'g', price: '', auto: false, staple: false, tags: [] });
@@ -36,11 +38,15 @@ export function safeLink(s: string | undefined) {
   return /^https?:\/\//i.test(t) ? t : /^[a-z][a-z0-9+.-]*:/i.test(t) ? '' : 'https://' + t;
 }
 
-/** Edits a recipe, or (with `bucket`) a bucket of interchangeable items, which uses the same ingredient rows. */
-interface Props { D: HouseholdData; update: Update; recipe: Recipe | null; bucket?: Bucket | null; kind?: 'recipe' | 'bucket'; onDone: () => void }
+/**
+ * Edits a recipe, a mini recipe (used inside buckets), or (with `bucket`) a
+ * bucket of interchangeable items, which uses the same ingredient rows.
+ */
+interface Props { D: HouseholdData; update: Update; recipe: Recipe | null; bucket?: Bucket | null; kind?: 'recipe' | 'bucket' | 'mini'; onDone: () => void }
 
 export default function RecipeEditor({ D, update, recipe, bucket = null, kind = 'recipe', onDone }: Props) {
-  const isBucket = kind === 'bucket';
+  const isBucket = kind === 'bucket', isMini = kind === 'mini';
+  const minis = miniRecipes(D);
   const prices = priceMap(D), staples = stapleSet(D), ctx = costContext(D);
   const [name, setName] = useState((isBucket ? bucket?.name : recipe?.name) ?? '');
   const [uses, setUses] = useState<BucketUse[]>(recipe?.buckets ?? []);
@@ -64,15 +70,19 @@ export default function RecipeEditor({ D, update, recipe, bucket = null, kind = 
   const [method, setMethod] = useState(recipe?.method ?? '');
   const [meals, setMeals] = useState<Meal[]>(recipe?.meals ?? ['dinner']);
   const [rows, setRows] = useState<Row[]>(() => {
-    const rs = ((isBucket ? bucket?.items : recipe?.ingredients) ?? []).map(g => fromPrice({ ...blankRow(), name: g.name, qty: g.qty != null ? String(g.qty) : '', unit: g.unit ?? 'g', staple: staples.has(norm(g.name)), tags: (g as BucketItem).tags ?? [] }, prices.get(norm(g.name))));
+    const rs = ((isBucket ? bucket?.items : recipe?.ingredients) ?? []).map(g => fromPrice({ ...blankRow(), name: g.name, qty: g.qty != null ? String(g.qty) : '', unit: g.unit ?? 'g', staple: staples.has(norm(g.name)), tags: (g as BucketItem).tags ?? [], recipe: (g as BucketItem).recipe }, prices.get(norm(g.name))));
     return rs.length ? rs : [blankRow()];
   });
 
+  const knownMinis = isBucket ? minis.map(r => r.name).sort() : [];
   const known = Array.from(new Set([...D.prices.map(p => p.name), ...D.pantry.map(p => p.name), ...D.recipes.flatMap(r => r.ingredients.map(g => g.name))])).sort();
 
   const setRow = (k: string, patch: Partial<Row>) => setRows(rs => rs.map(r => {
     if (r.key !== k) return r;
     const next = { ...r, ...patch };
+    // In a bucket, typing a mini recipe's name makes the item that mini recipe.
+    if ('name' in patch && isBucket) next.recipe = minis.find(m => norm(m.name) === norm(next.name))?.id;
+    if (next.recipe) return next;
     if ('name' in patch && staples.has(norm(next.name))) next.staple = true;
     if ('name' in patch && (r.auto || (!r.buyQty && !r.price))) return fromPrice(next, prices.get(norm(next.name)));
     if ('buyQty' in patch || 'buyUnit' in patch || 'price' in patch) next.auto = false;
@@ -80,6 +90,7 @@ export default function RecipeEditor({ D, update, recipe, bucket = null, kind = 
   }));
 
   const rowCost = (r: Row) => {
+    if (r.recipe) return itemCost({ name: r.name, recipe: r.recipe }, ctx);
     if (r.staple) return r.name.trim() ? STAPLE_COST : null;
     const bq = numOr(r.buyQty), pr = numOr(r.price);
     return bq && pr != null ? useCost({ qty: numOr(r.qty), unit: r.unit }, { name: r.name, qty: bq, unit: r.buyUnit, price: pr }) : null;
@@ -94,11 +105,11 @@ export default function RecipeEditor({ D, update, recipe, bucket = null, kind = 
     if (!n) return;
     const used = rows.filter(r => r.name.trim());
     const ingredients: RecipeIngredient[] = used.map(r => {
-      if (r.staple) return { name: r.name.trim() };
+      if (r.staple || r.recipe) return { name: r.name.trim() };
       const q = numOr(r.qty);
       return q ? { name: r.name.trim(), qty: q, unit: r.unit } : { name: r.name.trim() };
     });
-    const newPrices: Price[] = used.flatMap(r => {
+    const newPrices: Price[] = used.filter(r => !r.recipe).flatMap(r => {
       const bq = numOr(r.buyQty), pr = numOr(r.price);
       if (pr == null || isNaN(pr)) return [];
       // A staple only needs its purchase price; keep any pack size already known.
@@ -108,7 +119,8 @@ export default function RecipeEditor({ D, update, recipe, bucket = null, kind = 
       }
       return bq ? [{ name: r.name.trim(), qty: bq, unit: r.buyUnit, price: pr }] : [];
     });
-    const out: Recipe = { id: recipe?.id ?? uid(), name: n, meals: MEALS.filter(m => meals.includes(m)), ingredients };
+    const out: Recipe = { id: recipe?.id ?? uid(), name: n, meals: isMini ? [] : MEALS.filter(m => meals.includes(m)), ingredients };
+    if (isMini) out.mini = true;
     const keptUses = uses.filter(u => u.count > 0);
     if (keptUses.length) out.buckets = keptUses;
     if (safeLink(link)) out.link = safeLink(link);
@@ -117,7 +129,8 @@ export default function RecipeEditor({ D, update, recipe, bucket = null, kind = 
     if (tags.length) out.tags = tags;
     const items: BucketItem[] = ingredients.map((g, i) => {
       const t = used[i].tags.filter(x => bucketTags.some(b => norm(b) === norm(x)));
-      return t.length ? { ...g, tags: t } : g;
+      const item: BucketItem = used[i].recipe ? { ...g, recipe: used[i].recipe } : g;
+      return t.length ? { ...item, tags: t } : item;
     });
     const outBucket: Bucket = { id: bucket?.id ?? uid(), name: n, items, perMeal: Math.max(1, parseInt(perMeal) || 1) };
     if (bucketTags.length) outBucket.tags = bucketTags;
@@ -129,11 +142,17 @@ export default function RecipeEditor({ D, update, recipe, bucket = null, kind = 
       } else {
         const i = x.recipes.findIndex(z => z.id === out.id);
         if (i >= 0) x.recipes[i] = out; else x.recipes.push(out);
+        // A renamed mini recipe keeps its place in buckets and in picks already made.
+        if (isMini && recipe && norm(recipe.name) !== norm(n)) {
+          for (const b of x.buckets) for (const g of b.items) if (g.recipe === out.id) g.name = n;
+          for (const slot of Object.values(x.picks)) for (const k of Object.keys(slot)) slot[k] = slot[k].map(p => (norm(p) === norm(recipe.name) ? n : p));
+        }
         for (const t of tags) if (!x.recipeTags.some(z => norm(z) === norm(t))) x.recipeTags.push(t);
       }
       // Staple status is shared: marking or unmarking it here applies to every recipe.
-      const staples = x.staples.filter(n => !used.some(r => !r.staple && norm(r.name) === norm(n)));
-      for (const r of used) if (r.staple && !staples.some(n => norm(n) === norm(r.name))) staples.push(r.name.trim());
+      const plain = used.filter(r => !r.recipe);
+      const staples = x.staples.filter(n => !plain.some(r => !r.staple && norm(r.name) === norm(n)));
+      for (const r of plain) if (r.staple && !staples.some(n => norm(n) === norm(r.name))) staples.push(r.name.trim());
       x.staples = staples;
       for (const p of newPrices) {
         const j = x.prices.findIndex(z => norm(z.name) === norm(p.name));
@@ -145,9 +164,10 @@ export default function RecipeEditor({ D, update, recipe, bucket = null, kind = 
 
   return (
     <div style={{ background: '#fff', border: '1px solid #23221F', borderRadius: 16, padding: 16, marginBottom: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <div style={{ fontWeight: 600 }}>{isBucket ? (bucket ? 'Edit bucket' : 'New bucket') : recipe ? 'Edit recipe' : 'New recipe'}</div>
-      <input className="field" value={name} onChange={e => setName(e.target.value)} placeholder={isBucket ? 'Bucket title, e.g. Vegetables' : 'Recipe name'} />
-      {isBucket && <p className="note" style={{ margin: 0 }}>Add the interchangeable items in this bucket and how much of each a meal uses (or mark them Staple, at a nominal {money(STAPLE_COST)}). Recipes use a number of them, picked when you plan the meal.</p>}
+      <div style={{ fontWeight: 600 }}>{isBucket ? (bucket ? 'Edit bucket' : 'New bucket') : isMini ? (recipe ? 'Edit mini recipe' : 'New mini recipe') : recipe ? 'Edit recipe' : 'New recipe'}</div>
+      <input className="field" value={name} onChange={e => setName(e.target.value)} placeholder={isBucket ? 'Bucket title, e.g. Vegetables' : isMini ? 'Mini recipe name, e.g. Salsa verde' : 'Recipe name'} />
+      {isBucket && <p className="note" style={{ margin: 0 }}>Add the interchangeable items in this bucket and how much of each a meal uses (or mark them Staple, at a nominal {money(STAPLE_COST)}). Type a mini recipe’s name to add it as one item. Recipes use a number of them, picked when you plan the meal.</p>}
+      {isMini && <p className="note" style={{ margin: 0 }}>A garnish, sauce or dressing made of a few ingredients. Add it to a bucket as one item; picking it puts all its ingredients on the shopping list.</p>}
       {isBucket && (
         <label style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           <span style={{ fontSize: 14 }}>Items per meal</span>
@@ -155,11 +175,11 @@ export default function RecipeEditor({ D, update, recipe, bucket = null, kind = 
           <span className="note">The usual number; each recipe can change it.</span>
         </label>
       )}
-      <TagRow label={isBucket ? 'Tags in this bucket (optional)' : 'Tags'}
+      {!isMini && <TagRow label={isBucket ? 'Tags in this bucket (optional)' : 'Tags'}
         tags={isBucket ? bucketTags : allRecipeTags} selected={isBucket ? bucketTags : tags}
         onToggle={t => isBucket ? setBucketTags(ts => ts.filter(x => x !== t)) : setTags(ts => ts.some(x => norm(x) === norm(t)) ? ts.filter(x => norm(x) !== norm(t)) : [...ts, t])}
-        removable={isBucket} value={newTag} onValue={setNewTag} onAdd={addTag} placeholder={isBucket ? '+ Tag, e.g. Greens' : '+ New tag, e.g. Quick'} />
-      {!isBucket && <div className="row" style={{ alignItems: 'center' }}>
+        removable={isBucket} value={newTag} onValue={setNewTag} onAdd={addTag} placeholder={isBucket ? '+ Tag, e.g. Greens' : '+ New tag, e.g. Quick'} />}
+      {!isBucket && !isMini && <div className="row" style={{ alignItems: 'center' }}>
         <span className="ing-label" style={{ marginRight: 2 }}>For</span>
         {MEALS.map(m => {
           const on = meals.includes(m);
@@ -172,14 +192,19 @@ export default function RecipeEditor({ D, update, recipe, bucket = null, kind = 
       {!isBucket && <input className="field" value={link} onChange={e => setLink(e.target.value)} placeholder="Link to recipe (optional)" inputMode="url" autoCapitalize="off" />}
 
       <div className="eyebrow" style={{ fontSize: 11, marginTop: 6 }}>{isBucket ? 'Items in this bucket' : 'Ingredients'}</div>
-      <datalist id="known-ingredients">{known.map(k => <option key={k} value={k} />)}</datalist>
+      <datalist id="known-ingredients">{[...knownMinis, ...known.filter(k => !knownMinis.includes(k))].map(k => <option key={k} value={k} />)}</datalist>
       {rows.map(r => {
         const c = rowCost(r);
         const mismatch = !r.staple && c === null && !!numOr(r.qty) && !!numOr(r.buyQty) && numOr(r.price) != null;
         return (
           <div key={r.key} className="ing-row">
             <input className="field-sm ing-name" list="known-ingredients" value={r.name} placeholder={isBucket ? 'Item, e.g. Broccoli' : 'Ingredient'} onChange={e => setRow(r.key, { name: e.target.value })} />
-            {r.staple ? (
+            {r.recipe ? (
+              <span className="ing-group">
+                <span className="mini-tag on" style={{ height: 24, fontSize: 11 }}>Mini recipe</span>
+                <span className="ing-label">{(() => { const m = minis.find(z => z.id === r.recipe); return m ? m.ingredients.map(g => g.name).join(', ') || 'no ingredients yet' : ''; })()}</span>
+              </span>
+            ) : r.staple ? (
               <span className="ing-group">
                 <span className="ing-label">Staple · buy for $</span>
                 <input className={'field-sm ing-num' + (r.name.trim() && !r.price.trim() ? ' needs' : '')} inputMode="decimal" value={r.price} placeholder="0.00"
@@ -209,13 +234,13 @@ export default function RecipeEditor({ D, update, recipe, bucket = null, kind = 
                 })}
               </span>
             )}
-            <button className={'pill-sm ing-staple' + (r.staple ? ' dark' : '')} aria-pressed={r.staple} onClick={() => setRow(r.key, { staple: !r.staple })}>Staple</button>
+            {!r.recipe && <button className={'pill-sm ing-staple' + (r.staple ? ' dark' : '')} aria-pressed={r.staple} onClick={() => setRow(r.key, { staple: !r.staple })}>Staple</button>}
             <span className="ing-cost" title={mismatch ? 'Units don’t match (e.g. g vs ml)' : undefined}>{c !== null ? money(c) : mismatch ? 'units?' : '—'}</span>
             <button className="x-btn" aria-label="Remove ingredient" onClick={() => setRows(rs => (rs.length > 1 ? rs.filter(z => z.key !== r.key) : [blankRow()]))}>×</button>
           </div>
         );
       })}
-      {!isBucket && (
+      {!isBucket && !isMini && (
         <div className="bucket-uses">
           {uses.map(u => {
             const b = D.buckets.find(z => z.id === u.bucket), avg = bucketAverage(b, ctx);
@@ -249,18 +274,20 @@ export default function RecipeEditor({ D, update, recipe, bucket = null, kind = 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         <span className="row">
           <button className="pill-sm" onClick={() => setRows(rs => [...rs, blankRow()])}>{isBucket ? '+ Add item' : '+ Add ingredient'}</button>
-          {!isBucket && <button className="pill-sm" onClick={() => setChoosing(c => !c)}>{choosing ? 'Close buckets' : '+ Add bucket to recipe'}</button>}
+          {!isBucket && !isMini && <button className="pill-sm" onClick={() => setChoosing(c => !c)}>{choosing ? 'Close buckets' : '+ Add bucket to recipe'}</button>}
         </span>
         <span style={{ fontSize: 14, fontWeight: 600 }}>
-          {isBucket ? (priced.length ? 'Average ' + money(average) + ' per item' : 'Add prices to work out the average') : (priced.length || uses.length) ? 'Meal cost ' + money(total) + ' · ' + money(total / 2) + ' each' : recipe?.cost ? 'Meal cost ' + money(recipe.cost) + ' (add prices to work it out)' : 'Add prices to work out the cost'}
+          {isBucket ? (priced.length ? 'Average ' + money(average) + ' per item' : 'Add prices to work out the average')
+            : isMini ? (priced.length ? 'Costs ' + money(total) + ' per batch' : 'Add prices to work out the cost')
+            : (priced.length || uses.length) ? 'Meal cost ' + money(total) + ' · ' + money(total / 2) + ' each' : recipe?.cost ? 'Meal cost ' + money(recipe.cost) + ' (add prices to work it out)' : 'Add prices to work out the cost'}
         </span>
       </div>
-      {!isBucket && <p className="note" style={{ margin: 0 }}>Buy amounts, prices and staples are shared: set them once and every recipe using that ingredient updates. Staples (salt, pepper, spices) add a nominal {money(STAPLE_COST)} each.{uses.length > 0 && ' Buckets count at their average item cost until you pick items for a planned meal.'}</p>}
+      {!isBucket && <p className="note" style={{ margin: 0 }}>{isMini && 'Each pick makes one batch. '}Buy amounts, prices and staples are shared: set them once and every recipe using that ingredient updates. Staples (salt, pepper, spices) add a nominal {money(STAPLE_COST)} each.{uses.length > 0 && ' Buckets count at their average item cost until you pick items for a planned meal.'}</p>}
 
       {!isBucket && <textarea value={method} onChange={e => setMethod(e.target.value)} placeholder="Write the recipe yourself (optional)" rows={6}
         style={{ padding: '10px 12px', border: '1px solid #DDD8CC', borderRadius: 10, background: '#fff', fontSize: 14, resize: 'vertical', marginTop: 6 }} />}
       <div className="row8">
-        <button className="pill dark" style={{ padding: '0 18px' }} onClick={save}>{isBucket ? 'Save bucket' : 'Save recipe'}</button>
+        <button className="pill dark" style={{ padding: '0 18px' }} onClick={save}>{isBucket ? 'Save bucket' : isMini ? 'Save mini recipe' : 'Save recipe'}</button>
         <button className="pill plain" onClick={onDone}>Cancel</button>
       </div>
     </div>

@@ -226,6 +226,8 @@ input:focus, textarea:focus, select:focus { outline: 2px solid var(--ink); outli
 .bucket-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; margin: 28px 0 12px; padding-top: 18px; border-top: 1px solid var(--line); }
 .bucket-tag { background: #EFE8F3; }
 .bucket-card { background: #FDFBFE; }
+.mini-card { background: #FBFCF7; }
+.ing-tag.mini-item { border: 1px dashed #CFC9BC; }
 .bucket-line { display: flex; flex-direction: column; gap: 1px; width: 100%; margin-top: 3px; padding: 3px 8px; border: none; border-radius: 6px; background: #EFE8F3; color: var(--chip-ink); font-size: 11px; line-height: 1.3; text-align: left; cursor: pointer; white-space: normal; }
 .bucket-line.todo { background: #F7EFD9; color: #7A6A2E; }
 .pick-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 170px), 1fr)); gap: 6px; }

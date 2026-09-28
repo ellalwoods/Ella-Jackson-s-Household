@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { BLANK_PICK, HouseholdData, money, norm, Recipe } from '../lib/model';
-import { costContext, fmtQty, ingredientCost } from '../lib/food';
+import { costContext, fmtQty, itemCost, miniOf } from '../lib/food';
 
 interface Props {
   D: HouseholdData;
@@ -72,13 +72,14 @@ export default function BucketPickDialog({ D, recipe, label, picks, onSave, onCl
               )}
               <div className="pick-grid">
                 {items.map(g => {
-                  const on = list.some(n => norm(n) === norm(g.name)), c = ingredientCost(g, ctx);
+                  const on = list.some(n => norm(n) === norm(g.name)), c = itemCost(g, ctx), mini = miniOf(g, ctx);
                   return (
                     <button key={g.name} className={'pick-item' + (on ? ' on' : '')} aria-pressed={on} onClick={() => toggle(u.bucket, g.name, u.count)}>
                       <span className="box-check" style={{ width: 18, height: 18, borderRadius: 5, fontSize: 11, background: on ? '#23221F' : 'transparent' }}>{on ? '✓' : ''}</span>
                       <span style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
                         {g.name}
-                        {ctx.staples.has(norm(g.name)) ? <span className="muted" style={{ fontSize: 11 }}> · staple</span>
+                        {mini ? <span className="muted" style={{ fontSize: 11 }}> · mini recipe</span>
+                          : ctx.staples.has(norm(g.name)) ? <span className="muted" style={{ fontSize: 11 }}> · staple</span>
                           : g.qty && g.unit && <span className="muted" style={{ fontSize: 11 }}> · {fmtQty(g.qty, g.unit)}</span>}
                       </span>
                       {c !== null && <span className="muted" style={{ fontSize: 12 }}>{money(c)}</span>}

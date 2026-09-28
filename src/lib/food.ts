@@ -1,5 +1,5 @@
 import { addDays, DOW, key, MON, parse } from './dates';
-import { BLANK_PICK, Bucket, CAT_COLORS, Category, isShare, shareFractions, shareOut, earnings, NO_EXPIRY, SHOP_SECTION_LABEL, SHOP_SECTIONS, ShopSection, EXTRA_COLOR, HouseholdData, INCLUDE_LOW, Meal, MEALS, norm, num, shareOf, Spend, PantryItem, Price, Recipe, RecipeIngredient, STAPLE_COST, Unit } from './model';
+import { BLANK_PICK, Bucket, BucketItem, CAT_COLORS, Category, isShare, shareFractions, shareOut, earnings, NO_EXPIRY, SHOP_SECTION_LABEL, SHOP_SECTIONS, ShopSection, EXTRA_COLOR, HouseholdData, INCLUDE_LOW, Meal, MEALS, norm, num, shareOf, Spend, PantryItem, Price, Recipe, RecipeIngredient, STAPLE_COST, Unit } from './model';
 
 // ── Plan ───────────────────────────────────────────────────────────────────
 
@@ -138,17 +138,34 @@ export function useCost(g: { qty?: number; unit?: Unit }, pr: Price | undefined)
 /** Meal cost from its ingredients; falls back to the old flat cost until any ingredient is priced. */
 export const stapleSet = (D: HouseholdData) => new Set(D.staples.map(norm));
 
-export interface CostContext { prices: Map<string, Price>; staples: Set<string>; buckets: Map<string, Bucket> }
-export const costContext = (D: HouseholdData): CostContext => ({ prices: priceMap(D), staples: stapleSet(D), buckets: new Map(D.buckets.map(b => [b.id, b])) });
+export interface CostContext { prices: Map<string, Price>; staples: Set<string>; buckets: Map<string, Bucket>; recipes: Map<string, Recipe> }
+export const costContext = (D: HouseholdData): CostContext => ({
+  prices: priceMap(D), staples: stapleSet(D), buckets: new Map(D.buckets.map(b => [b.id, b])), recipes: new Map(D.recipes.map(r => [r.id, r])),
+});
 
 /** One ingredient's cost in a meal: a nominal amount for staples, else its share of the purchase price. */
 export function ingredientCost(g: RecipeIngredient, { prices, staples }: CostContext) {
   return staples.has(norm(g.name)) ? STAPLE_COST : useCost(g, prices.get(norm(g.name)));
 }
 
+/** The mini recipe a bucket item stands for, if any. */
+export const miniOf = (g: BucketItem | undefined, ctx: CostContext) => (g?.recipe ? ctx.recipes.get(g.recipe) : undefined);
+
+/** One mini recipe's cost from its priced ingredients (null until any are priced). */
+export function miniCost(r: Recipe, ctx: CostContext) {
+  const costs = r.ingredients.map(g => ingredientCost(g, ctx)).filter((c): c is number => c !== null);
+  return costs.length ? round(costs.reduce((a, c) => a + c, 0)) : r.cost ?? null;
+}
+
+/** One bucket item's cost in a meal: a whole mini recipe, or the ingredient's share. */
+export function itemCost(g: BucketItem, ctx: CostContext) {
+  if (g.recipe) { const r = miniOf(g, ctx); return r ? miniCost(r, ctx) : null; }
+  return ingredientCost(g, ctx);
+}
+
 /** Average cost of one item from a bucket (over the items that have prices). */
 export function bucketAverage(b: Bucket | undefined, ctx: CostContext) {
-  const costs = (b?.items ?? []).map(g => ingredientCost(g, ctx)).filter((c): c is number => c !== null);
+  const costs = (b?.items ?? []).map(g => itemCost(g, ctx)).filter((c): c is number => c !== null);
   return costs.length ? round(costs.reduce((a, c) => a + c, 0) / costs.length) : 0;
 }
 
@@ -165,7 +182,7 @@ export function recipeCost(r: Recipe, ctx: CostContext, picks: Record<string, st
     for (const n of chosen) {
       if (n === BLANK_PICK) continue; // left blank on purpose: omitted
       const item = b?.items.find(g => norm(g.name) === norm(n));
-      bucketCost += (item && ingredientCost(item, ctx)) ?? bucketAverage(b, ctx);
+      bucketCost += (item && itemCost(item, ctx)) ?? bucketAverage(b, ctx);
     }
     bucketCost += (u.count - chosen.length) * bucketAverage(b, ctx);
   }
@@ -248,7 +265,7 @@ interface Need { name: string; days: string[]; need: Amount | null; exact: boole
 
 function weekNeeds(D: HouseholdData, mon: Date) {
   const needs = new Map<string, Need>();
-  const bBy = new Map(D.buckets.map(b => [b.id, b]));
+  const bBy = new Map(D.buckets.map(b => [b.id, b])), rBy = new Map(D.recipes.map(r => [r.id, r]));
   for (const m of weekMeals(D, mon)) {
     for (const g of m.recipe.ingredients) addNeed(needs, g, DOW[m.day]);
     // Items picked from buckets for this meal, with the amounts set in the bucket.
@@ -256,7 +273,10 @@ function weekNeeds(D: HouseholdData, mon: Date) {
       for (const n of (m.picks[u.bucket] ?? []).slice(0, u.count)) {
         if (n === BLANK_PICK) continue;
         const item = bBy.get(u.bucket)?.items.find(g => norm(g.name) === norm(n));
-        addNeed(needs, item ?? { name: n }, DOW[m.day]);
+        const mini = item?.recipe ? rBy.get(item.recipe) : undefined;
+        // A mini recipe adds all of its ingredients.
+        if (mini) for (const g of mini.ingredients) addNeed(needs, g, DOW[m.day]);
+        else if (!item?.recipe) addNeed(needs, item ?? { name: n }, DOW[m.day]);
       }
     }
   }

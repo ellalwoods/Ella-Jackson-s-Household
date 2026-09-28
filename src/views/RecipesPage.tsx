@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { addDays, DOW, key } from '../lib/dates';
-import { HouseholdData, Meal, MEAL_LABEL, MEALS, money, norm, STATE_COLORS } from '../lib/model';
-import { bucketAverage, fmtQty, ingredientCost, isStocked, costContext, recipeCost, searchRecipes } from '../lib/food';
+import { HouseholdData, Meal, MEAL_LABEL, mealRecipes, MEALS, miniRecipes, money, norm, Recipe, STATE_COLORS } from '../lib/model';
+import { bucketAverage, fmtQty, isStocked, itemCost, costContext, miniCost, miniOf, recipeCost, searchRecipes } from '../lib/food';
 import type { Update } from '../Household';
 import RecipeEditor, { safeLink } from './RecipeEditor';
 
 export default function RecipesPage({ D, update, mon }: { D: HouseholdData; update: Update; mon: Date }) {
   const [q, setQ] = useState('');
-  /** null = closed, 'new' = adding a recipe, 'bucket:new' = adding a bucket, 'bucket:<id>' or a recipe id = editing. */
+  /** null = closed, 'new' / 'mini:new' / 'bucket:new' = adding, 'bucket:<id>' or a recipe id = editing. */
   const [editing, setEditing] = useState<string | null>(null);
   const [openMethod, setOpenMethod] = useState<Record<string, boolean>>({});
   const [mealFilter, setMealFilter] = useState<Meal | 'all'>('all');
@@ -18,11 +18,14 @@ export default function RecipesPage({ D, update, mon }: { D: HouseholdData; upda
   const pantry = new Map(D.pantry.map(c => [norm(c.name), c]));
   const prices = costContext(D);
   const weekKeys = DOW.map((_, i) => key(addDays(mon, i)));
-  const usedTags = D.recipeTags.filter(t => D.recipes.some(r => (r.tags ?? []).some(x => norm(x) === norm(t))));
-  const recipes = searchRecipes(D.recipes, q).filter(r => mealFilter === 'all' || r.meals.includes(mealFilter))
+  const mains = mealRecipes(D);
+  const minis = searchRecipes(miniRecipes(D), q).sort((a, b) => a.name.localeCompare(b.name));
+  const usedTags = D.recipeTags.filter(t => mains.some(r => (r.tags ?? []).some(x => norm(x) === norm(t))));
+  const recipes = searchRecipes(mains, q).filter(r => mealFilter === 'all' || r.meals.includes(mealFilter))
     .filter(r => !tagFilter || (r.tags ?? []).some(x => norm(x) === norm(tagFilter))).sort((a, b) => a.name.localeCompare(b.name));
   const editingBucket = editing?.startsWith('bucket:');
-  const editingRecipe = editing && editing !== 'new' && !editingBucket ? D.recipes.find(r => r.id === editing) ?? null : null;
+  const editingRecipe = editing && editing !== 'new' && editing !== 'mini:new' && !editingBucket ? D.recipes.find(r => r.id === editing) ?? null : null;
+  const editKind = editingBucket ? 'bucket' : editing === 'mini:new' || editingRecipe?.mini ? 'mini' : 'recipe';
   const bucketBeingEdited = editingBucket ? D.buckets.find(b => 'bucket:' + b.id === editing) ?? null : null;
   const removeBucket = (id: string) => update(x => {
     x.buckets = x.buckets.filter(b => b.id !== id);
@@ -33,12 +36,73 @@ export default function RecipesPage({ D, update, mon }: { D: HouseholdData; upda
   const edit = (id: string) => { setEditing(id); try { window.scrollTo(0, 0); } catch { /* not available */ } };
   const remove = (id: string) => update(x => {
     x.recipes = x.recipes.filter(z => z.id !== id);
+    // A mini recipe also leaves its buckets, and any meals it was picked for.
+    for (const b of x.buckets) {
+      const gone = b.items.filter(g => g.recipe === id).map(g => norm(g.name));
+      if (!gone.length) continue;
+      b.items = b.items.filter(g => g.recipe !== id);
+      for (const slot of Object.values(x.picks)) if (slot[b.id]) slot[b.id] = slot[b.id].filter(n => !gone.includes(norm(n)));
+    }
     Object.keys(x.plan).forEach(k => {
       const p = x.plan[k];
       for (const m of MEALS) if (p[m] === id) delete p[m];
       if (!Object.keys(p).length) delete x.plan[k];
     });
   });
+
+  /** A recipe card: name, a summary line, ingredients, link and method. */
+  const card = (r: Recipe, sub: string, cls = '') => {
+    const link = safeLink(r.link);
+    const showMethod = !!openMethod[r.id];
+    return (
+      <div key={r.id} className={'card ' + cls} style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 16, fontWeight: 600 }}>{r.name}</div>
+            <div style={{ fontSize: 13 }} className="muted">{sub}</div>
+            {r.meals.length > 0 && <div className="note" style={{ marginTop: 2 }}>{r.meals.map(m => MEAL_LABEL[m]).join(' · ')}</div>}
+            {(r.tags ?? []).length > 0 && (
+              <div className="row" style={{ gap: 4, marginTop: 4 }}>
+                {r.tags!.map(t => <button key={t} className={'mini-tag' + (norm(tagFilter) === norm(t) ? ' on' : '')} style={{ height: 22, fontSize: 11 }} onClick={() => setTagFilter(norm(tagFilter) === norm(t) ? '' : t)}>{t}</button>)}
+              </div>
+            )}
+          </div>
+          <span style={{ display: 'flex', gap: 10 }}>
+            <button className="link-btn" onClick={() => edit(r.id)}>Edit</button>
+            <button className="link-btn" onClick={() => remove(r.id)}>Remove</button>
+          </span>
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+          {r.ingredients.map((g, i) => {
+            const c = pantry.get(norm(g.name));
+            const dot = !c ? '#BFB8AA' : isStocked(c) ? STATE_COLORS.Full : STATE_COLORS.Replace;
+            return (
+              <span key={i} className="ing-tag">
+                <span className="dot6" style={{ background: dot }} />{g.name}
+                {prices.staples.has(norm(g.name)) ? <span className="muted">· staple</span> : g.qty && g.unit ? <span className="muted">· {fmtQty(g.qty, g.unit)}</span> : null}
+              </span>
+            );
+          })}
+          {(r.buckets ?? []).map(u => {
+            const b = D.buckets.find(z => z.id === u.bucket);
+            return b ? <span key={u.bucket} className="ing-tag bucket-tag">🪣 {b.name}<span className="muted">· pick {u.count}</span></span> : null;
+          })}
+          {!r.ingredients.length && !r.buckets?.length && <span className="note">No ingredients yet — tap Edit to add them.</span>}
+        </div>
+        {(link || r.method) && (
+          <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', fontSize: 13 }}>
+            {link && <a href={link} target="_blank" rel="noopener noreferrer">Open recipe ↗</a>}
+            {r.method && (
+              <button className="link-btn" style={{ fontSize: 13 }} onClick={() => setOpenMethod(m => ({ ...m, [r.id]: !m[r.id] }))}>
+                {showMethod ? 'Hide method' : 'Show method'}
+              </button>
+            )}
+          </div>
+        )}
+        {showMethod && r.method && <div style={{ fontSize: 14, lineHeight: 1.5, whiteSpace: 'pre-wrap', borderTop: '1px solid #F0ECE4', paddingTop: 10 }}>{r.method}</div>}
+      </div>
+    );
+  };
 
   return (
     <>
@@ -52,7 +116,7 @@ export default function RecipesPage({ D, update, mon }: { D: HouseholdData; upda
       <div className="row" style={{ marginBottom: 14 }}>
         {(['all', ...MEALS] as const).map(m => {
           const on = mealFilter === m;
-          const cnt = m === 'all' ? D.recipes.length : D.recipes.filter(r => r.meals.includes(m)).length;
+          const cnt = m === 'all' ? mains.length : mains.filter(r => r.meals.includes(m)).length;
           return (
             <button key={m} className="filter" onClick={() => setMealFilter(m)}
               style={{ borderColor: on ? '#23221F' : '#DDD8CC', background: on ? '#23221F' : '#fff', color: on ? '#fff' : '#23221F' }}>
@@ -66,65 +130,16 @@ export default function RecipesPage({ D, update, mon }: { D: HouseholdData; upda
           <span className="ing-label" style={{ marginRight: 4 }}>Tags</span>
           {['', ...usedTags].map(t => (
             <button key={t || 'all'} className={'mini-tag' + (tagFilter === t ? ' on' : '')} aria-pressed={tagFilter === t} onClick={() => setTagFilter(t)}>
-              {t || 'Any'}{t && ' · ' + D.recipes.filter(r => (r.tags ?? []).some(x => norm(x) === norm(t))).length}
+              {t || 'Any'}{t && ' · ' + mains.filter(r => (r.tags ?? []).some(x => norm(x) === norm(t))).length}
             </button>
           ))}
         </div>
       )}
-      {editing && <RecipeEditor key={editing} D={D} update={update} recipe={editingRecipe} kind={editingBucket ? 'bucket' : 'recipe'} bucket={bucketBeingEdited} onDone={() => setEditing(null)} />}
+      {editing && <RecipeEditor key={editing} D={D} update={update} recipe={editingRecipe} kind={editKind} bucket={bucketBeingEdited} onDone={() => setEditing(null)} />}
       <div className="auto-grid" style={{ gridTemplateColumns: 'repeat(auto-fill,minmax(min(100%,280px),1fr))' }}>
         {recipes.map(r => {
           const planned = weekKeys.flatMap((k, i) => MEALS.filter(m => D.plan[k]?.[m] === r.id).map(m => DOW[i] + ' ' + MEAL_LABEL[m].toLowerCase()));
-          const link = safeLink(r.link);
-          const showMethod = !!openMethod[r.id];
-          return (
-            <div key={r.id} className="card" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 16, fontWeight: 600 }}>{r.name}</div>
-                  <div style={{ fontSize: 13 }} className="muted">{money(recipeCost(r, prices))} · {planned.length ? 'On ' + planned.join(', ') : 'Not this week'}</div>
-                  {r.meals.length > 0 && <div className="note" style={{ marginTop: 2 }}>{r.meals.map(m => MEAL_LABEL[m]).join(' · ')}</div>}
-                  {(r.tags ?? []).length > 0 && (
-                    <div className="row" style={{ gap: 4, marginTop: 4 }}>
-                      {r.tags!.map(t => <button key={t} className={'mini-tag' + (norm(tagFilter) === norm(t) ? ' on' : '')} style={{ height: 22, fontSize: 11 }} onClick={() => setTagFilter(norm(tagFilter) === norm(t) ? '' : t)}>{t}</button>)}
-                    </div>
-                  )}
-                </div>
-                <span style={{ display: 'flex', gap: 10 }}>
-                  <button className="link-btn" onClick={() => edit(r.id)}>Edit</button>
-                  <button className="link-btn" onClick={() => remove(r.id)}>Remove</button>
-                </span>
-              </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-                {r.ingredients.map((g, i) => {
-                  const c = pantry.get(norm(g.name));
-                  const dot = !c ? '#BFB8AA' : isStocked(c) ? STATE_COLORS.Full : STATE_COLORS.Replace;
-                  return (
-                    <span key={i} className="ing-tag">
-                      <span className="dot6" style={{ background: dot }} />{g.name}
-                      {prices.staples.has(norm(g.name)) ? <span className="muted">· staple</span> : g.qty && g.unit ? <span className="muted">· {fmtQty(g.qty, g.unit)}</span> : null}
-                    </span>
-                  );
-                })}
-                {(r.buckets ?? []).map(u => {
-                  const b = D.buckets.find(z => z.id === u.bucket);
-                  return b ? <span key={u.bucket} className="ing-tag bucket-tag">🪣 {b.name}<span className="muted">· pick {u.count}</span></span> : null;
-                })}
-                {!r.ingredients.length && !r.buckets?.length && <span className="note">No ingredients yet — tap Edit to add them.</span>}
-              </div>
-              {(link || r.method) && (
-                <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', fontSize: 13 }}>
-                  {link && <a href={link} target="_blank" rel="noopener noreferrer">Open recipe ↗</a>}
-                  {r.method && (
-                    <button className="link-btn" style={{ fontSize: 13 }} onClick={() => setOpenMethod(m => ({ ...m, [r.id]: !m[r.id] }))}>
-                      {showMethod ? 'Hide method' : 'Show method'}
-                    </button>
-                  )}
-                </div>
-              )}
-              {showMethod && r.method && <div style={{ fontSize: 14, lineHeight: 1.5, whiteSpace: 'pre-wrap', borderTop: '1px solid #F0ECE4', paddingTop: 10 }}>{r.method}</div>}
-            </div>
-          );
+          return card(r, money(recipeCost(r, prices)) + ' · ' + (planned.length ? 'On ' + planned.join(', ') : 'Not this week'));
         })}
       </div>
       {!recipes.length && <p className="empty">{q ? <>No recipes match “{q}”.</> : 'No recipes here yet.'}</p>}
@@ -143,7 +158,7 @@ export default function RecipesPage({ D, update, mon }: { D: HouseholdData; upda
       </div>
       <div className="auto-grid" style={{ gridTemplateColumns: 'repeat(auto-fill,minmax(min(100%,280px),1fr))' }}>
         {D.buckets.slice().sort((a, b) => a.name.localeCompare(b.name)).map(b => {
-          const usedBy = D.recipes.filter(r => r.buckets?.some(u => u.bucket === b.id)).length;
+          const usedBy = mains.filter(r => r.buckets?.some(u => u.bucket === b.id)).length;
           return (
             <div key={b.id} className="card bucket-card" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
@@ -169,8 +184,8 @@ export default function RecipesPage({ D, update, mon }: { D: HouseholdData; upda
               )}
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
                 {b.items.filter(g => !bucketTag[b.id] || (g.tags ?? []).some(t => norm(t) === norm(bucketTag[b.id]))).map((g, i) => {
-                  const c = ingredientCost(g, prices);
-                  return <span key={i} className="ing-tag">{g.name}{prices.staples.has(norm(g.name)) ? <span className="muted">· staple</span> : c !== null ? <span className="muted">· {money(c)}</span> : g.qty && g.unit ? <span className="muted">· {fmtQty(g.qty, g.unit)}</span> : null}</span>;
+                  const c = itemCost(g, prices);
+                  return <span key={i} className={'ing-tag' + (miniOf(g, prices) ? ' mini-item' : '')}>{g.name}{miniOf(g, prices) ? <span className="muted">· mini{c !== null ? ' · ' + money(c) : ''}</span> : prices.staples.has(norm(g.name)) ? <span className="muted">· staple</span> : c !== null ? <span className="muted">· {money(c)}</span> : g.qty && g.unit ? <span className="muted">· {fmtQty(g.qty, g.unit)}</span> : null}</span>;
                 })}
                 {!b.items.length && <span className="note">Empty — tap Edit to add items.</span>}
               </div>
@@ -179,6 +194,22 @@ export default function RecipesPage({ D, update, mon }: { D: HouseholdData; upda
         })}
       </div>
       {!D.buckets.length && <p className="note" style={{ margin: '4px 0 0' }}>No buckets yet.</p>}
+
+      <div className="bucket-head">
+        <div>
+          <div style={{ fontWeight: 600, fontSize: 17 }}>Mini recipes</div>
+          <div className="note">Garnishes, sauces and dressings made of a few ingredients. Add one to a bucket as a single item; picking it puts its ingredients on the shopping list.</div>
+        </div>
+        {!editing && <button className="pill plain" onClick={() => edit('mini:new')}>+ Add mini recipe</button>}
+      </div>
+      <div className="auto-grid" style={{ gridTemplateColumns: 'repeat(auto-fill,minmax(min(100%,280px),1fr))' }}>
+        {minis.map(r => {
+          const inBuckets = D.buckets.filter(b => b.items.some(g => g.recipe === r.id)).map(b => b.name);
+          const c = miniCost(r, prices);
+          return card(r, (c !== null ? money(c) + ' per batch · ' : '') + (inBuckets.length ? 'In ' + inBuckets.join(', ') : 'Not in a bucket yet'), 'mini-card');
+        })}
+      </div>
+      {!minis.length && <p className="note" style={{ margin: '4px 0 0' }}>{q && miniRecipes(D).length ? <>No mini recipes match “{q}”.</> : 'No mini recipes yet.'}</p>}
     </>
   );
 }

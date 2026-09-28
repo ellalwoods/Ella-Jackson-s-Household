@@ -1,4 +1,4 @@
-import { expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { addDays, key, mondayOf } from './dates';
 import { HouseholdData, seed } from './model';
 import { addToPantry, bucketAverage, costContext, pendingPicks, searchRecipes, weekMeals, guessSection, expiry, weekBudget, fmtAmount, recipeCost, shoppingList, stockUp, toBase } from './food';
@@ -222,4 +222,23 @@ it('lets bucket items be staples: nominal cost, no pack size on the list', () =>
   D.picks = { [wk + '|dinner']: { b: ['Garlic'] } };
   const garlic = shoppingList(D, mon).items.find(i => i.name === 'Garlic')!;
   expect(garlic.buy).toBeNull();
+});
+
+describe('mini recipes in buckets', () => {
+  it('costs a picked mini recipe as a whole batch and lists its ingredients', () => {
+    const D = seed(new Date(2026, 8, 23));
+    D.recipes.push({ id: 'sv', name: 'Salsa verde', mini: true, meals: [], ingredients: [{ name: 'Parsley', qty: 1, unit: 'each' }, { name: 'Capers', qty: 50, unit: 'g' }] });
+    D.prices.push({ name: 'Parsley', qty: 1, unit: 'each', price: 3 }, { name: 'Capers', qty: 100, unit: 'g', price: 4 });
+    D.buckets.push({ id: 'gar', name: 'Garnishes', items: [{ name: 'Salsa verde', recipe: 'sv' }, { name: 'Chives', qty: 1, unit: 'each' }] });
+    const mon = mondayOf(new Date(2026, 8, 23)), k = key(mon);
+    const bol = D.recipes.find(r => r.id === 'bol')!;
+    bol.buckets = [{ bucket: 'gar', count: 1 }];
+    D.picks[k + '|dinner'] = { gar: ['Salsa verde'] };
+    const ctx = costContext(D);
+    expect(recipeCost(bol, ctx, { gar: ['Salsa verde'] }) - recipeCost({ ...bol, buckets: [] }, ctx)).toBeCloseTo(5);
+    const names = shoppingList(D, mon).items.map(i => i.name);
+    expect(names).toContain('Parsley');
+    expect(names).toContain('Capers');
+    expect(names).not.toContain('Salsa verde');
+  });
 });
