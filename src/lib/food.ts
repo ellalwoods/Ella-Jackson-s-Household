@@ -382,6 +382,18 @@ export function addToPantry(x: HouseholdData, item: { name: string; qty?: number
   if (item.expires) p.expires = item.expires;
 }
 
+/**
+ * Sets an ingredient's shared purchase price. With a qty and unit that's the
+ * pack it buys; otherwise any pack size already known is kept (else 1 unit).
+ */
+export function setPrice(x: HouseholdData, name: string, price: number, qty?: number, unit?: Unit) {
+  const n = name.trim();
+  if (!n || isNaN(price)) return;
+  const i = x.prices.findIndex(p => norm(p.name) === norm(n)), had = i >= 0 ? x.prices[i] : undefined;
+  const p: Price = { name: had?.name ?? n, qty: qty && unit ? qty : had?.qty ?? 1, unit: qty && unit ? unit : had?.unit ?? 'each', price };
+  if (i >= 0) x.prices[i] = p; else x.prices.push(p);
+}
+
 export function shoppingText(label: string, items: ShopItem[], skipped: Skipped[]) {
   const total = items.reduce((a, i) => a + (i.cost ?? 0), 0);
   const line = (i: ShopItem) => {

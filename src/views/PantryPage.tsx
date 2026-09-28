@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { MON, parse } from '../lib/dates';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-import { HouseholdData, INCLUDE_LOW, NO_EXPIRY, norm, PantryItem, STATE_COLORS, STATES, StockState, Unit, UNIT_LABEL, UNITS } from '../lib/model';
-import { addToPantry, expiry, fmtQty, priceMap } from '../lib/food';
+import { HouseholdData, INCLUDE_LOW, NO_EXPIRY, norm, PantryItem, Price, STATE_COLORS, STATES, StockState, Unit, UNIT_LABEL, UNITS } from '../lib/model';
+import { addToPantry, expiry, fmtQty, priceMap, setPrice } from '../lib/food';
 import type { Update } from '../Household';
 
 export const stockRule = (INCLUDE_LOW
@@ -80,7 +80,7 @@ export default function PantryPage({ D, update }: { D: HouseholdData; update: Up
                 {(() => { const e = expiry(c.expires); return e && (e.soon || e.expired) ? <span className={'exp-chip ' + (e.expired ? 'expired' : 'soon')}>{e.label}</span> : null; })()}
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
-                <span className="note">{pr ? 'Buy ' + fmtQty(pr.qty, pr.unit) + ' for $' + pr.price.toFixed(2) : ''}</span>
+                <PriceField key={String(pr?.price)} name={c.name} update={update} price={pr} />
                 <button className="link-btn" onClick={() => edit(c.name, z => {
                   if (z.qty != null) { delete z.qty; delete z.unit; delete z.forWeek; z.state = 'Full'; }
                   else { z.qty = 0; z.unit = pr?.unit ?? 'g'; }
@@ -110,16 +110,22 @@ function AddToPantry({ D, update }: { D: HouseholdData; update: Update }) {
   const [qty, setQty] = useState('');
   const [unit, setUnit] = useState<Unit>('each');
   const [expires, setExpires] = useState('');
+  const [price, setPrice_] = useState('');
   const existing = D.pantry.find(c => norm(c.name) === norm(name));
+  const knownPrice = D.prices.find(p => norm(p.name) === norm(name));
   const known = Array.from(new Set([...D.prices.map(p => p.name), ...D.recipes.flatMap(r => r.ingredients.map(g => g.name))]))
     .filter(n => !D.pantry.some(c => norm(c.name) === norm(n))).sort();
 
   const add = () => {
     const n = name.trim();
     if (!n) return;
-    const q = parseFloat(qty);
-    update(x => addToPantry(x, { name: n, ...(q > 0 ? { qty: q, unit } : {}), ...(expires ? { expires } : {}) }));
-    setName(''); setQty(''); setExpires('');
+    const q = parseFloat(qty), pr = parseFloat(price);
+    update(x => {
+      addToPantry(x, { name: n, ...(q > 0 ? { qty: q, unit } : {}), ...(expires ? { expires } : {}) });
+      // The amount added is what you bought, so it doubles as the pack size for the price.
+      if (!isNaN(pr)) setPrice(x, n, pr, q > 0 ? q : undefined, unit);
+    });
+    setName(''); setQty(''); setExpires(''); setPrice_('');
   };
   const onKey = (e: React.KeyboardEvent) => { if (e.key === 'Enter') add(); };
 
@@ -133,11 +139,16 @@ function AddToPantry({ D, update }: { D: HouseholdData; update: Update }) {
           <input className="field-sm" style={{ width: 56, height: 40 }} inputMode="decimal" value={qty} onChange={e => setQty(e.target.value)} onKeyDown={onKey} placeholder="qty" aria-label="Amount" />
           <UnitSelect value={unit} onChange={setUnit} />
         </span>
+        <span className="ing-group">
+          <span className="ing-label">$</span>
+          <input className="field-sm" style={{ width: 70, height: 40 }} inputMode="decimal" value={price} onChange={e => setPrice_(e.target.value)} onKeyDown={onKey}
+            placeholder={knownPrice ? knownPrice.price.toFixed(2) : '0.00'} aria-label="Price" />
+        </span>
         <span className="ing-group"><ExpiryInput label="Use by" height={40} value={expires} onChange={setExpires} /></span>
         <button className="pill-sm dark" style={{ height: 40 }} onClick={add}>Add</button>
       </div>
       <span className="note">
-        {existing ? existing.name + ' is already in the pantry — an amount here is added to what’s there.' : 'Amount and use-by date are optional. Without an amount it’s marked Full.'}
+        {existing ? existing.name + ' is already in the pantry — an amount here is added to what’s there.' : 'Amount, price and use-by date are optional. The price is what you pay for the amount given (or for the item). Without an amount it’s marked Full.'}
       </span>
     </div>
   );
@@ -175,6 +186,23 @@ export function ExpiryInput({ label, value, onChange, height = 34 }: { label: st
         onChange={e => { onChange(e.target.value); if (e.target.value) setEditing(false); }} onBlur={() => setEditing(false)} />
       <button className="filter" aria-pressed={false} title="Doesn’t expire" onClick={() => { setEditing(false); onChange(NO_EXPIRY); }}
         style={{ height: pillH, fontSize: 12, padding: '0 10px', borderColor: '#DDD8CC', background: '#fff', color: '#23221F' }}>N/A</button>
+    </span>
+  );
+}
+
+/** A pantry item's purchase price, editable in place. Shared with recipes and the shopping list. */
+function PriceField({ name, update, price }: { name: string; update: Update; price: Price | undefined }) {
+  const [text, setText] = useState(price ? String(price.price) : '');
+  const save = () => {
+    const v = parseFloat(text);
+    if (!isNaN(v) && v !== price?.price) update(x => setPrice(x, name, v));
+    if (isNaN(v)) setText(price ? String(price.price) : '');
+  };
+  return (
+    <span className="note" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+      {price && price.qty && !(price.qty === 1 && price.unit === 'each') ? 'Buy ' + fmtQty(price.qty, price.unit) + ' for $' : 'Price $'}
+      <input className="field-sm" style={{ width: 58, height: 26, fontSize: 12, padding: '0 6px' }} inputMode="decimal" value={text} placeholder="0.00"
+        aria-label={'Price of ' + name} onChange={e => setText(e.target.value)} onBlur={save} onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }} />
     </span>
   );
 }
