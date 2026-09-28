@@ -30,7 +30,8 @@ export const INCLUDE_LOW = true;
 
 /** Amounts are kept as typed (string) while editing; read them with `num`. */
 export type Amount = number | string;
-export const num = (a: Amount | undefined) => +(a ?? 0) || 0;
+/** Typed amounts may include a $ sign, commas or spaces ("$1,200"). */
+export const num = (a: Amount | undefined) => +String(a ?? 0).replace(/[$,\s]/g, '') || 0;
 
 export const UNITS = ['g', 'kg', 'ml', 'L', 'each'] as const;
 export type Unit = (typeof UNITS)[number];

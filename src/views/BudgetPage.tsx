@@ -111,7 +111,11 @@ export default function BudgetPage({ D, update }: { D: HouseholdData; update: Up
           <div className="kv"><span style={{ color: '#A9477B' }}>Ella has left</span><span style={{ color: '#A9477B', fontWeight: 600 }}>{money(b.ellaLeft)}</span></div>
           <div className="kv"><span style={{ color: '#1B6B56' }}>Jackson has left</span><span style={{ color: '#1B6B56', fontWeight: 600 }}>{money(b.jacksonLeft)}</span></div>
           <div className="kv" style={{ borderTop: '1px solid #23221F', paddingTop: 6, marginTop: 2, fontWeight: 600 }}><span>Left</span><span>{money(b.left)}</span></div>
-          {b.splits && <span className="note">Shared between {listOf(b.cats.filter(c => c.pct !== null).map(c => c.name))}. On the week page this follows what’s actually left that week.</span>}
+          {b.splits && <span className="note">
+            {money(b.income)} income − {b.cats.filter(c => c.pct === null).map(c => c.name + ' ' + money(c.total)).join(' − ')} = <strong>{money(b.left)}</strong>,
+            shared between {listOf(b.cats.filter(c => c.pct !== null).map(c => c.name))}. Budgets count in full even before they’re spent.
+            On the week page it follows what’s actually left that week (less if something goes over budget).
+          </span>}
         </div>
       </section>
       <aside style={{ flex: '1 1 280px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>

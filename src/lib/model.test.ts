@@ -1,6 +1,6 @@
 import { describe as group, expect, it } from 'vitest';
 import { addDays, key, mondayOf, weekLabel } from './dates';
-import { budget, Category, describe, HouseholdData, migrate, money, occurs, seed, setShare } from './model';
+import { budget, Category, describe, HouseholdData, migrate, money, num, occurs, seed, setShare } from './model';
 
 const mon = mondayOf(new Date(2026, 8, 23)); // Mon 21 Sep 2026
 
@@ -86,5 +86,13 @@ group('share of what’s left', () => {
     const d = migrate({ cats: [{ id: 'x', name: 'Public transport', ella: 50, jackson: 50 }, { id: 'y', name: 'Fun money', ella: 30, jackson: 30 }, { id: 'z', name: 'Savings', ella: 90, jackson: 90 }] })!;
     expect(d.cats[0].fixed).toBe(true);
     expect(d.cats.map(c => c.share)).toEqual([undefined, 25, 75]);
+  });
+});
+
+group('amounts', () => {
+  it('reads $ signs and commas', () => {
+    expect(num('$1,200')).toBe(1200);
+    expect(num(' 400 ')).toBe(400);
+    expect(num('abc')).toBe(0);
   });
 });
