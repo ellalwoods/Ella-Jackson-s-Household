@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { addDays, DOW, key } from '../lib/dates';
 import { HouseholdData, Meal, MEAL_LABEL, MEALS, money, norm, STATE_COLORS } from '../lib/model';
-import { fmtQty, isStocked, costContext, recipeCost, searchRecipes } from '../lib/food';
+import { bucketAverage, fmtQty, ingredientCost, isStocked, costContext, recipeCost, searchRecipes } from '../lib/food';
 import type { Update } from '../Household';
 import RecipeEditor, { safeLink } from './RecipeEditor';
 
 export default function RecipesPage({ D, update, mon }: { D: HouseholdData; update: Update; mon: Date }) {
   const [q, setQ] = useState('');
-  /** null = closed, 'new' = adding, otherwise the id being edited. */
+  /** null = closed, 'new' = adding a recipe, 'bucket:new' = adding a bucket, 'bucket:<id>' or a recipe id = editing. */
   const [editing, setEditing] = useState<string | null>(null);
   const [openMethod, setOpenMethod] = useState<Record<string, boolean>>({});
   const [mealFilter, setMealFilter] = useState<Meal | 'all'>('all');
@@ -16,7 +16,14 @@ export default function RecipesPage({ D, update, mon }: { D: HouseholdData; upda
   const prices = costContext(D);
   const weekKeys = DOW.map((_, i) => key(addDays(mon, i)));
   const recipes = searchRecipes(D.recipes, q).filter(r => mealFilter === 'all' || r.meals.includes(mealFilter)).sort((a, b) => a.name.localeCompare(b.name));
-  const editingRecipe = editing && editing !== 'new' ? D.recipes.find(r => r.id === editing) ?? null : null;
+  const editingBucket = editing?.startsWith('bucket:');
+  const editingRecipe = editing && editing !== 'new' && !editingBucket ? D.recipes.find(r => r.id === editing) ?? null : null;
+  const bucketBeingEdited = editingBucket ? D.buckets.find(b => 'bucket:' + b.id === editing) ?? null : null;
+  const removeBucket = (id: string) => update(x => {
+    x.buckets = x.buckets.filter(b => b.id !== id);
+    for (const r of x.recipes) if (r.buckets) { r.buckets = r.buckets.filter(u => u.bucket !== id); if (!r.buckets.length) delete r.buckets; }
+    for (const k of Object.keys(x.picks)) { delete x.picks[k][id]; if (!Object.keys(x.picks[k]).length) delete x.picks[k]; }
+  });
 
   const edit = (id: string) => { setEditing(id); try { window.scrollTo(0, 0); } catch { /* not available */ } };
   const remove = (id: string) => update(x => {
@@ -32,7 +39,10 @@ export default function RecipesPage({ D, update, mon }: { D: HouseholdData; upda
     <>
       <div className="row8" style={{ marginBottom: 14 }}>
         <input className="search" style={{ flex: '1 1 260px' }} value={q} onChange={e => setQ(e.target.value)} placeholder="Search by name or ingredient" />
-        <button className="pill dark" style={{ height: 44, padding: '0 18px' }} onClick={() => setEditing(e => (e ? null : 'new'))}>{editing ? 'Close' : '+ New recipe'}</button>
+        {editing ? <button className="pill dark" style={{ height: 44, padding: '0 18px' }} onClick={() => setEditing(null)}>Close</button> : (<>
+          <button className="pill dark" style={{ height: 44, padding: '0 18px' }} onClick={() => setEditing('new')}>+ New recipe</button>
+          <button className="pill plain" style={{ height: 44, padding: '0 18px' }} onClick={() => setEditing('bucket:new')}>+ Add bucket</button>
+        </>)}
       </div>
       <div className="row" style={{ marginBottom: 14 }}>
         {(['all', ...MEALS] as const).map(m => {
@@ -46,7 +56,7 @@ export default function RecipesPage({ D, update, mon }: { D: HouseholdData; upda
           );
         })}
       </div>
-      {editing && <RecipeEditor key={editing} D={D} update={update} recipe={editingRecipe} onDone={() => setEditing(null)} />}
+      {editing && <RecipeEditor key={editing} D={D} update={update} recipe={editingRecipe} kind={editingBucket ? 'bucket' : 'recipe'} bucket={bucketBeingEdited} onDone={() => setEditing(null)} />}
       <div className="auto-grid" style={{ gridTemplateColumns: 'repeat(auto-fill,minmax(min(100%,280px),1fr))' }}>
         {recipes.map(r => {
           const planned = weekKeys.flatMap((k, i) => MEALS.filter(m => D.plan[k]?.[m] === r.id).map(m => DOW[i] + ' ' + MEAL_LABEL[m].toLowerCase()));
@@ -76,7 +86,11 @@ export default function RecipesPage({ D, update, mon }: { D: HouseholdData; upda
                     </span>
                   );
                 })}
-                {!r.ingredients.length && <span className="note">No ingredients yet — tap Edit to add them.</span>}
+                {(r.buckets ?? []).map(u => {
+                  const b = D.buckets.find(z => z.id === u.bucket);
+                  return b ? <span key={u.bucket} className="ing-tag bucket-tag">🪣 {b.name}<span className="muted">· pick {u.count}</span></span> : null;
+                })}
+                {!r.ingredients.length && !r.buckets?.length && <span className="note">No ingredients yet — tap Edit to add them.</span>}
               </div>
               {(link || r.method) && (
                 <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', fontSize: 13 }}>
@@ -94,11 +108,48 @@ export default function RecipesPage({ D, update, mon }: { D: HouseholdData; upda
         })}
       </div>
       {!recipes.length && <p className="empty">{q ? <>No recipes match “{q}”.</> : 'No recipes here yet.'}</p>}
+
       <div className="note" style={{ marginTop: 14, display: 'flex', gap: 14, flexWrap: 'wrap' }}>
         <span className="legend" style={{ gap: 5 }}><span className="dot6" style={{ background: STATE_COLORS.Full }} />In stock</span>
         <span className="legend" style={{ gap: 5 }}><span className="dot6" style={{ background: STATE_COLORS.Replace }} />Low / replace</span>
         <span className="legend" style={{ gap: 5 }}><span className="dot6" style={{ background: '#BFB8AA' }} />Not stocked</span>
       </div>
+      <div className="bucket-head">
+        <div>
+          <div style={{ fontWeight: 600, fontSize: 17 }}>Buckets</div>
+          <div className="note">Groups of interchangeable items, like Vegetables. Recipes use a number of them, picked when you plan the meal.</div>
+        </div>
+        {!editing && <button className="pill plain" onClick={() => edit('bucket:new')}>+ Add bucket</button>}
+      </div>
+      <div className="auto-grid" style={{ gridTemplateColumns: 'repeat(auto-fill,minmax(min(100%,280px),1fr))' }}>
+        {D.buckets.slice().sort((a, b) => a.name.localeCompare(b.name)).map(b => {
+          const usedBy = D.recipes.filter(r => r.buckets?.some(u => u.bucket === b.id)).length;
+          return (
+            <div key={b.id} className="card bucket-card" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 16, fontWeight: 600 }}>🪣 {b.name}</div>
+                  <div style={{ fontSize: 13 }} className="muted">
+                    {b.items.length} item{b.items.length === 1 ? '' : 's'} · avg {money(bucketAverage(b, prices))} each{usedBy ? ' · in ' + usedBy + ' recipe' + (usedBy > 1 ? 's' : '') : ''}
+                  </div>
+                </div>
+                <span style={{ display: 'flex', gap: 10 }}>
+                  <button className="link-btn" onClick={() => edit('bucket:' + b.id)}>Edit</button>
+                  <button className="link-btn" onClick={() => removeBucket(b.id)}>Remove</button>
+                </span>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                {b.items.map((g, i) => {
+                  const c = ingredientCost(g, prices);
+                  return <span key={i} className="ing-tag">{g.name}{c !== null ? <span className="muted">· {money(c)}</span> : g.qty && g.unit ? <span className="muted">· {fmtQty(g.qty, g.unit)}</span> : null}</span>;
+                })}
+                {!b.items.length && <span className="note">Empty — tap Edit to add items.</span>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      {!D.buckets.length && <p className="note" style={{ margin: '4px 0 0' }}>No buckets yet.</p>}
     </>
   );
 }

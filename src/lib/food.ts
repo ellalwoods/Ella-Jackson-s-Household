@@ -1,9 +1,19 @@
 import { addDays, DOW, key, MON, parse } from './dates';
-import { CAT_COLORS, earnings, NO_EXPIRY, SHOP_SECTION_LABEL, SHOP_SECTIONS, ShopSection, EXTRA_COLOR, HouseholdData, INCLUDE_LOW, Meal, MEALS, norm, num, shareOf, Spend, PantryItem, Price, Recipe, RecipeIngredient, STAPLE_COST, Unit } from './model';
+import { Bucket, CAT_COLORS, earnings, NO_EXPIRY, SHOP_SECTION_LABEL, SHOP_SECTIONS, ShopSection, EXTRA_COLOR, HouseholdData, INCLUDE_LOW, Meal, MEALS, norm, num, shareOf, Spend, PantryItem, Price, Recipe, RecipeIngredient, STAPLE_COST, Unit } from './model';
 
 // ── Plan ───────────────────────────────────────────────────────────────────
 
-export interface PlannedMeal { day: number; dateKey: string; meal: Meal; recipe: Recipe }
+export interface PlannedMeal {
+  day: number;
+  dateKey: string;
+  meal: Meal;
+  recipe: Recipe;
+  /** Bucket id → item names picked for this meal. */
+  picks: Record<string, string[]>;
+}
+
+/** Key for a planned meal's bucket picks. */
+export const slotKey = (dateKey: string, meal: Meal) => dateKey + '|' + meal;
 
 /** Every planned meal in the week starting `mon`, in day then meal order. */
 export function weekMeals(D: HouseholdData, mon: Date): PlannedMeal[] {
@@ -13,7 +23,7 @@ export function weekMeals(D: HouseholdData, mon: Date): PlannedMeal[] {
     const dateKey = key(addDays(mon, day)), p = D.plan[dateKey] ?? {};
     for (const meal of MEALS) {
       const recipe = rBy.get(p[meal] ?? '');
-      if (recipe) out.push({ day, dateKey, meal, recipe });
+      if (recipe) out.push({ day, dateKey, meal, recipe, picks: D.picks[slotKey(dateKey, meal)] ?? {} });
     }
   }
   return out;
@@ -49,7 +59,7 @@ export function weekBudget(D: HouseholdData, mon: Date) {
   const wk = key(mon);
   const spends = D.spends[wk] ?? [], extras = D.extras[wk] ?? [];
   const ctx = costContext(D);
-  const mealCost = round(weekMeals(D, mon).reduce((a, m) => a + recipeCost(m.recipe, ctx), 0));
+  const mealCost = round(weekMeals(D, mon).reduce((a, m) => a + recipeCost(m.recipe, ctx, m.picks), 0));
   const grocId = D.cats.find(c => /grocer/i.test(c.name))?.id;
 
   const cats: CategoryWeek[] = D.cats.map((c, i) => {
@@ -120,16 +130,44 @@ export function useCost(g: { qty?: number; unit?: Unit }, pr: Price | undefined)
 /** Meal cost from its ingredients; falls back to the old flat cost until any ingredient is priced. */
 export const stapleSet = (D: HouseholdData) => new Set(D.staples.map(norm));
 
-export interface CostContext { prices: Map<string, Price>; staples: Set<string> }
-export const costContext = (D: HouseholdData): CostContext => ({ prices: priceMap(D), staples: stapleSet(D) });
+export interface CostContext { prices: Map<string, Price>; staples: Set<string>; buckets: Map<string, Bucket> }
+export const costContext = (D: HouseholdData): CostContext => ({ prices: priceMap(D), staples: stapleSet(D), buckets: new Map(D.buckets.map(b => [b.id, b])) });
 
-/** Meal cost from its ingredients (staples at a nominal amount); falls back to the old flat cost until any ingredient is priced. */
-export function recipeCost(r: Recipe, { prices, staples }: CostContext) {
-  const isStaple = (n: string) => staples.has(norm(n));
-  const costs = r.ingredients.filter(g => !isStaple(g.name)).map(g => useCost(g, prices.get(norm(g.name)))).filter((c): c is number => c !== null);
-  const stapleCost = r.ingredients.filter(g => isStaple(g.name)).length * STAPLE_COST;
-  if (!costs.length && r.cost) return r.cost;
-  return round(costs.reduce((a, c) => a + c, 0) + stapleCost);
+/** One ingredient's cost in a meal: a nominal amount for staples, else its share of the purchase price. */
+export function ingredientCost(g: RecipeIngredient, { prices, staples }: CostContext) {
+  return staples.has(norm(g.name)) ? STAPLE_COST : useCost(g, prices.get(norm(g.name)));
+}
+
+/** Average cost of one item from a bucket (over the items that have prices). */
+export function bucketAverage(b: Bucket | undefined, ctx: CostContext) {
+  const costs = (b?.items ?? []).map(g => ingredientCost(g, ctx)).filter((c): c is number => c !== null);
+  return costs.length ? round(costs.reduce((a, c) => a + c, 0) / costs.length) : 0;
+}
+
+/**
+ * Meal cost from its ingredients (staples at a nominal amount) plus its
+ * buckets: picked items at their own cost, anything not yet picked at the
+ * bucket's average. Falls back to the old flat cost until anything is priced.
+ */
+export function recipeCost(r: Recipe, ctx: CostContext, picks: Record<string, string[]> = {}) {
+  const costs = r.ingredients.map(g => ingredientCost(g, ctx)).filter((c): c is number => c !== null);
+  let bucketCost = 0;
+  for (const u of r.buckets ?? []) {
+    const b = ctx.buckets.get(u.bucket), chosen = (picks[u.bucket] ?? []).slice(0, u.count);
+    for (const n of chosen) {
+      const item = b?.items.find(g => norm(g.name) === norm(n));
+      bucketCost += (item && ingredientCost(item, ctx)) ?? bucketAverage(b, ctx);
+    }
+    bucketCost += (u.count - chosen.length) * bucketAverage(b, ctx);
+  }
+  if (!costs.length && !bucketCost && r.cost) return r.cost;
+  return round(costs.reduce((a, c) => a + c, 0) + bucketCost);
+}
+
+/** Buckets in a planned meal still waiting for items to be picked. */
+export function pendingPicks(m: PlannedMeal, D: HouseholdData) {
+  return (m.recipe.buckets ?? []).map(u => ({ use: u, bucket: D.buckets.find(b => b.id === u.bucket), picked: (m.picks[u.bucket] ?? []).length }))
+    .filter(x => x.bucket && x.picked < x.use.count);
 }
 
 export function searchRecipes(recipes: Recipe[], q: string) {
@@ -199,7 +237,17 @@ interface Need { name: string; days: string[]; need: Amount | null; exact: boole
 
 function weekNeeds(D: HouseholdData, mon: Date) {
   const needs = new Map<string, Need>();
-  for (const m of weekMeals(D, mon)) for (const g of m.recipe.ingredients) addNeed(needs, g, DOW[m.day]);
+  const bBy = new Map(D.buckets.map(b => [b.id, b]));
+  for (const m of weekMeals(D, mon)) {
+    for (const g of m.recipe.ingredients) addNeed(needs, g, DOW[m.day]);
+    // Items picked from buckets for this meal, with the amounts set in the bucket.
+    for (const u of m.recipe.buckets ?? []) {
+      for (const n of (m.picks[u.bucket] ?? []).slice(0, u.count)) {
+        const item = bBy.get(u.bucket)?.items.find(g => norm(g.name) === norm(n));
+        addNeed(needs, item ?? { name: n }, DOW[m.day]);
+      }
+    }
+  }
   return needs;
 }
 

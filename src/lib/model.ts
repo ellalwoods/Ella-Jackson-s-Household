@@ -48,10 +48,16 @@ export type DayPlan = Partial<Record<Meal, string>>;
 
 /** How much of an ingredient a recipe uses (both optional: some things are "to taste"). */
 export interface RecipeIngredient { name: string; qty?: number; unit?: Unit }
+/** A named group of interchangeable ingredients, e.g. "Vegetables". */
+export interface Bucket { id: string; name: string; items: RecipeIngredient[] }
+/** A recipe uses `count` items of its choosing from a bucket, picked when the meal is planned. */
+export interface BucketUse { bucket: string; count: number }
+
 export interface Recipe {
   id: string;
   name: string;
   ingredients: RecipeIngredient[];
+  buckets?: BucketUse[];
   /** Which meals it's for; shown first when planning that meal. */
   meals: Meal[];
   link?: string;
@@ -151,6 +157,9 @@ export interface HouseholdData {
   shopExtras: Record<string, ManualShopItem[]>;
   /** Shopping list section chosen for an item, by normalised name. */
   shopSections: Record<string, ShopSection>;
+  buckets: Bucket[];
+  /** Bucket items picked for a planned meal: `${dateKey}|${meal}` → bucket id → item names. */
+  picks: Record<string, Record<string, string[]>>;
 }
 
 export const uid = () => Math.random().toString(36).slice(2, 9);
@@ -220,6 +229,8 @@ export function seed(today = new Date()): HouseholdData {
     tags: [],
     shopExtras: {},
     shopSections: {},
+    buckets: [],
+    picks: {},
   };
 }
 
@@ -234,7 +245,7 @@ export function migrate(d: any): HouseholdData | null {
     ];
   }
   delete d.income;
-  d.recipes ??= []; d.plan ??= {}; d.chores ??= []; d.done ??= {}; d.prices ??= []; d.staples ??= []; d.extras ??= {}; d.spends ??= {}; d.events ??= []; d.tags ??= []; d.shopExtras ??= {}; d.shopSections ??= {};
+  d.recipes ??= []; d.plan ??= {}; d.chores ??= []; d.done ??= {}; d.prices ??= []; d.staples ??= []; d.extras ??= {}; d.spends ??= {}; d.events ??= []; d.tags ??= []; d.shopExtras ??= {}; d.shopSections ??= {}; d.buckets ??= []; d.picks ??= {};
   for (const c of d.cats) if (c.fixed === undefined && /\brent\b/i.test(c.name)) c.fixed = true;
   if (!Array.isArray(d.pantry)) d.pantry = Array.isArray(d.cupboard) ? d.cupboard : [];
   delete d.cupboard;

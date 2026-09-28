@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react';
 import { addDays, isoWeek, mondayOf, weekLabel as fmtWeek } from './lib/dates';
 import type { HouseholdData } from './lib/model';
-import { shoppingList } from './lib/food';
+import { pendingPicks, shoppingList, weekMeals } from './lib/food';
+import { DOW } from './lib/dates';
+import { MEAL_LABEL } from './lib/model';
 import type { Mutation, SyncStatus } from './lib/store';
 import { Logo } from './views/Logo';
 import WeekTable from './views/WeekTable';
@@ -38,6 +40,9 @@ export default function Household({ data: D, update, status }: Props) {
   const mon = addDays(mondayOf(today), week * 7);
   const label = fmtWeek(mon);
   const shop = useMemo(() => shoppingList(D, mon), [D, +mon]);
+  // Planned meals whose bucket items haven't all been picked yet (they can't go on the list).
+  const pending = weekMeals(D, mon).flatMap(m => pendingPicks(m, D).map(p =>
+    DOW[m.day] + ' ' + MEAL_LABEL[m.meal].toLowerCase() + ' (' + m.recipe.name + '): pick ' + (p.use.count - p.picked) + ' from ' + p.bucket!.name));
 
   const go = (p: Page | null) => () => {
     setPage(p);
@@ -99,7 +104,7 @@ export default function Household({ data: D, update, status }: Props) {
         </div>
       ) : (
         <div className="page">
-          {page === 'shop' && <ShopPage update={update} mon={mon} label={label} {...shop} />}
+          {page === 'shop' && <ShopPage update={update} mon={mon} label={label} {...shop} pending={pending} />}
           {page === 'recipes' && <RecipesPage D={D} update={update} mon={mon} />}
           {page === 'pantry' && <PantryPage D={D} update={update} />}
           {page === 'chores' && <ChoresPage D={D} update={update} />}

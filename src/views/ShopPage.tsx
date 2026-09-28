@@ -22,9 +22,9 @@ function useStored<T>(storageKey: string) {
   return [v, setV] as const;
 }
 
-interface Props { update: Update; mon: Date; label: string; items: ShopItem[]; skipped: Skipped[] }
+interface Props { update: Update; mon: Date; label: string; items: ShopItem[]; skipped: Skipped[]; pending?: string[] }
 
-export default function ShopPage({ update, mon, label, items, skipped }: Props) {
+export default function ShopPage({ update, mon, label, items, skipped, pending = [] }: Props) {
   const [ticks, setTicks] = useStored<boolean>(TICKS_KEY);
   const [dates, setDates] = useStored<string>(EXPIRY_KEY);
   const [view, setView] = useStored<string>(VIEW_KEY);
@@ -84,6 +84,12 @@ export default function ShopPage({ update, mon, label, items, skipped }: Props) 
           <button className="pill dark" onClick={copy}>{copied ? 'Copied ✓' : 'Copy list'}</button>
           <button className="pill plain" onClick={print}>Print</button>
         </div>
+        {pending.length > 0 && (
+          <div className="pending-picks">
+            <strong>Still to pick from buckets</strong> — tap the meal on the week page to choose:
+            <ul>{pending.map(p => <li key={p}>{p}</li>)}</ul>
+          </div>
+        )}
         <AddItem onAdd={addManual} />
         {items.length > 0 && (
           <div className="shop-controls">

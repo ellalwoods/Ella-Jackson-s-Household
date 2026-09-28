@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { addDays, DOW, key } from '../lib/dates';
 import { HouseholdData, Meal, MEAL_LABEL, MEALS, money, norm, occurs, OWNERS, Recipe, uid } from '../lib/model';
 import { costContext, recipeCost, searchRecipes } from '../lib/food';
+import BucketPickDialog from './BucketPickDialog';
 import type { Update } from '../Household';
 
 interface Props { D: HouseholdData; update: Update; mon: Date }
@@ -11,11 +12,13 @@ export default function WeekTable({ D, update, mon }: Props) {
   const [picker, setPicker] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [idx, setIdx] = useState(0);
+  /** Slot whose bucket items are being picked. */
+  const [picking, setPicking] = useState<string | null>(null);
 
   const tk = key(new Date());
   const rBy = new Map(D.recipes.map(r => [r.id, r]));
   const prices = costContext(D);
-  const cost = (r: (typeof D.recipes)[number]) => recipeCost(r, prices);
+  const cost = (r: Recipe, slot?: string) => recipeCost(r, prices, slot ? D.picks[slot] : undefined);
 
   const days = DOW.map((dow, i) => {
     const d = addDays(mon, i), k = key(d);
@@ -28,7 +31,7 @@ export default function WeekTable({ D, update, mon }: Props) {
   });
 
   const planned = days.flatMap(d => d.meals.filter(m => m.r));
-  const mealTotal = planned.reduce((a, m) => a + cost(m.r!), 0);
+  const mealTotal = planned.reduce((a, m) => a + cost(m.r!, m.slot), 0);
   const allChores = days.flatMap(d => d.chores);
 
   // Picker: recipes tagged for this meal first (only those until you search), then name matches, then alphabetical.
@@ -45,12 +48,18 @@ export default function WeekTable({ D, update, mon }: Props) {
   const close = () => { setPicker(null); setQuery(''); };
   const setMeal = (slot: string, rid: string | null) => {
     const [k, meal] = slot.split('|') as [string, Meal];
+    const changed = (D.plan[k]?.[meal] ?? null) !== rid;
     update(x => {
       const p = { ...(x.plan[k] ?? {}) };
       if (rid) p[meal] = rid; else delete p[meal];
       if (Object.keys(p).length) x.plan[k] = p; else delete x.plan[k];
+      // Picks belong to the recipe that was there.
+      if (changed) delete x.picks[slot];
     });
     close();
+    // A recipe with buckets asks straight away which items to use.
+    const r = rid ? D.recipes.find(z => z.id === rid) : null;
+    if (r?.buckets?.length && changed) setPicking(slot);
   };
   const createFromPick = () => {
     const n = query.trim(), slot = picker;
@@ -89,8 +98,9 @@ export default function WeekTable({ D, update, mon }: Props) {
                   style={{ borderColor: r ? '#E8E4DB' : '#EFEBE3', background: r ? '#FBFAF7' : 'transparent' }}>
                   <span className="slot-label">{MEAL_LABEL[meal]}</span>
                   <span className="slot-name" style={{ fontWeight: r ? 500 : 400, color: r ? '#23221F' : '#A39D90' }}>{r ? r.name : '+'}</span>
-                  {r && <span className="slot-cost">{money(cost(r))}</span>}
+                  {r && <span className="slot-cost">{money(cost(r, slot))}</span>}
                 </button>
+                {r?.buckets?.length ? <BucketLine D={D} recipe={r} picks={D.picks[slot] ?? {}} onOpen={() => setPicking(slot)} /> : null}
                 {picker === slot && (
                   <>
                     <div className="scrim" onClick={close} />
@@ -145,6 +155,34 @@ export default function WeekTable({ D, update, mon }: Props) {
           <span className="legend"><span className="dot8" style={{ background: '#8FB0CF' }} />Both</span>
         </span>
       </div>
+      {picking && (() => {
+        const [k, meal] = picking.split('|') as [string, Meal];
+        const r = rBy.get(D.plan[k]?.[meal] ?? '');
+        const day = days.find(d => d.k === k);
+        return r ? (
+          <BucketPickDialog D={D} recipe={r} label={(day?.dow ?? '') + ' ' + MEAL_LABEL[meal].toLowerCase()} picks={D.picks[picking] ?? {}}
+            onSave={p => update(x => { x.picks[picking] = p; })} onClose={() => setPicking(null)} />
+        ) : null;
+      })()}
     </section>
+  );
+}
+
+/** Under a planned meal: what's been picked from each bucket, or how many are still to pick. */
+function BucketLine({ D, recipe, picks, onOpen }: { D: HouseholdData; recipe: Recipe; picks: Record<string, string[]>; onOpen: () => void }) {
+  const parts = (recipe.buckets ?? []).map(u => {
+    const b = D.buckets.find(z => z.id === u.bucket), got = (picks[u.bucket] ?? []).slice(0, u.count);
+    return b ? { name: b.name, got, missing: u.count - got.length } : null;
+  }).filter((x): x is { name: string; got: string[]; missing: number } => !!x);
+  if (!parts.length) return null;
+  const todo = parts.some(p => p.missing > 0);
+  return (
+    <button className={'bucket-line' + (todo ? ' todo' : '')} onClick={onOpen} title="Choose bucket items">
+      {parts.map((p, i) => (
+        <span key={i}>
+          🪣 {p.got.length ? p.name + ': ' + p.got.join(', ') : ''}{p.missing > 0 ? (p.got.length ? ' · ' : '') + 'Pick ' + p.missing + (p.got.length ? ' more' : ' ' + p.name.toLowerCase()) : ''}
+        </span>
+      ))}
+    </button>
   );
 }

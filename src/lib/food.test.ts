@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
 import { addDays, key, mondayOf } from './dates';
 import { HouseholdData, seed } from './model';
-import { addToPantry, costContext, guessSection, expiry, weekBudget, fmtAmount, recipeCost, shoppingList, stockUp, toBase } from './food';
+import { addToPantry, bucketAverage, costContext, guessSection, expiry, weekBudget, fmtAmount, recipeCost, shoppingList, stockUp, toBase } from './food';
 
 const mon = mondayOf(new Date(2026, 8, 23)); // Mon 21 Sep 2026
 const wk = key(mon);
@@ -164,4 +164,29 @@ it('sorts shopping items into sections: guesses for added items, remembers choic
   D.shopSections = { egg: 'other' };
   const sec = Object.fromEntries(shoppingList(D, mon).items.map(i => [i.name, i.section]));
   expect(sec).toMatchObject({ Rice: 'food', Egg: 'other', Shampoo: 'personal', Sponges: 'cleaning' });
+});
+
+it('costs buckets at their average until items are picked, and shops for the picks', () => {
+  const D = household();
+  D.prices.push(
+    { name: 'Carrot', qty: 1, unit: 'kg', price: 2 },     // 200 g → $0.40
+    { name: 'Broccoli', qty: 1, unit: 'each', price: 2.6 }, // 1 → $2.60
+    { name: 'Potato', qty: 2, unit: 'kg', price: 4 },     // 300 g → $0.60
+  );
+  D.buckets = [{ id: 'veg', name: 'Vegetables', items: [
+    { name: 'Carrot', qty: 200, unit: 'g' }, { name: 'Broccoli', qty: 1, unit: 'each' }, { name: 'Potato', qty: 300, unit: 'g' },
+  ] }];
+  D.recipes.push({ id: 'sv', name: 'Steak and Veg', meals: ['dinner'], ingredients: [], buckets: [{ bucket: 'veg', count: 2 }] });
+  const ctx = costContext(D);
+  expect(bucketAverage(D.buckets[0], ctx)).toBe(1.2);           // (0.40 + 2.60 + 0.60) / 3
+  expect(recipeCost(D.recipes[3], ctx)).toBe(2.4);              // 2 × average
+  expect(recipeCost(D.recipes[3], ctx, { veg: ['Carrot'] })).toBe(1.6);            // carrot + 1 × average
+  expect(recipeCost(D.recipes[3], ctx, { veg: ['Carrot', 'Potato'] })).toBe(1);    // actual picks
+
+  D.plan = { [wk]: { dinner: 'sv' } };
+  D.pantry = [];
+  D.picks = { [wk + '|dinner']: { veg: ['Carrot', 'Potato'] } };
+  const names = shoppingList(D, mon).items.map(i => i.name);
+  expect(names).toEqual(['Carrot', 'Potato']);
+  expect(shoppingList(D, mon).items[0].need).toEqual({ dim: 'mass', v: 200 });
 });
