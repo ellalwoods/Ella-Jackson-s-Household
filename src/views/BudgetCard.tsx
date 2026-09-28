@@ -123,6 +123,7 @@ function CategoryRow({ c, open, onToggle, update, wk }: { c: CategoryWeek; open:
         <span style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 14, gap: 8 }}>
           <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <span className="swatch" style={{ background: c.color }} />{c.name}
+            {c.pct !== null && <span className="muted" style={{ fontSize: 12 }}>{Math.round(c.pct)}% of left</span>}
             {!c.fixed && <span className="cat-chevron" aria-hidden>{open ? '−' : '+'}</span>}
           </span>
           {c.fixed ? <span style={{ fontWeight: 600 }}>{money(c.budget.total)}</span>

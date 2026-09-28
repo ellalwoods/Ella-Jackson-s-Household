@@ -109,6 +109,7 @@ input:focus, textarea:focus, select:focus { outline: 2px solid var(--ink); outli
 .state-btn { height: 34px; border-radius: 999px; cursor: pointer; font-size: 12px; border: 1px solid; color: var(--ink); }
 .person-tag { border-radius: 999px; border: none; cursor: pointer; font-size: 12px; font-weight: 600; }
 .budget-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr) 32px; gap: 6px; align-items: center; }
+.share-cell { grid-column: span 2; display: flex; align-items: center; gap: 10px; min-width: 0; flex-wrap: wrap; }
 .income-grid { display: grid; grid-template-columns: 84px minmax(0, 1.4fr) minmax(0, 1fr) 32px; gap: 6px; align-items: center; }
 .cal-cell { min-height: clamp(70px, 11vw, 110px); border-radius: 10px; padding: 6px; cursor: pointer; text-align: left; display: flex; flex-direction: column; gap: 3px; white-space: normal; border: 1.5px solid; }
 .cal-meal { font-size: 11px; line-height: 1.25; color: var(--chip-ink); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }

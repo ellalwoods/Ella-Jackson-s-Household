@@ -92,6 +92,11 @@ export interface Category {
   jackson: Amount;
   /** Always spent in full (e.g. rent), so its bar is always filled. */
   fixed?: boolean;
+  /**
+   * Takes this percentage of whatever is left after everything else (e.g. fun
+   * money, savings). null = switched off; undefined = never set.
+   */
+  share?: number | null;
 }
 export interface Income { id: string; name: string; person: PersonId; amount: Amount }
 /** Tracked by amount (qty + unit) when known, otherwise by level (state). */
@@ -268,7 +273,10 @@ export function migrate(d: any): HouseholdData | null {
   }
   delete d.income;
   d.recipes ??= []; d.plan ??= {}; d.chores ??= []; d.done ??= {}; d.prices ??= []; d.staples ??= []; d.extras ??= {}; d.spends ??= {}; d.events ??= []; d.tags ??= []; d.shopExtras ??= {}; d.shopSections ??= {}; d.buckets ??= []; d.recipeTags ??= []; d.eatOut ??= {}; d.picks ??= {};
-  for (const c of d.cats) if (c.fixed === undefined && /\brent\b/i.test(c.name)) c.fixed = true;
+  for (const c of d.cats) if (c.fixed === undefined && /\b(rent|transport)\b/i.test(c.name)) c.fixed = true;
+  // Fun money, discretionary and savings split what's left, in proportion to what they were set to.
+  for (const c of d.cats) if (c.share === undefined && !c.fixed && /fun|discretion|saving/i.test(c.name)) c.share = num(c.ella) + num(c.jackson);
+  normalizeShares(d.cats);
   if (!Array.isArray(d.pantry)) d.pantry = Array.isArray(d.cupboard) ? d.cupboard : [];
   delete d.cupboard;
   for (const r of d.recipes) {
@@ -327,21 +335,81 @@ export function donutOf(slices: { total: number; color: string }[]) {
   return 'conic-gradient(' + stops.join(',') + ')';
 }
 
-/** The recurring weekly budget, as set on the Budget page. */
+// ── Categories that split what's left ─────────────────────────────────────
+
+export const isShare = (c: Category) => typeof c.share === 'number' && !c.fixed;
+
+/** Each splitting category's fraction of what's left (equal when none are set). */
+export function shareFractions(cats: Category[]) {
+  const s = cats.filter(isShare), total = s.reduce((a, c) => a + Math.max(0, c.share!), 0);
+  return new Map(s.map(c => [c.id, total ? Math.max(0, c.share!) / total : 1 / s.length]));
+}
+
+/** Rewrites the splitting categories' shares as percentages adding up to 100. */
+export function normalizeShares(cats: Category[]) {
+  const f = shareFractions(cats);
+  for (const c of cats) if (f.has(c.id)) c.share = Math.round(f.get(c.id)! * 10000) / 100;
+}
+
+/** Sets one category's percentage; the others shift to fill the rest, keeping their ratio. */
+export function setShare(cats: Category[], id: string, pct: number) {
+  const f = shareFractions(cats), target = Math.min(100, Math.max(0, pct));
+  const others = cats.filter(c => f.has(c.id) && c.id !== id);
+  const rest = others.reduce((a, c) => a + f.get(c.id)!, 0);
+  for (const c of others) c.share = (rest ? f.get(c.id)! / rest : 1 / others.length) * (100 - target);
+  const me = cats.find(c => c.id === id);
+  if (me) me.share = others.length ? target : 100;
+  normalizeShares(cats);
+}
+
+/** Switches a category between a set amount and a share of what's left. */
+export function toggleShare(cats: Category[], id: string, amounts?: { e: number; j: number }) {
+  const c = cats.find(c => c.id === id);
+  if (!c) return;
+  if (isShare(c)) {
+    // Keep what it was getting as its new set amount.
+    if (amounts) { c.ella = Math.round(amounts.e); c.jackson = Math.round(amounts.j); }
+    c.share = null;
+    normalizeShares(cats);
+    return;
+  }
+  const n = cats.filter(isShare).length;
+  c.fixed = false;
+  c.share = 0;
+  setShare(cats, id, 100 / (n + 1));
+}
+
+/** Gives the splitting categories their part of each person's remainder. */
+export function shareOut<T extends Category>(cats: T[], leftE: number, leftJ: number) {
+  const f = shareFractions(cats);
+  return (c: T) => {
+    const x = f.get(c.id) ?? 0;
+    return { e: Math.max(0, leftE) * x, j: Math.max(0, leftJ) * x };
+  };
+}
+
+/**
+ * The recurring weekly budget, as set on the Budget page. "Left" is what's
+ * left after the set amounts: the splitting categories share it.
+ */
 export function budget(D: HouseholdData) {
+  const set = D.cats.filter(c => !isShare(c));
+  const ella = set.reduce((a, c) => a + num(c.ella), 0), jackson = set.reduce((a, c) => a + num(c.jackson), 0);
+  const ellaLeft = earnings(D, 'ella') - ella, jacksonLeft = earnings(D, 'jackson') - jackson;
+  const part = shareOut(D.cats, ellaLeft, jacksonLeft), frac = shareFractions(D.cats);
   const cats = D.cats.map((c, i) => {
-    const e = num(c.ella), j = num(c.jackson);
-    return { ...c, e, j, total: e + j, color: CAT_COLORS[i % CAT_COLORS.length] };
+    const share = isShare(c), p = part(c);
+    const e = share ? p.e : num(c.ella), j = share ? p.j : num(c.jackson);
+    return { ...c, e, j, total: e + j, color: CAT_COLORS[i % CAT_COLORS.length], pct: share ? frac.get(c.id)! * 100 : null };
   });
-  const spend = cats.reduce((a, c) => a + c.total, 0);
+  const spend = ella + jackson;
   const income = D.incomes.reduce((a, i) => a + num(i.amount), 0);
-  const ella = cats.reduce((a, c) => a + c.e, 0), jackson = cats.reduce((a, c) => a + c.j, 0);
   return {
     cats, spend, income,
     ella, jackson,
     left: income - spend,
-    ellaLeft: earnings(D, 'ella') - ella,
-    jacksonLeft: earnings(D, 'jackson') - jackson,
+    ellaLeft, jacksonLeft,
+    splits: cats.some(c => c.pct !== null),
     slices: cats.map(c => ({ label: c.name, total: c.total, color: c.color })),
   };
 }

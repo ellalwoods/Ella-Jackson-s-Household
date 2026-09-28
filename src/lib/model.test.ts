@@ -1,6 +1,6 @@
 import { describe as group, expect, it } from 'vitest';
 import { addDays, key, mondayOf, weekLabel } from './dates';
-import { budget, describe, HouseholdData, migrate, money, occurs, seed } from './model';
+import { budget, Category, describe, HouseholdData, migrate, money, occurs, seed, setShare } from './model';
 
 const mon = mondayOf(new Date(2026, 8, 23)); // Mon 21 Sep 2026
 
@@ -58,4 +58,33 @@ group('migrate', () => {
 it('formats week labels', () => {
   expect(weekLabel(mon)).toBe('21–27 Sep');
   expect(weekLabel(new Date(2026, 8, 28))).toBe('28 Sep – 4 Oct');
+});
+
+group('share of what’s left', () => {
+  const cats = () => [
+    { id: 'a', name: 'Fun money', ella: 0, jackson: 0, share: 50 },
+    { id: 'b', name: 'Discretionary', ella: 0, jackson: 0, share: 30 },
+    { id: 'c', name: 'Savings', ella: 0, jackson: 0, share: 20 },
+  ] as Category[];
+
+  it('shifts the others, keeping their ratio', () => {
+    const cs = cats();
+    setShare(cs, 'a', 20);
+    expect(cs.map(c => c.share)).toEqual([20, 48, 32]);
+  });
+
+  it('splits each person’s remainder', () => {
+    const D = { ...seed(), cats: [{ id: 'r', name: 'Rent', ella: 400, jackson: 400, fixed: true }, ...cats()] } as HouseholdData;
+    D.incomes = [{ id: 'i', name: 'Pay', person: 'ella', amount: 1000 }, { id: 'j', name: 'Pay', person: 'jackson', amount: 600 }];
+    const b = budget(D);
+    expect(b.ellaLeft).toBe(600);
+    expect(b.cats[1].e).toBe(300);
+    expect(b.cats[3].j).toBe(40);
+  });
+
+  it('turns on for fun money and savings when upgrading', () => {
+    const d = migrate({ cats: [{ id: 'x', name: 'Public transport', ella: 50, jackson: 50 }, { id: 'y', name: 'Fun money', ella: 30, jackson: 30 }, { id: 'z', name: 'Savings', ella: 90, jackson: 90 }] })!;
+    expect(d.cats[0].fixed).toBe(true);
+    expect(d.cats.map(c => c.share)).toEqual([undefined, 25, 75]);
+  });
 });

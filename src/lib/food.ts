@@ -1,5 +1,5 @@
 import { addDays, DOW, key, MON, parse } from './dates';
-import { BLANK_PICK, Bucket, CAT_COLORS, earnings, NO_EXPIRY, SHOP_SECTION_LABEL, SHOP_SECTIONS, ShopSection, EXTRA_COLOR, HouseholdData, INCLUDE_LOW, Meal, MEALS, norm, num, shareOf, Spend, PantryItem, Price, Recipe, RecipeIngredient, STAPLE_COST, Unit } from './model';
+import { BLANK_PICK, Bucket, CAT_COLORS, Category, isShare, shareFractions, shareOut, earnings, NO_EXPIRY, SHOP_SECTION_LABEL, SHOP_SECTIONS, ShopSection, EXTRA_COLOR, HouseholdData, INCLUDE_LOW, Meal, MEALS, norm, num, shareOf, Spend, PantryItem, Price, Recipe, RecipeIngredient, STAPLE_COST, Unit } from './model';
 
 // ── Plan ───────────────────────────────────────────────────────────────────
 
@@ -41,6 +41,8 @@ export interface CategoryWeek {
   fixed: boolean;
   /** Filled by the meal plan (the "Groceries" category). */
   grocery: boolean;
+  /** Percentage of what's left, for categories that split it. */
+  pct: number | null;
   budget: Split;
   /** Spent so far this week: logged spends, plus planned meals for groceries; fixed = budget. */
   spent: Split;
@@ -62,8 +64,8 @@ export function weekBudget(D: HouseholdData, mon: Date) {
   const mealCost = round(weekMeals(D, mon).reduce((a, m) => a + recipeCost(m.recipe, ctx, m.picks), 0));
   const grocId = D.cats.find(c => /grocer/i.test(c.name))?.id;
 
-  const cats: CategoryWeek[] = D.cats.map((c, i) => {
-    const be = num(c.ella), bj = num(c.jackson), fixed = !!c.fixed, grocery = c.id === grocId;
+  const row = (c: Category, i: number, be: number, bj: number, pct: number | null): CategoryWeek => {
+    const fixed = !!c.fixed, grocery = c.id === grocId;
     const mine = spends.filter(s => s.cat === c.id);
     let se = mine.reduce((a, s) => a + shareOf(s.who, s.amount, 'ella'), 0);
     let sj = mine.reduce((a, s) => a + shareOf(s.who, s.amount, 'jackson'), 0);
@@ -72,21 +74,27 @@ export function weekBudget(D: HouseholdData, mon: Date) {
     const counted = split(Math.max(be, se), Math.max(bj, sj));
     const budget = split(be, bj);
     return {
-      id: c.id, name: c.name, color: CAT_COLORS[i % CAT_COLORS.length], fixed, grocery,
+      id: c.id, name: c.name, color: CAT_COLORS[i % CAT_COLORS.length], fixed, grocery, pct,
       budget, spent: split(se, sj), counted, over: round(Math.max(0, se + sj - budget.total)),
       mealCost: grocery ? mealCost : 0, spends: mine,
     };
-  });
+  };
 
+  // Set amounts first; what's actually left after them (and this week's extras) is shared out.
+  const setRows = new Map(D.cats.map((c, i) => [c.id, isShare(c) ? null : row(c, i, num(c.ella), num(c.jackson), null)]));
   const extra = split(extras.reduce((a, x) => a + shareOf(x.who, x.amount, 'ella'), 0), extras.reduce((a, x) => a + shareOf(x.who, x.amount, 'jackson'), 0));
-  const sum = (f: (c: CategoryWeek) => Split) => split(cats.reduce((a, c) => a + f(c).e, 0) + extra.e, cats.reduce((a, c) => a + f(c).j, 0) + extra.j);
-  const committed = sum(c => c.counted), spent = sum(c => c.spent);
+  const setList = [...setRows.values()].filter((c): c is CategoryWeek => !!c);
+  const sum = (list: CategoryWeek[], f: (c: CategoryWeek) => Split) => split(list.reduce((a, c) => a + f(c).e, 0) + extra.e, list.reduce((a, c) => a + f(c).j, 0) + extra.j);
+  const committed = sum(setList, c => c.counted);
+  const ellaLeft = round(earnings(D, 'ella') - committed.e), jacksonLeft = round(earnings(D, 'jackson') - committed.j);
+  const part = shareOut(D.cats, ellaLeft, jacksonLeft), frac = shareFractions(D.cats);
+  const cats = D.cats.map((c, i) => setRows.get(c.id) ?? row(c, i, part(c).e, part(c).j, frac.get(c.id)! * 100));
+  const spent = sum(cats, c => c.spent);
   const income = D.incomes.reduce((a, i) => a + num(i.amount), 0);
   return {
     cats, extra, committed, spent, income,
     left: round(income - committed.total),
-    ellaLeft: round(earnings(D, 'ella') - committed.e),
-    jacksonLeft: round(earnings(D, 'jackson') - committed.j),
+    ellaLeft, jacksonLeft,
     slices: [...cats.map(c => ({ label: c.name, total: c.counted.total, color: c.color })), { label: 'This week only', total: extra.total, color: EXTRA_COLOR }],
   };
 }
