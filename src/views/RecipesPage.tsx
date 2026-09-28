@@ -111,6 +111,7 @@ export default function RecipesPage({ D, update, mon }: { D: HouseholdData; upda
         {editing ? <button className="pill dark" style={{ height: 44, padding: '0 18px' }} onClick={() => setEditing(null)}>Close</button> : (<>
           <button className="pill dark" style={{ height: 44, padding: '0 18px' }} onClick={() => setEditing('new')}>+ New recipe</button>
           <button className="pill plain" style={{ height: 44, padding: '0 18px' }} onClick={() => setEditing('bucket:new')}>+ Add bucket</button>
+          <button className="pill plain" style={{ height: 44, padding: '0 18px' }} onClick={() => setEditing('mini:new')}>+ Mini recipe</button>
         </>)}
       </div>
       <div className="row" style={{ marginBottom: 14 }}>
