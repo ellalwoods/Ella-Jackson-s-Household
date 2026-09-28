@@ -130,7 +130,7 @@ export default function ShopPage({ update, mon, label, items, skipped, pending =
                     <span style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, whiteSpace: 'normal' }}>
                       <span style={{ fontSize: 15, textDecoration: ck ? 'line-through' : 'none' }}>{i.name}</span>
                       <span style={{ fontSize: 12 }} className="muted">
-                        {i.manual ? 'Added by you' : 'For ' + i.days.join(', ')}{i.need ? ' · uses ' + fmtAmount(i.need) : ''}{i.buy ? ' · buy ' + buyText(i) : ''}
+                        {i.manual ? 'Added by you' : 'For ' + i.days.join(', ')}{i.staple ? ' · staple' : ''}{i.need ? ' · uses ' + fmtAmount(i.need) : ''}{i.buy ? ' · buy ' + buyText(i) : ''}
                       </span>
                     </span>
                   </button>

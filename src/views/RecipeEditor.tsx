@@ -98,9 +98,15 @@ export default function RecipeEditor({ D, update, recipe, bucket = null, kind = 
       const q = numOr(r.qty);
       return q ? { name: r.name.trim(), qty: q, unit: r.unit } : { name: r.name.trim() };
     });
-    const newPrices: Price[] = used.filter(r => !r.staple).flatMap(r => {
+    const newPrices: Price[] = used.flatMap(r => {
       const bq = numOr(r.buyQty), pr = numOr(r.price);
-      return bq && pr != null && !isNaN(pr) ? [{ name: r.name.trim(), qty: bq, unit: r.buyUnit, price: pr }] : [];
+      if (pr == null || isNaN(pr)) return [];
+      // A staple only needs its purchase price; keep any pack size already known.
+      if (r.staple) {
+        const had = prices.get(norm(r.name));
+        return [{ name: r.name.trim(), qty: had?.qty ?? 1, unit: had?.unit ?? 'each', price: pr }];
+      }
+      return bq ? [{ name: r.name.trim(), qty: bq, unit: r.buyUnit, price: pr }] : [];
     });
     const out: Recipe = { id: recipe?.id ?? uid(), name: n, meals: MEALS.filter(m => meals.includes(m)), ingredients };
     const keptUses = uses.filter(u => u.count > 0);
@@ -174,7 +180,12 @@ export default function RecipeEditor({ D, update, recipe, bucket = null, kind = 
           <div key={r.key} className="ing-row">
             <input className="field-sm ing-name" list="known-ingredients" value={r.name} placeholder={isBucket ? 'Item, e.g. Broccoli' : 'Ingredient'} onChange={e => setRow(r.key, { name: e.target.value })} />
             {r.staple ? (
-              <span className="ing-group"><span className="ing-label">Staple — no need to measure</span></span>
+              <span className="ing-group">
+                <span className="ing-label">Staple · buy for $</span>
+                <input className={'field-sm ing-num' + (r.name.trim() && !r.price.trim() ? ' needs' : '')} inputMode="decimal" value={r.price} placeholder="0.00"
+                  aria-label={'Purchase price of ' + (r.name || 'staple')} onChange={e => setRow(r.key, { price: e.target.value })} />
+                <span className="ing-label">{r.name.trim() && !r.price.trim() ? 'add the price you pay' : 'per meal ' + money(STAPLE_COST)}</span>
+              </span>
             ) : (<>
             <span className="ing-group">
               <span className="ing-label">Uses</span>

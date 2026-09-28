@@ -100,8 +100,11 @@ it('costs staples at a nominal amount and leaves them off pack sizes', () => {
   expect(recipeCost(D.recipes[0], costContext(D))).toBe(0.8); // 250 g rice + salt $0.05
   D.pantry = [];
   const salt = shoppingList(D, mon).items.find(i => i.name === 'Salt')!;
-  expect(salt.buy).toBeNull();
-  expect(salt.cost).toBeNull();
+  expect(salt.buy).toBeNull();          // no pack size: bought whole, tracked by level
+  expect(salt.cost).toBe(2);            // but it has a purchase price for the list
+  expect(salt.staple).toBe(true);
+  stockUp(D, [salt], wk);
+  expect(D.pantry.find(p => p.name === 'Salt')).toEqual({ name: 'Salt', state: 'Full' });
 });
 
 it('fills budgets from spends and meals, fixed categories in full, and counts overspend', () => {

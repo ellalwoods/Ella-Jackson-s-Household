@@ -238,3 +238,4 @@ input:focus, textarea:focus, select:focus { outline: 2px solid var(--ink); outli
 .mini-tag-x { border: none; background: none; color: var(--faint); cursor: pointer; padding: 0 0 0 2px; font-size: 13px; line-height: 1; }
 .mini-tag-x:hover { color: var(--ink); }
 .row-tags { order: 1; flex-wrap: wrap; }
+.field-sm.needs { border-color: #F0A88C; background: #FDF6F2; }

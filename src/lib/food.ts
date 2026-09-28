@@ -221,6 +221,8 @@ export interface ShopItem {
   lk: string;
   /** Set for items added by hand: the ManualShopItem id. */
   manual?: string;
+  /** A staple: bought whole at its purchase price, no amounts. */
+  staple?: boolean;
   name: string;
   days: string[];
   status: string;
@@ -296,8 +298,16 @@ export function shoppingList(D: HouseholdData, mon: Date, today = new Date()) {
       status = expired.has(lk) ? 'Expired' : p ? p.state : 'Not stocked';
     }
 
-    // Staples are bought now and then, not per recipe, so they get no pack size or price.
-    const pr = staples.has(lk) ? null : prices.get(lk) ?? null;
+    // Staples are bought whole now and then: one at their purchase price, tracked by level (no amount).
+    if (staples.has(lk)) {
+      const sp = prices.get(lk);
+      items.push({
+        section: D.shopSections[lk] ?? 'food', id: lk, lk, name: n.name, days: n.days, status,
+        need: null, have: null, buy: null, packs: 0, cost: sp ? round(sp.price) : null, staple: true,
+      });
+      return;
+    }
+    const pr = prices.get(lk) ?? null;
     let packs = pr ? 1 : 0;
     if (pr && short && toBase(pr.qty, pr.unit).dim === short.dim) packs = Math.max(1, Math.ceil(short.v / toBase(pr.qty, pr.unit).v - 1e-9));
     items.push({
