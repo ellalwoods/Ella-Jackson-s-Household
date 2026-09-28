@@ -170,7 +170,7 @@ export default function RecipesPage({ D, update, mon }: { D: HouseholdData; upda
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
                 {b.items.filter(g => !bucketTag[b.id] || (g.tags ?? []).some(t => norm(t) === norm(bucketTag[b.id]))).map((g, i) => {
                   const c = ingredientCost(g, prices);
-                  return <span key={i} className="ing-tag">{g.name}{c !== null ? <span className="muted">· {money(c)}</span> : g.qty && g.unit ? <span className="muted">· {fmtQty(g.qty, g.unit)}</span> : null}</span>;
+                  return <span key={i} className="ing-tag">{g.name}{prices.staples.has(norm(g.name)) ? <span className="muted">· staple</span> : c !== null ? <span className="muted">· {money(c)}</span> : g.qty && g.unit ? <span className="muted">· {fmtQty(g.qty, g.unit)}</span> : null}</span>;
                 })}
                 {!b.items.length && <span className="note">Empty — tap Edit to add items.</span>}
               </div>

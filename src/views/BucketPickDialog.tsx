@@ -78,7 +78,8 @@ export default function BucketPickDialog({ D, recipe, label, picks, onSave, onCl
                       <span className="box-check" style={{ width: 18, height: 18, borderRadius: 5, fontSize: 11, background: on ? '#23221F' : 'transparent' }}>{on ? '✓' : ''}</span>
                       <span style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
                         {g.name}
-                        {g.qty && g.unit && <span className="muted" style={{ fontSize: 11 }}> · {fmtQty(g.qty, g.unit)}</span>}
+                        {ctx.staples.has(norm(g.name)) ? <span className="muted" style={{ fontSize: 11 }}> · staple</span>
+                          : g.qty && g.unit && <span className="muted" style={{ fontSize: 11 }}> · {fmtQty(g.qty, g.unit)}</span>}
                       </span>
                       {c !== null && <span className="muted" style={{ fontSize: 12 }}>{money(c)}</span>}
                     </button>

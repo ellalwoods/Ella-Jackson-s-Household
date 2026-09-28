@@ -204,3 +204,19 @@ it('treats blank bucket picks as omitted: no cost, not shopped, not pending', ()
   expect(pendingPicks(weekMeals(D, mon)[0], D)).toEqual([]);
   expect(searchRecipes(D.recipes, 'quick').map(r => r.name)).toEqual(['Steak and Veg']);
 });
+
+it('lets bucket items be staples: nominal cost, no pack size on the list', () => {
+  const D = household();
+  D.staples = ['Garlic'];
+  D.prices.push({ name: 'Carrot', qty: 1, unit: 'kg', price: 2 });
+  D.buckets = [{ id: 'b', name: 'Aromatics', items: [{ name: 'Garlic' }, { name: 'Carrot', qty: 200, unit: 'g' }] }];
+  D.recipes.push({ id: 'x', name: 'Soup', meals: ['dinner'], ingredients: [], buckets: [{ bucket: 'b', count: 2 }] });
+  const ctx = costContext(D);
+  expect(bucketAverage(D.buckets[0], ctx)).toBe(0.23); // (0.05 + 0.40) / 2, rounded
+  expect(recipeCost(D.recipes[3], ctx, { b: ['Garlic', 'Carrot'] })).toBe(0.45);
+  D.plan = { [wk]: { dinner: 'x' } };
+  D.pantry = [];
+  D.picks = { [wk + '|dinner']: { b: ['Garlic'] } };
+  const garlic = shoppingList(D, mon).items.find(i => i.name === 'Garlic')!;
+  expect(garlic.buy).toBeNull();
+});

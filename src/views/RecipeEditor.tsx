@@ -141,7 +141,7 @@ export default function RecipeEditor({ D, update, recipe, bucket = null, kind = 
     <div style={{ background: '#fff', border: '1px solid #23221F', borderRadius: 16, padding: 16, marginBottom: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
       <div style={{ fontWeight: 600 }}>{isBucket ? (bucket ? 'Edit bucket' : 'New bucket') : recipe ? 'Edit recipe' : 'New recipe'}</div>
       <input className="field" value={name} onChange={e => setName(e.target.value)} placeholder={isBucket ? 'Bucket title, e.g. Vegetables' : 'Recipe name'} />
-      {isBucket && <p className="note" style={{ margin: 0 }}>Add the interchangeable items in this bucket and how much of each a meal uses. Recipes use a number of them, picked when you plan the meal.</p>}
+      {isBucket && <p className="note" style={{ margin: 0 }}>Add the interchangeable items in this bucket and how much of each a meal uses (or mark them Staple, at a nominal {money(STAPLE_COST)}). Recipes use a number of them, picked when you plan the meal.</p>}
       {isBucket && (
         <label style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           <span style={{ fontSize: 14 }}>Items per meal</span>
@@ -198,7 +198,7 @@ export default function RecipeEditor({ D, update, recipe, bucket = null, kind = 
                 })}
               </span>
             )}
-            {!isBucket && <button className={'pill-sm ing-staple' + (r.staple ? ' dark' : '')} aria-pressed={r.staple} onClick={() => setRow(r.key, { staple: !r.staple })}>Staple</button>}
+            <button className={'pill-sm ing-staple' + (r.staple ? ' dark' : '')} aria-pressed={r.staple} onClick={() => setRow(r.key, { staple: !r.staple })}>Staple</button>
             <span className="ing-cost" title={mismatch ? 'Units don’t match (e.g. g vs ml)' : undefined}>{c !== null ? money(c) : mismatch ? 'units?' : '—'}</span>
             <button className="x-btn" aria-label="Remove ingredient" onClick={() => setRows(rs => (rs.length > 1 ? rs.filter(z => z.key !== r.key) : [blankRow()]))}>×</button>
           </div>
