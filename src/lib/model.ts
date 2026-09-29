@@ -123,9 +123,9 @@ export type Schedule =
   | { type: 'monthly'; dom: number }
   | { type: 'once'; date: string };
 export interface Chore { id: string; name: string; person: ChoreOwner; sched: Schedule }
-export const SHOP_SECTIONS = ['food', 'cleaning', 'personal', 'other'] as const;
+export const SHOP_SECTIONS = ['food', 'cleaning', 'laundry', 'personal', 'other'] as const;
 export type ShopSection = (typeof SHOP_SECTIONS)[number];
-export const SHOP_SECTION_LABEL: Record<ShopSection, string> = { food: 'Food', cleaning: 'Cleaning', personal: 'Personal', other: 'Other' };
+export const SHOP_SECTION_LABEL: Record<ShopSection, string> = { food: 'Food', cleaning: 'Cleaning', laundry: 'Laundry', personal: 'Personal', other: 'Other' };
 
 /** Stored as an item's expiry when it doesn't expire (the "N/A" option). */
 export const NO_EXPIRY = 'none';

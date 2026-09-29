@@ -160,8 +160,8 @@ it('adds to the pantry by hand, topping up amounts in matching units', () => {
 });
 
 it('sorts shopping items into sections: guesses for added items, remembers choices', () => {
-  expect(['Toothpaste', 'Dishwashing liquid', 'Toilet paper', 'Milk', 'Pad thai noodles', 'Face cleanser', 'Laundry powder', 'Olive oil spray'].map(guessSection))
-    .toEqual(['personal', 'cleaning', 'other', 'food', 'food', 'personal', 'cleaning', 'food']);
+  expect(['Toothpaste', 'Dishwashing liquid', 'Toilet paper', 'Milk', 'Pad thai noodles', 'Face cleanser', 'Laundry powder', 'Olive oil spray', 'Fabric softener', 'Napisan'].map(guessSection))
+    .toEqual(['personal', 'cleaning', 'other', 'food', 'food', 'personal', 'laundry', 'food', 'laundry', 'laundry']);
   const D = household();
   D.shopExtras = { [wk]: [{ id: 'a', name: 'Shampoo' }, { id: 'b', name: 'Sponges' }] };
   D.shopSections = { egg: 'other' };
