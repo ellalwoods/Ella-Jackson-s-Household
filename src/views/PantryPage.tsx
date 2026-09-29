@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { MON, parse } from '../lib/dates';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-import { HouseholdData, INCLUDE_LOW, NO_EXPIRY, norm, PantryItem, Price, STATE_COLORS, STATES, StockState, Unit, UNIT_LABEL, UNITS } from '../lib/model';
+import { HouseholdData, INCLUDE_LOW, money, NO_EXPIRY, norm, PantryItem, Price, STATE_COLORS, STATES, StockState, Unit, UNIT_LABEL, UNITS } from '../lib/model';
 import { addToPantry, expiry, fmtQty, priceMap, setPrice } from '../lib/food';
 import type { Update } from '../Household';
 
@@ -136,11 +136,12 @@ function AddToPantry({ D, update }: { D: HouseholdData; update: Update }) {
           placeholder="Add to pantry, e.g. Rice" aria-label="Item to add to pantry" />
         <datalist id="pantry-known">{known.map(k => <option key={k} value={k} />)}</datalist>
         <span className="ing-group">
+          <span className="ing-label">Amount</span>
           <input className="field-sm num" inputMode="decimal" value={qty} onChange={e => setQty(e.target.value)} onKeyDown={onKey} placeholder="qty" aria-label="Amount" />
           <UnitSelect value={unit} onChange={setUnit} />
         </span>
         <span className="ing-group">
-          <span className="ing-label">$</span>
+          <span className="ing-label">Price $</span>
           <input className="field-sm num" inputMode="decimal" value={price} onChange={e => setPrice_(e.target.value)} onKeyDown={onKey}
             placeholder={knownPrice ? knownPrice.price.toFixed(2) : '0.00'} aria-label="Price" />
         </span>
@@ -191,19 +192,35 @@ export function ExpiryInput({ label, value, onChange, compact = false }: { label
   );
 }
 
-/** A pantry item's purchase price, editable in place. Shared with recipes and the shopping list. */
+/**
+ * A pantry item's purchase price, shared with recipes and the shopping list.
+ * Once set it shows as a soft chip (like the use-by date); tap it to change.
+ */
 function PriceField({ name, update, price }: { name: string; update: Update; price: Price | undefined }) {
+  const [editing, setEditing] = useState(false);
   const [text, setText] = useState(price ? String(price.price) : '');
+  const pack = price && price.qty && !(price.qty === 1 && price.unit === 'each') ? fmtQty(price.qty, price.unit) : '';
   const save = () => {
     const v = parseFloat(text);
     if (!isNaN(v) && v !== price?.price) update(x => setPrice(x, name, v));
     if (isNaN(v)) setText(price ? String(price.price) : '');
+    setEditing(false);
   };
+  if (price && !editing) {
+    return (
+      <span className="set-pill">
+        <button className="set-pill-main" onClick={() => { setText(String(price.price)); setEditing(true); }} title="Change price" aria-label={'Price of ' + name + ', change'}>
+          <span aria-hidden>✓</span>{pack ? 'Buy ' + pack + ' for' : 'Price'} <strong>{money(price.price)}</strong>
+        </button>
+      </span>
+    );
+  }
   return (
-    <span className="note" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-      {price && price.qty && !(price.qty === 1 && price.unit === 'each') ? 'Buy ' + fmtQty(price.qty, price.unit) + ' for $' : 'Price $'}
-      <input className="field-sm compact num" inputMode="decimal" value={text} placeholder="0.00"
-        aria-label={'Price of ' + name} onChange={e => setText(e.target.value)} onBlur={save} onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }} />
+    <span className="expiry-input">
+      <span className="ing-label">{pack ? 'Buy ' + pack + ' for $' : 'Price $'}</span>
+      <input className="field-sm compact num" inputMode="decimal" value={text} placeholder="0.00" autoFocus={editing}
+        aria-label={'Price of ' + name} onChange={e => setText(e.target.value)} onBlur={save}
+        onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); if (e.key === 'Escape') { setText(price ? String(price.price) : ''); setEditing(false); } }} />
     </span>
   );
 }

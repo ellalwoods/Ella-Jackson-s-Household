@@ -273,3 +273,51 @@ select.field-sm.unit { width: var(--w-unit); padding: 0 4px 0 8px; }
   .pill:not(.dark):not(.nav-on):hover, .pill-sm:not(.dark):hover, .round-btn:hover, .mini-tag:hover { border-color: var(--ink); }
   .pill.dark:hover, .pill-sm.dark:hover { background: #3A3834; }
 }
+
+/* Editors (recipe, bucket, mini recipe): one numbered step per part. */
+.editor { background: #fff; border: 1px solid var(--ink); border-radius: 16px; padding: 18px; margin-bottom: 14px; display: flex; flex-direction: column; gap: 16px; }
+.editor-title { font-size: 17px; font-weight: 600; }
+.editor-step { display: flex; flex-direction: column; gap: 10px; padding-top: 16px; border-top: 1px solid var(--line); }
+.step-head { display: flex; gap: 10px; align-items: flex-start; }
+.step-num { width: 24px; height: 24px; flex: none; border-radius: 50%; background: var(--ink); color: #fff; font-size: 12px; font-weight: 600; display: grid; place-items: center; margin-top: -1px; }
+.step-title { font-size: 15px; font-weight: 600; line-height: 1.3; }
+.step-title .opt { font-weight: 400; color: var(--muted); font-size: 13px; }
+.step-hint { font-size: 12px; color: var(--muted); line-height: 1.4; margin-top: 2px; }
+.step-body { display: flex; flex-direction: column; gap: 10px; padding-left: 34px; }
+.field-label { font-size: 12px; font-weight: 600; color: var(--chip-ink); }
+.editor-foot { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; justify-content: space-between; padding-top: 16px; border-top: 1px solid var(--line); }
+@media (max-width: 640px) {
+  .editor { padding: 14px; }
+  .step-body { padding-left: 0; }
+}
+
+/* A number set with − and + (items per meal, picks from a bucket). */
+.stepper-panel { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; padding: 12px 14px; border-radius: 12px; background: #F7F2FA; border: 1px solid #E4D8EC; }
+.stepper { display: inline-flex; align-items: center; border: 1px solid var(--border); border-radius: 999px; background: #fff; height: var(--h-md); }
+.stepper button { width: var(--h-md); height: 100%; border: none; background: none; cursor: pointer; font-size: 18px; color: var(--ink); border-radius: 999px; }
+.stepper button:disabled { color: var(--faint); }
+.stepper output { min-width: 28px; text-align: center; font-size: 16px; font-weight: 600; }
+.stepper.small { height: var(--h-sm); }
+.stepper.small button { width: var(--h-sm); font-size: 16px; }
+.stepper.small output { font-size: 14px; min-width: 22px; }
+
+/* A value that's been entered: shown as a soft chip, tap to change (like the use-by date). */
+.set-pill { display: inline-flex; align-items: stretch; height: var(--h-sm); border-radius: 999px; background: var(--chip); color: var(--chip-ink); overflow: hidden; font-size: 12px; }
+.set-pill-main { display: inline-flex; gap: 5px; align-items: center; padding: 0 12px 0 10px; border: none; background: none; color: inherit; cursor: pointer; font-size: 12px; }
+.set-pill-main strong { color: var(--ink); font-weight: 600; }
+
+/* Tag editing: rename in place or remove. */
+.tag-edit { display: inline-flex; align-items: center; gap: 4px; }
+.tag-edit .field-sm { width: 120px; }
+
+/* Phones: form fields sit on their own lines with a fixed label column, so boxes line up. */
+@media (max-width: 640px) {
+  .ing-row > .ing-group, .shop-add > .ing-group { flex-basis: 100%; }
+  .ing-row > .ing-group > .ing-label:first-child,
+  .shop-add > .ing-group > .ing-label:first-child,
+  .shop-add .expiry-input > .ing-label:first-child { width: 56px; flex: none; }
+  .ing-row > .ing-group.row-tags { padding-left: 60px; }
+  .shop-add > input:first-child { flex-basis: 100% !important; }
+  .shop-add > .pill.dark { flex: 1 1 100%; }
+  .ing-row > .ing-group { gap: 6px; }
+}
