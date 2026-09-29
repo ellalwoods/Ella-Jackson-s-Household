@@ -31,7 +31,7 @@ function LinkForm({ onKey, wrong }: { onKey: (k: string) => void; wrong?: boolea
         </div>
         <input className="field" value={text} onChange={e => { setText(e.target.value); setError(''); }} onKeyDown={e => { if (e.key === 'Enter') submit(); }}
           placeholder="https://…/#…" autoCapitalize="off" autoCorrect="off" spellCheck={false} inputMode="url" aria-label="Household link" />
-        <button className="pill dark" style={{ height: 42 }} onClick={submit}>Open household</button>
+        <button className="pill dark" onClick={submit}>Open household</button>
         {error && <div style={{ fontSize: 13, color: '#A9477B' }}>{error}</div>}
       </section>
     </div>

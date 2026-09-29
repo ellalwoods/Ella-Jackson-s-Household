@@ -201,7 +201,7 @@ export default function RecipeEditor({ D, update, recipe, bucket = null, kind = 
             <input className="field-sm ing-name" list="known-ingredients" value={r.name} placeholder={isBucket ? 'Item, e.g. Broccoli' : 'Ingredient'} onChange={e => setRow(r.key, { name: e.target.value })} />
             {r.recipe ? (
               <span className="ing-group">
-                <span className="mini-tag on" style={{ height: 24, fontSize: 11 }}>Mini recipe</span>
+                <span className="mini-tag dense on">Mini recipe</span>
                 <span className="ing-label">{(() => { const m = minis.find(z => z.id === r.recipe); return m ? m.ingredients.map(g => g.name).join(', ') || 'no ingredients yet' : ''; })()}</span>
               </span>
             ) : r.staple ? (
@@ -284,8 +284,7 @@ export default function RecipeEditor({ D, update, recipe, bucket = null, kind = 
       </div>
       {!isBucket && <p className="note" style={{ margin: 0 }}>{isMini && 'Each pick makes one batch. '}Buy amounts, prices and staples are shared: set them once and every recipe using that ingredient updates. Staples (salt, pepper, spices) add a nominal {money(STAPLE_COST)} each.{uses.length > 0 && ' Buckets count at their average item cost until you pick items for a planned meal.'}</p>}
 
-      {!isBucket && <textarea value={method} onChange={e => setMethod(e.target.value)} placeholder="Write the recipe yourself (optional)" rows={6}
-        style={{ padding: '10px 12px', border: '1px solid #DDD8CC', borderRadius: 10, background: '#fff', fontSize: 14, resize: 'vertical', marginTop: 6 }} />}
+      {!isBucket && <textarea value={method} onChange={e => setMethod(e.target.value)} placeholder="Write the recipe yourself (optional)" rows={6} className="textarea" aria-label="Method" style={{ marginTop: 6 }} />}
       <div className="row8">
         <button className="pill dark" style={{ padding: '0 18px' }} onClick={save}>{isBucket ? 'Save bucket' : isMini ? 'Save mini recipe' : 'Save recipe'}</button>
         <button className="pill plain" onClick={onDone}>Cancel</button>
@@ -308,9 +307,9 @@ function TagRow({ label, tags, selected, onToggle, removable, value, onValue, on
           ? <span key={t} className="mini-tag on">{t}<button className="mini-tag-x" aria-label={'Remove tag ' + t} onClick={() => onToggle(t)}>×</button></span>
           : <button key={t} className={'mini-tag' + (on ? ' on' : '')} aria-pressed={on} onClick={() => onToggle(t)}>{t}</button>;
       })}
-      <input className="field-sm" style={{ height: 30, width: 150, fontSize: 13 }} value={value} placeholder={placeholder} aria-label="New tag"
+      <input className="field-sm compact" style={{ width: 160 }} value={value} placeholder={placeholder} aria-label="New tag"
         onChange={e => onValue(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); onAdd(); } }} />
-      {value.trim() && <button className="pill-sm" style={{ height: 30 }} onClick={onAdd}>Add</button>}
+      {value.trim() && <button className="pill-sm" onClick={onAdd}>Add</button>}
     </div>
   );
 }

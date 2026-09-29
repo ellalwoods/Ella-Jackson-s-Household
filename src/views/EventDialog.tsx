@@ -98,19 +98,19 @@ export default function EventDialog({ D, update, date: initialDate, event, onClo
           <div style={{ fontWeight: 600, fontSize: 16 }}>{event ? 'Edit event' : 'New event'}</div>
           <span className="note">{longDate(date)}</span>
         </div>
-        <input className="field" autoFocus value={title} onChange={e => setTitle(e.target.value)} placeholder="Title"
+        <input className="field" autoFocus value={title} onChange={e => setTitle(e.target.value)} placeholder="What’s on? e.g. Dinner with Sam"
           onKeyDown={e => { if (e.key === 'Enter') save(); }} />
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           <input className="field" type="date" style={{ flex: '1 1 140px' }} value={date} onChange={e => setDate(e.target.value)} aria-label="Date" />
           <input className="field" type="time" style={{ flex: '1 1 110px' }} value={time} onChange={e => setTime(e.target.value)} aria-label="Time" />
         </div>
-        <input className="field" value={place} onChange={e => setPlace(e.target.value)} placeholder="Place" />
+        <input className="field" value={place} onChange={e => setPlace(e.target.value)} placeholder="Place (optional)" aria-label="Place" />
         <div style={{ display: 'flex', gap: 6 }}>
           {CHORE_OWNERS.map(o => {
             const on = who === o, c = OWNERS[o];
             return (
-              <button key={o} onClick={() => setWho(o)}
-                style={{ flex: 1, height: 38, borderRadius: 999, cursor: 'pointer', fontSize: 14, fontWeight: 600, border: '1.5px solid ' + c.color, background: on ? c.color : '#fff', color: on ? '#fff' : c.ink }}>
+              <button key={o} className="owner-pick" aria-pressed={on} onClick={() => setWho(o)}
+                style={{ borderColor: c.color, background: on ? c.color : '#fff', color: on ? '#fff' : c.ink }}>
                 {c.name}
               </button>
             );
@@ -137,15 +137,14 @@ export default function EventDialog({ D, update, date: initialDate, event, onClo
                 </button>
               );
             })}
-            <input className="field-sm" style={{ height: 30, width: 130, fontSize: 13 }} value={newTag} onChange={e => setNewTag(e.target.value)}
+            <input className="field-sm compact" style={{ width: 130 }} value={newTag} onChange={e => setNewTag(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTag(); } }} placeholder="+ New tag" aria-label="New tag" />
-            {newTag.trim() && <button className="pill-sm" style={{ height: 30 }} onClick={addTag}>Add</button>}
+            {newTag.trim() && <button className="pill-sm" onClick={addTag}>Add</button>}
           </div>
           {tags.length > 1 && <span className="note">The first tag ({tags[0]}) colours the event.</span>}
           </>)}
         </div>
-        <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Notes" rows={3}
-          style={{ padding: '10px 12px', border: '1px solid #DDD8CC', borderRadius: 10, background: '#fff', fontSize: 14, resize: 'vertical' }} />
+        <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Notes (optional)" aria-label="Notes" rows={3} className="textarea" />
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           <button className="pill dark" style={{ padding: '0 18px' }} onClick={save}>{event ? 'Save' : 'Add event'}</button>
           <button className="pill plain" onClick={onClose}>Cancel</button>
@@ -165,14 +164,14 @@ function TagEditor({ tag, onRename, onColour, onDelete }: { tag: Tag; onRename: 
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: 8, borderRadius: 10, background: soft(tag.color, 0.85) }}>
       <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
         <span className="dot8" style={{ background: tag.color, flex: 'none' }} />
-        <input className="field-sm" style={{ flex: 1, height: 32, fontSize: 13 }} value={name} aria-label={'Rename ' + tag.name}
+        <input className="field-sm compact" style={{ flex: 1 }} value={name} aria-label={'Rename ' + tag.name}
           onChange={e => setName(e.target.value)} onBlur={commit} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); commit(); } }} />
-        <button className="x-btn" style={{ width: 28, height: 28 }} aria-label={'Delete tag ' + tag.name} title="Delete tag" onClick={onDelete}>×</button>
+        <button className="x-btn" aria-label={'Delete tag ' + tag.name} title="Delete tag" onClick={onDelete}>×</button>
       </div>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', paddingLeft: 14 }}>
         {TAG_COLORS.map(c => (
           <button key={c} aria-label={'Colour ' + c} aria-pressed={c === tag.color} onClick={() => onColour(c)}
-            style={{ width: 20, height: 20, borderRadius: '50%', background: c, cursor: 'pointer', padding: 0, border: c === tag.color ? '2px solid #23221F' : '2px solid #fff', boxShadow: '0 0 0 1px ' + (c === tag.color ? '#fff' : '#DDD8CC') }} />
+            style={{ width: 24, height: 24, borderRadius: '50%', background: c, cursor: 'pointer', padding: 0, border: c === tag.color ? '2px solid #23221F' : '2px solid #fff', boxShadow: '0 0 0 1px ' + (c === tag.color ? '#fff' : '#DDD8CC') }} />
         ))}
       </div>
     </div>

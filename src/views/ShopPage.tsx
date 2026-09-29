@@ -104,7 +104,7 @@ export default function ShopPage({ update, mon, label, items, skipped, pending =
                 if (f !== 'all' && !n) return null;
                 return (
                   <button key={f} className="filter" onClick={() => setView(v => ({ ...v, only: f }))}
-                    style={{ height: 28, fontSize: 12, borderColor: on ? '#23221F' : '#DDD8CC', background: on ? '#23221F' : '#fff', color: on ? '#fff' : '#23221F' }}>
+                    style={{ borderColor: on ? '#23221F' : '#DDD8CC', background: on ? '#23221F' : '#fff', color: on ? '#fff' : '#23221F' }}>
                     {f === 'all' ? 'All' : SHOP_SECTION_LABEL[f]} · {n}
                   </button>
                 );
@@ -141,12 +141,12 @@ export default function ShopPage({ update, mon, label, items, skipped, pending =
                       <select className="section-select" value={i.section} onChange={e => setSection(i, e.target.value as ShopSection)} aria-label={'Section for ' + i.name}>
                         {SHOP_SECTIONS.map(x => <option key={x} value={x}>{SHOP_SECTION_LABEL[x]}</option>)}
                       </select>
-                      {i.manual && <button className="link-btn" style={{ fontSize: 11 }} aria-label={'Remove ' + i.name} onClick={() => removeManual(i.manual!)}>Remove</button>}
+                      {i.manual && <button className="link-btn" style={{ fontSize: 12 }} aria-label={'Remove ' + i.name} onClick={() => removeManual(i.manual!)}>Remove</button>}
                     </span>
                   </span>
                   {ck && (
                     <div className="shop-expiry">
-                      <ExpiryInput label="Expires" value={dates[tick(i)] ?? ''} onChange={v => setDates(ds => ({ ...ds, [tick(i)]: v }))} />
+                      <ExpiryInput label="Use by" compact value={dates[tick(i)] ?? ''} onChange={v => setDates(ds => ({ ...ds, [tick(i)]: v }))} />
                       {!dates[tick(i)] && <span className="note">optional</span>}
                     </div>
                   )}
@@ -200,20 +200,20 @@ function AddItem({ onAdd }: { onAdd: (m: ManualShopItem, section: ShopSection) =
   const onKey = (e: React.KeyboardEvent) => { if (e.key === 'Enter') add(); };
   return (
     <div className="shop-add">
-      <input className="field-sm" style={{ flex: '1 1 160px', height: 40 }} value={name} onChange={e => setName(e.target.value)} onKeyDown={onKey}
+      <input className="field-sm" style={{ flex: '1 1 160px' }} value={name} onChange={e => setName(e.target.value)} onKeyDown={onKey}
         placeholder="Add an item, e.g. Milk" aria-label="Item to add" />
       <span className="ing-group">
-        <input className="field-sm" style={{ width: 56, height: 40 }} inputMode="decimal" value={qty} onChange={e => setQty(e.target.value)} onKeyDown={onKey} placeholder="qty" aria-label="Amount" />
+        <input className="field-sm num" inputMode="decimal" value={qty} onChange={e => setQty(e.target.value)} onKeyDown={onKey} placeholder="qty" aria-label="Amount" />
         <UnitSelect value={unit} onChange={setUnit} />
       </span>
       <span className="ing-group">
         <span className="ing-label">$</span>
-        <input className="field-sm" style={{ width: 64, height: 40 }} inputMode="decimal" value={price} onChange={e => setPrice(e.target.value)} onKeyDown={onKey} placeholder="0.00" aria-label="Price" />
+        <input className="field-sm num" inputMode="decimal" value={price} onChange={e => setPrice(e.target.value)} onKeyDown={onKey} placeholder="0.00" aria-label="Price" />
       </span>
-      <select className="field-sm" style={{ height: 40, width: 104 }} value={section} onChange={e => setPicked(e.target.value as ShopSection)} aria-label="Section">
+      <select className="field-sm" style={{ width: 108 }} value={section} onChange={e => setPicked(e.target.value as ShopSection)} aria-label="Section">
         {SHOP_SECTIONS.map(x => <option key={x} value={x}>{SHOP_SECTION_LABEL[x]}</option>)}
       </select>
-      <button className="pill-sm dark" style={{ height: 40 }} onClick={add}>Add</button>
+      <button className="pill dark" onClick={add}>Add</button>
     </div>
   );
 }

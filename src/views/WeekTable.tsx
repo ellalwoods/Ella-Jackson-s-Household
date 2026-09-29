@@ -82,8 +82,8 @@ export default function WeekTable({ D, update, mon }: Props) {
       <div className="week-grid meals-row week-colhead">
         <span style={{ display: 'block' }}>Day</span>
         {MEALS.map(m => <span key={m} className="col-meal">{MEAL_LABEL[m]}</span>)}
-        <span className="col-meals"><span>Meals</span></span>
-        <span><span>Chores</span><span className="meta">{allChores.filter(c => c.done).length}/{allChores.length} done</span></span>
+        <span className="col-meals"><span>Meals &amp; chores</span></span>
+        <span><span className="col-meal">Chores</span><span className="meta">{allChores.filter(c => c.done).length}/{allChores.length} done</span></span>
       </div>
 
       {days.map(d => (
@@ -131,7 +131,7 @@ export default function WeekTable({ D, update, mon }: Props) {
                         {!matches.length && <span style={{ fontSize: 13, padding: '8px 10px' }} className="muted">No recipes match.</span>}
                       </div>
                       {out && (
-                        <input className="field-sm" style={{ height: 36 }} placeholder="Where? (optional)" aria-label="Where you're eating out"
+                        <input className="field-sm" placeholder="Where? (optional)" aria-label="Where you're eating out"
                           value={D.eatOut[slot] ?? ''} onChange={e => { const v = e.target.value; update(x => { if (v.trim()) x.eatOut[slot] = v; else delete x.eatOut[slot]; }); }}
                           onKeyDown={e => { if (e.key === 'Enter') close(); }} />
                       )}

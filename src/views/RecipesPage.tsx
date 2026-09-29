@@ -4,6 +4,7 @@ import { HouseholdData, Meal, MEAL_LABEL, mealRecipes, MEALS, miniRecipes, money
 import { bucketAverage, fmtQty, isStocked, itemCost, costContext, miniCost, miniOf, recipeCost, searchRecipes } from '../lib/food';
 import type { Update } from '../Household';
 import RecipeEditor, { safeLink } from './RecipeEditor';
+import { confirmRemove } from './confirm';
 
 export default function RecipesPage({ D, update, mon }: { D: HouseholdData; update: Update; mon: Date }) {
   const [q, setQ] = useState('');
@@ -63,13 +64,13 @@ export default function RecipesPage({ D, update, mon }: { D: HouseholdData; upda
             {r.meals.length > 0 && <div className="note" style={{ marginTop: 2 }}>{r.meals.map(m => MEAL_LABEL[m]).join(' · ')}</div>}
             {(r.tags ?? []).length > 0 && (
               <div className="row" style={{ gap: 4, marginTop: 4 }}>
-                {r.tags!.map(t => <button key={t} className={'mini-tag' + (norm(tagFilter) === norm(t) ? ' on' : '')} style={{ height: 22, fontSize: 11 }} onClick={() => setTagFilter(norm(tagFilter) === norm(t) ? '' : t)}>{t}</button>)}
+                {r.tags!.map(t => <button key={t} className={'mini-tag dense' + (norm(tagFilter) === norm(t) ? ' on' : '')} onClick={() => setTagFilter(norm(tagFilter) === norm(t) ? '' : t)}>{t}</button>)}
               </div>
             )}
           </div>
           <span style={{ display: 'flex', gap: 10 }}>
             <button className="link-btn" onClick={() => edit(r.id)}>Edit</button>
-            <button className="link-btn" onClick={() => remove(r.id)}>Remove</button>
+            <button className="link-btn" onClick={() => { if (confirmRemove('“' + r.name + '”')) remove(r.id); }}>Remove</button>
           </span>
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
@@ -108,10 +109,10 @@ export default function RecipesPage({ D, update, mon }: { D: HouseholdData; upda
     <>
       <div className="row8" style={{ marginBottom: 14 }}>
         <input className="search" style={{ flex: '1 1 260px' }} value={q} onChange={e => setQ(e.target.value)} placeholder="Search by name or ingredient" />
-        {editing ? <button className="pill dark" style={{ height: 44, padding: '0 18px' }} onClick={() => setEditing(null)}>Close</button> : (<>
-          <button className="pill dark" style={{ height: 44, padding: '0 18px' }} onClick={() => setEditing('new')}>+ New recipe</button>
-          <button className="pill plain" style={{ height: 44, padding: '0 18px' }} onClick={() => setEditing('bucket:new')}>+ Add bucket</button>
-          <button className="pill plain" style={{ height: 44, padding: '0 18px' }} onClick={() => setEditing('mini:new')}>+ Mini recipe</button>
+        {editing ? <button className="pill plain lg" onClick={() => setEditing(null)}>Close editor</button> : (<>
+          <button className="pill dark lg" onClick={() => setEditing('new')}>+ New recipe</button>
+          <button className="pill plain lg" onClick={() => setEditing('bucket:new')}>+ New bucket</button>
+          <button className="pill plain lg" onClick={() => setEditing('mini:new')}>+ New mini recipe</button>
         </>)}
       </div>
       <div className="row" style={{ marginBottom: 14 }}>
@@ -155,7 +156,7 @@ export default function RecipesPage({ D, update, mon }: { D: HouseholdData; upda
           <div style={{ fontWeight: 600, fontSize: 17 }}>Buckets</div>
           <div className="note">Groups of interchangeable items, like Vegetables. Recipes use a number of them, picked when you plan the meal.</div>
         </div>
-        {!editing && <button className="pill plain" onClick={() => edit('bucket:new')}>+ Add bucket</button>}
+        {!editing && <button className="pill plain" onClick={() => edit('bucket:new')}>+ New bucket</button>}
       </div>
       <div className="auto-grid" style={{ gridTemplateColumns: 'repeat(auto-fill,minmax(min(100%,280px),1fr))' }}>
         {D.buckets.slice().sort((a, b) => a.name.localeCompare(b.name)).map(b => {
@@ -171,14 +172,14 @@ export default function RecipesPage({ D, update, mon }: { D: HouseholdData; upda
                 </div>
                 <span style={{ display: 'flex', gap: 10 }}>
                   <button className="link-btn" onClick={() => edit('bucket:' + b.id)}>Edit</button>
-                  <button className="link-btn" onClick={() => removeBucket(b.id)}>Remove</button>
+                  <button className="link-btn" onClick={() => { if (confirmRemove('the “' + b.name + '” bucket')) removeBucket(b.id); }}>Remove</button>
                 </span>
               </div>
               {(b.tags ?? []).length > 0 && (
                 <div className="row" style={{ gap: 4 }}>
                   {['', ...b.tags!].map(t => {
                     const on = (bucketTag[b.id] ?? '') === t;
-                    return <button key={t || 'all'} className={'mini-tag' + (on ? ' on' : '')} style={{ height: 24, fontSize: 11 }} aria-pressed={on}
+                    return <button key={t || 'all'} className={'mini-tag dense' + (on ? ' on' : '')} aria-pressed={on}
                       onClick={() => setBucketTag(f => ({ ...f, [b.id]: t }))}>{t || 'All'}</button>;
                   })}
                 </div>
@@ -201,7 +202,7 @@ export default function RecipesPage({ D, update, mon }: { D: HouseholdData; upda
           <div style={{ fontWeight: 600, fontSize: 17 }}>Mini recipes</div>
           <div className="note">Garnishes, sauces and dressings made of a few ingredients. Add one to a bucket as a single item; picking it puts its ingredients on the shopping list.</div>
         </div>
-        {!editing && <button className="pill plain" onClick={() => edit('mini:new')}>+ Add mini recipe</button>}
+        {!editing && <button className="pill plain" onClick={() => edit('mini:new')}>+ New mini recipe</button>}
       </div>
       <div className="auto-grid" style={{ gridTemplateColumns: 'repeat(auto-fill,minmax(min(100%,280px),1fr))' }}>
         {minis.map(r => {
@@ -214,3 +215,4 @@ export default function RecipesPage({ D, update, mon }: { D: HouseholdData; upda
     </>
   );
 }
+

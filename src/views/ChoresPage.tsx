@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { DOW, key } from '../lib/dates';
 import { CHORE_OWNERS, ChoreOwner, describe, HouseholdData, nextOwner, norm, OWNERS, Schedule, uid } from '../lib/model';
+import { confirmRemove } from './confirm';
 import type { Update } from '../Household';
 
 type SchedType = Schedule['type'];
@@ -36,36 +37,35 @@ export default function ChoresPage({ D, update }: { D: HouseholdData; update: Up
   const pick = (p: ChoreOwner) => {
     const on = person === p, c = OWNERS[p];
     return (
-      <button key={p} onClick={() => setPerson(p)}
-        style={{ flex: 1, height: 42, borderRadius: 999, cursor: 'pointer', fontSize: 14, fontWeight: 600, border: '1.5px solid ' + c.color, background: on ? c.color : '#fff', color: on ? '#fff' : c.ink }}>
+      <button key={p} className="owner-pick" aria-pressed={on} onClick={() => setPerson(p)}
+        style={{ borderColor: c.color, background: on ? c.color : '#fff', color: on ? '#fff' : c.ink }}>
         {c.name}
       </button>
     );
   };
-
-  const small = { height: 40, border: '1px solid #DDD8CC', borderRadius: 8, background: '#fff' } as const;
 
   return (
     <div className="flow">
       <section style={{ flex: '2 1 420px', minWidth: 0 }}>
         <input className="search" style={{ width: '100%', marginBottom: 10 }} value={q} onChange={e => setQ(e.target.value)} placeholder="Search chores" />
         <div className="card" style={{ padding: '4px 18px' }}>
-          {list.map(c => {
+          {list.map((c, i) => {
             const p = OWNERS[c.person];
             return (
-              <div key={c.id} style={{ display: 'flex', gap: 12, alignItems: 'center', padding: '12px 0', borderTop: '1px solid #F0ECE4' }}>
-                <button className="person-tag" title="Switch person" style={{ height: 32, minWidth: 78, padding: '0 10px', flex: 'none', background: p.tint, color: p.ink }}
+              <div key={c.id} style={{ display: 'flex', gap: 12, alignItems: 'center', padding: '12px 0', borderTop: i ? '1px solid #F0ECE4' : 'none' }}>
+                <button className="person-tag" title="Switch person" style={{ height: 'var(--h-sm)', minWidth: 78, padding: '0 10px', flex: 'none', background: p.tint, color: p.ink }}
                   onClick={() => update(x => { const z = x.chores.find(z => z.id === c.id); if (z) z.person = nextOwner(z.person); })}>{p.name}</button>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 15 }}>{c.name}</div>
                   <div style={{ fontSize: 12 }} className="muted">{describe(c.sched)}</div>
                 </div>
-                <button className="link-btn" onClick={() => update(x => { x.chores = x.chores.filter(z => z.id !== c.id); })}>Remove</button>
+                <button className="link-btn" onClick={() => { if (confirmRemove('“' + c.name + '”')) update(x => { x.chores = x.chores.filter(z => z.id !== c.id); }); }}>Remove</button>
               </div>
             );
           })}
-          {!list.length && <p className="empty">No chores found.</p>}
+          {!list.length && <p className="empty">{q ? 'No chores match “' + q + '”.' : 'No chores yet. Add one with New chore.'}</p>}
         </div>
+        {list.length > 0 && <p className="note" style={{ margin: '8px 2px 0' }}>Tap a name to change who does it.</p>}
       </section>
       <aside className="card" style={{ flex: '1 1 300px', padding: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
         <div style={{ fontWeight: 600 }}>New chore</div>
@@ -83,24 +83,24 @@ export default function ChoresPage({ D, update }: { D: HouseholdData; update: Up
               const on = days.indexOf(i) >= 0;
               return (
                 <button key={l} onClick={() => setDays(on ? days.filter(z => z !== i) : days.concat(i))}
-                  style={{ height: 40, borderRadius: 10, cursor: 'pointer', fontSize: 12, fontWeight: 600, border: '1px solid #DDD8CC', background: on ? '#23221F' : '#fff', color: on ? '#fff' : '#23221F' }}>{l}</button>
+                  style={{ height: 'var(--h-md)', borderRadius: 'var(--r-field)', cursor: 'pointer', fontSize: 12, fontWeight: 600, border: '1px solid #DDD8CC', background: on ? '#23221F' : '#fff', color: on ? '#fff' : '#23221F' }}>{l}</button>
               );
             })}
           </div>
         )}
         {type === 'every' && (
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 14, flexWrap: 'wrap' }}>
-            Every <input value={n} onChange={e => setN(e.target.value)} inputMode="numeric" style={{ ...small, width: 64, padding: '0 10px' }} /> days from{' '}
-            <input type="date" value={start} onChange={e => setStart(e.target.value)} style={{ ...small, padding: '0 8px' }} />
+            Every <input className="field-sm num" value={n} onChange={e => setN(e.target.value)} inputMode="numeric" aria-label="Number of days" /> days from{' '}
+            <input className="field-sm" type="date" value={start} onChange={e => setStart(e.target.value)} aria-label="Starting" />
           </div>
         )}
         {type === 'monthly' && (
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 14 }}>
-            On day <input value={dom} onChange={e => setDom(e.target.value)} inputMode="numeric" style={{ ...small, width: 64, padding: '0 10px' }} /> of each month
+            On day <input className="field-sm num" value={dom} onChange={e => setDom(e.target.value)} inputMode="numeric" aria-label="Day of the month" /> of each month
           </div>
         )}
-        {type === 'once' && <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{ ...small, padding: '0 8px' }} />}
-        <button className="pill dark" style={{ height: 42 }} onClick={add}>Add chore</button>
+        {type === 'once' && <input className="field" type="date" value={date} onChange={e => setDate(e.target.value)} aria-label="Date" />}
+        <button className="pill dark" onClick={add}>Add chore</button>
       </aside>
     </div>
   );

@@ -49,7 +49,7 @@ export default function PantryPage({ D, update }: { D: HouseholdData; update: Up
           const n = D.recipes.filter(r => r.ingredients.some(g => norm(g.name) === norm(c.name))).length;
           const pr = prices.get(norm(c.name));
           return (
-            <div key={c.name} className="card" style={{ borderRadius: 14, padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div key={c.name} className="card" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
                 <span style={{ fontSize: 15, fontWeight: 600 }}>
                   {c.name} <span style={{ fontWeight: 400, fontSize: 12 }} className="muted">{n ? '· in ' + n + ' recipe' + (n > 1 ? 's' : '') : ''}</span>
@@ -58,9 +58,9 @@ export default function PantryPage({ D, update }: { D: HouseholdData; update: Up
               </div>
               {c.qty != null ? (
                 <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                  <input className="field-sm" style={{ height: 34, width: 90 }} inputMode="decimal" value={String(c.qty)} aria-label="Amount left"
+                  <input className="field-sm compact num" inputMode="decimal" value={String(c.qty)} aria-label="Amount left"
                     onChange={e => { const v = e.target.value; edit(c.name, z => { z.qty = parseFloat(v) || 0; }); }} />
-                  <UnitSelect value={c.unit ?? 'g'} onChange={u => edit(c.name, z => { z.unit = u; })} height={34} />
+                  <UnitSelect value={c.unit ?? 'g'} onChange={u => edit(c.name, z => { z.unit = u; })} compact />
                   <span style={{ fontSize: 12 }} className="muted">left</span>
                 </div>
               ) : (
@@ -75,7 +75,7 @@ export default function PantryPage({ D, update }: { D: HouseholdData; update: Up
                 </div>
               )}
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', fontSize: 12 }} className="muted">
-                <ExpiryInput label="Use by" height={32} value={c.expires ?? ''}
+                <ExpiryInput label="Use by" compact value={c.expires ?? ''}
                   onChange={v => edit(c.name, z => { if (v) z.expires = v; else delete z.expires; })} />
                 {(() => { const e = expiry(c.expires); return e && (e.soon || e.expired) ? <span className={'exp-chip ' + (e.expired ? 'expired' : 'soon')}>{e.label}</span> : null; })()}
               </div>
@@ -96,9 +96,9 @@ export default function PantryPage({ D, update }: { D: HouseholdData; update: Up
   );
 }
 
-export function UnitSelect({ value, onChange, height = 40 }: { value: Unit; onChange: (u: Unit) => void; height?: number }) {
+export function UnitSelect({ value, onChange, compact = false }: { value: Unit; onChange: (u: Unit) => void; compact?: boolean }) {
   return (
-    <select className="field-sm" style={{ height, padding: '0 4px', width: 64 }} value={value} onChange={e => onChange(e.target.value as Unit)} aria-label="Unit">
+    <select className={'field-sm unit' + (compact ? ' compact' : '')} value={value} onChange={e => onChange(e.target.value as Unit)} aria-label="Unit">
       {UNITS.map(u => <option key={u} value={u}>{UNIT_LABEL[u]}</option>)}
     </select>
   );
@@ -132,20 +132,20 @@ function AddToPantry({ D, update }: { D: HouseholdData; update: Update }) {
   return (
     <div className="card" style={{ padding: '12px 14px', marginBottom: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
       <div className="shop-add" style={{ padding: 0 }}>
-        <input className="field-sm" style={{ flex: '1 1 180px', height: 40 }} list="pantry-known" value={name} onChange={e => setName(e.target.value)} onKeyDown={onKey}
+        <input className="field-sm" style={{ flex: '1 1 180px' }} list="pantry-known" value={name} onChange={e => setName(e.target.value)} onKeyDown={onKey}
           placeholder="Add to pantry, e.g. Rice" aria-label="Item to add to pantry" />
         <datalist id="pantry-known">{known.map(k => <option key={k} value={k} />)}</datalist>
         <span className="ing-group">
-          <input className="field-sm" style={{ width: 56, height: 40 }} inputMode="decimal" value={qty} onChange={e => setQty(e.target.value)} onKeyDown={onKey} placeholder="qty" aria-label="Amount" />
+          <input className="field-sm num" inputMode="decimal" value={qty} onChange={e => setQty(e.target.value)} onKeyDown={onKey} placeholder="qty" aria-label="Amount" />
           <UnitSelect value={unit} onChange={setUnit} />
         </span>
         <span className="ing-group">
           <span className="ing-label">$</span>
-          <input className="field-sm" style={{ width: 70, height: 40 }} inputMode="decimal" value={price} onChange={e => setPrice_(e.target.value)} onKeyDown={onKey}
+          <input className="field-sm num" inputMode="decimal" value={price} onChange={e => setPrice_(e.target.value)} onKeyDown={onKey}
             placeholder={knownPrice ? knownPrice.price.toFixed(2) : '0.00'} aria-label="Price" />
         </span>
-        <span className="ing-group"><ExpiryInput label="Use by" height={40} value={expires} onChange={setExpires} /></span>
-        <button className="pill-sm dark" style={{ height: 40 }} onClick={add}>Add</button>
+        <span className="ing-group"><ExpiryInput label="Use by" value={expires} onChange={setExpires} /></span>
+        <button className="pill dark" onClick={add}>Add</button>
       </div>
       <span className="note">
         {existing ? existing.name + ' is already in the pantry — an amount here is added to what’s there.' : 'Amount, price and use-by date are optional. The price is what you pay for the amount given (or for the item). Without an amount it’s marked Full.'}
@@ -158,10 +158,11 @@ function AddToPantry({ D, update }: { D: HouseholdData; update: Update }) {
  * A use-by date box with an "N/A" button for things that don't expire.
  * The value is a date key, NO_EXPIRY, or '' for not set.
  */
-export function ExpiryInput({ label, value, onChange, height = 34 }: { label: string; value: string; onChange: (v: string) => void; height?: number }) {
+export function ExpiryInput({ label, value, onChange, compact = false }: { label: string; value: string; onChange: (v: string) => void; compact?: boolean }) {
   const [editing, setEditing] = useState(false);
   const none = value === NO_EXPIRY, dated = !!value && !none;
-  const pillH = Math.min(height, 30);
+  // The date box, its N/A button and the set-date pill all share one height.
+  const h = compact ? 'var(--h-sm)' : 'var(--h-md)';
   const d = dated ? parse(value) : null;
 
   // A chosen date (or N/A) shows as a filled pill; tap it to change, × to clear.
@@ -169,7 +170,7 @@ export function ExpiryInput({ label, value, onChange, height = 34 }: { label: st
     return (
       <span className="expiry-input">
         <span className="ing-label">{label}</span>
-        <span className="date-pill" style={{ height: pillH }}>
+        <span className="date-pill" style={{ height: h }}>
           <button className="date-pill-main" onClick={() => { if (dated) setEditing(true); }} disabled={none}
             title={dated ? 'Change date' : undefined} aria-label={dated ? label + ' ' + value + ', change' : 'No expiry'}>
             <span aria-hidden>✓</span>{none ? 'No expiry' : DAYS[d!.getDay()] + ' ' + d!.getDate() + ' ' + MON[d!.getMonth()]}
@@ -182,10 +183,10 @@ export function ExpiryInput({ label, value, onChange, height = 34 }: { label: st
   return (
     <span className="expiry-input">
       <span className="ing-label">{label}</span>
-      <input type="date" className="field-sm" style={{ height, fontSize: 13 }} value={value} autoFocus={editing} aria-label={label}
+      <input type="date" className={'field-sm' + (compact ? ' compact' : '')} style={{ fontSize: 13 }} value={value} autoFocus={editing} aria-label={label}
         onChange={e => { onChange(e.target.value); if (e.target.value) setEditing(false); }} onBlur={() => setEditing(false)} />
       <button className="filter" aria-pressed={false} title="Doesn’t expire" onClick={() => { setEditing(false); onChange(NO_EXPIRY); }}
-        style={{ height: pillH, fontSize: 12, padding: '0 10px', borderColor: '#DDD8CC', background: '#fff', color: '#23221F' }}>N/A</button>
+        style={{ height: h, fontSize: 12, padding: '0 12px', borderColor: '#DDD8CC', background: '#fff', color: '#23221F' }}>N/A</button>
     </span>
   );
 }
@@ -201,7 +202,7 @@ function PriceField({ name, update, price }: { name: string; update: Update; pri
   return (
     <span className="note" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
       {price && price.qty && !(price.qty === 1 && price.unit === 'each') ? 'Buy ' + fmtQty(price.qty, price.unit) + ' for $' : 'Price $'}
-      <input className="field-sm" style={{ width: 58, height: 26, fontSize: 12, padding: '0 6px' }} inputMode="decimal" value={text} placeholder="0.00"
+      <input className="field-sm compact num" inputMode="decimal" value={text} placeholder="0.00"
         aria-label={'Price of ' + name} onChange={e => setText(e.target.value)} onBlur={save} onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }} />
     </span>
   );

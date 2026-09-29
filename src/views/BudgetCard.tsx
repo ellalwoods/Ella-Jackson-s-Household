@@ -172,18 +172,19 @@ function SpendPanel({ c, update, wk }: { c: CategoryWeek; update: Update; wk: st
       ))}
       <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
         <OwnerTag o={who} onClick={() => setWho(nextOwner(who))} />
-        <input className="field-sm" style={{ width: 80, height: 34 }} inputMode="decimal" autoFocus value={amount} onChange={e => setAmount(e.target.value)} onKeyDown={onKey} placeholder="$" aria-label="Amount spent" />
-        <input className="field-sm" style={{ flex: '1 1 100px', height: 34 }} value={note} onChange={e => setNote(e.target.value)} onKeyDown={onKey} placeholder="What for?" />
+        <input className="field-sm compact" style={{ flex: '1 1 80px' }} value={note} onChange={e => setNote(e.target.value)} onKeyDown={onKey} placeholder="What for?" aria-label="What for" />
+        <input className="field-sm compact num" inputMode="decimal" autoFocus value={amount} onChange={e => setAmount(e.target.value)} onKeyDown={onKey} placeholder="$" aria-label="Amount spent" />
         <button className="pill-sm dark" onClick={add}>Add</button>
       </div>
     </div>
   );
 }
 
+/** Who paid: tap to switch between Ella, Jackson and Both. Without onClick it's just a label. */
 function OwnerTag({ o, onClick }: { o: ChoreOwner; onClick?: () => void }) {
   return (
-    <button className="person-tag" title={onClick ? 'Who paid' : undefined} onClick={onClick} disabled={!onClick}
-      style={{ height: 26, minWidth: 64, padding: '0 8px', flex: 'none', fontSize: 11, background: OWNERS[o].tint, color: OWNERS[o].ink, cursor: onClick ? 'pointer' : 'default' }}>{OWNERS[o].name}</button>
+    <button className="person-tag" title={onClick ? 'Who pays — tap to switch' : undefined} onClick={onClick} disabled={!onClick}
+      style={{ height: onClick ? 'var(--h-sm)' : 'var(--h-xs)', minWidth: 64, padding: '0 8px', flex: 'none', fontSize: 11, opacity: 1, background: OWNERS[o].tint, color: OWNERS[o].ink, cursor: onClick ? 'pointer' : 'default' }}>{OWNERS[o].name}</button>
   );
 }
 
@@ -206,10 +207,6 @@ function WeekExtras({ extras, total, update, wk }: { extras: Extra[]; total: num
     const left = (d.extras[wk] ?? []).filter(z => z.id !== id);
     if (left.length) d.extras[wk] = left; else delete d.extras[wk];
   });
-  const tag = (o: ChoreOwner, onClick: () => void) => (
-    <button className="person-tag" title="Who pays" onClick={onClick}
-      style={{ height: 26, minWidth: 64, padding: '0 8px', flex: 'none', fontSize: 11, background: OWNERS[o].tint, color: OWNERS[o].ink }}>{OWNERS[o].name}</button>
-  );
 
   return (
     <div style={{ borderTop: '1px solid #F0ECE4', paddingTop: 10, marginTop: 2, display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -220,12 +217,12 @@ function WeekExtras({ extras, total, update, wk }: { extras: Extra[]; total: num
         <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           {total > 0 && <span style={{ fontWeight: 600, fontSize: 14 }}>{money(total)}</span>}
           <button className="x-btn" aria-label="Add a one-off cost" title="Add a one-off cost this week" onClick={() => setOpen(o => !o)}
-            style={{ width: 28, height: 28, fontSize: 16, lineHeight: 1 }}>{open ? '×' : '+'}</button>
+            style={{ fontSize: 16, lineHeight: 1, color: 'var(--ink)' }}>{open ? '×' : '+'}</button>
         </span>
       </div>
       {extras.map(x => (
         <div key={x.id} style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13 }}>
-          {tag(x.who, () => edit(x.id, z => { z.who = nextOwner(z.who); }))}
+          <OwnerTag o={x.who} onClick={() => edit(x.id, z => { z.who = nextOwner(z.who); })} />
           <span style={{ flex: 1, minWidth: 0 }}>{x.name}</span>
           <span>{money(+x.amount || 0)}</span>
           <button className="link-btn" aria-label={'Remove ' + x.name} onClick={() => remove(x.id)}>Remove</button>
@@ -233,11 +230,11 @@ function WeekExtras({ extras, total, update, wk }: { extras: Extra[]; total: num
       ))}
       {open && (
         <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-          {tag(who, () => setWho(nextOwner(who)))}
-          <input className="field-sm" style={{ flex: '1 1 120px', height: 34 }} autoFocus value={name} onChange={e => setName(e.target.value)}
+          <OwnerTag o={who} onClick={() => setWho(nextOwner(who))} />
+          <input className="field-sm compact" style={{ flex: '1 1 80px' }} autoFocus value={name} onChange={e => setName(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') add(); }} placeholder="e.g. Birthday gift" />
-          <input className="field-sm" style={{ width: 80, height: 34 }} inputMode="decimal" value={amount} onChange={e => setAmount(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') add(); }} placeholder="$" />
+          <input className="field-sm compact num" inputMode="decimal" value={amount} onChange={e => setAmount(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') add(); }} placeholder="$" aria-label="Amount" />
           <button className="pill-sm dark" onClick={add}>Add</button>
         </div>
       )}
