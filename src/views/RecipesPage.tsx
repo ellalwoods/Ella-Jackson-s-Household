@@ -115,28 +115,35 @@ export default function RecipesPage({ D, update, mon }: { D: HouseholdData; upda
           <button className="pill plain lg" onClick={() => setEditing('mini:new')}>+ New mini recipe</button>
         </>)}
       </div>
-      <div className="row" style={{ marginBottom: 14 }}>
-        {(['all', ...MEALS] as const).map(m => {
-          const on = mealFilter === m;
-          const cnt = m === 'all' ? mains.length : mains.filter(r => r.meals.includes(m)).length;
-          return (
-            <button key={m} className="filter" onClick={() => setMealFilter(m)}
-              style={{ borderColor: on ? '#23221F' : '#DDD8CC', background: on ? '#23221F' : '#fff', color: on ? '#fff' : '#23221F' }}>
-              {m === 'all' ? 'All' : MEAL_LABEL[m]} · {cnt}
-            </button>
-          );
-        })}
-      </div>
-      {usedTags.length > 0 && (
-        <div className="row" style={{ marginBottom: 14, gap: 4, alignItems: 'center' }}>
-          <span className="ing-label" style={{ marginRight: 4 }}>Tags</span>
-          {['', ...usedTags].map(t => (
-            <button key={t || 'all'} className={'mini-tag' + (tagFilter === t ? ' on' : '')} aria-pressed={tagFilter === t} onClick={() => setTagFilter(t)}>
-              {t || 'Any'}{t && ' · ' + mains.filter(r => (r.tags ?? []).some(x => norm(x) === norm(t))).length}
-            </button>
-          ))}
+      {/* Filters: meal as one joined control, your tags as small chips below. */}
+      <div className="filter-rows">
+        <div className="filter-row">
+          <span className="filter-label">Meal</span>
+          <div className="seg" role="group" aria-label="Filter by meal">
+            {(['all', ...MEALS] as const).map(m => {
+              const on = mealFilter === m;
+              const cnt = m === 'all' ? mains.length : mains.filter(r => r.meals.includes(m)).length;
+              return (
+                <button key={m} className={on ? 'on' : ''} aria-pressed={on} onClick={() => setMealFilter(m)}>
+                  {m === 'all' ? 'All' : MEAL_LABEL[m]} <span className="seg-count">{cnt}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
-      )}
+        {usedTags.length > 0 && (
+          <div className="filter-row">
+            <span className="filter-label">Tags</span>
+            <div className="row" style={{ gap: 4 }}>
+              {['', ...usedTags].map(t => (
+                <button key={t || 'all'} className={'mini-tag' + (tagFilter === t ? ' on' : '')} aria-pressed={tagFilter === t} onClick={() => setTagFilter(t)}>
+                  {t || 'Any'}{t && ' · ' + mains.filter(r => (r.tags ?? []).some(x => norm(x) === norm(t))).length}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
       {editing && <RecipeEditor key={editing} D={D} update={update} recipe={editingRecipe} kind={editKind} bucket={bucketBeingEdited} onDone={() => setEditing(null)} />}
       <div className="auto-grid" style={{ gridTemplateColumns: 'repeat(auto-fill,minmax(min(100%,280px),1fr))' }}>
         {recipes.map(r => {
@@ -154,7 +161,7 @@ export default function RecipesPage({ D, update, mon }: { D: HouseholdData; upda
       <div className="bucket-head">
         <div>
           <div style={{ fontWeight: 600, fontSize: 17 }}>Buckets</div>
-          <div className="note">Groups of interchangeable items, like Vegetables. Recipes use a number of them, picked when you plan the meal.</div>
+          <div className="note">Interchangeable items, like Vegetables, picked when you plan a meal.</div>
         </div>
         {!editing && <button className="pill plain" onClick={() => edit('bucket:new')}>+ New bucket</button>}
       </div>
@@ -200,7 +207,7 @@ export default function RecipesPage({ D, update, mon }: { D: HouseholdData; upda
       <div className="bucket-head">
         <div>
           <div style={{ fontWeight: 600, fontSize: 17 }}>Mini recipes</div>
-          <div className="note">Garnishes, sauces and dressings made of a few ingredients. Add one to a bucket as a single item; picking it puts its ingredients on the shopping list.</div>
+          <div className="note">Garnishes, sauces and dressings, used as one item in a bucket.</div>
         </div>
         {!editing && <button className="pill plain" onClick={() => edit('mini:new')}>+ New mini recipe</button>}
       </div>

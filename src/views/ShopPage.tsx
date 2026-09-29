@@ -202,24 +202,24 @@ function AddItem({ onAdd }: { onAdd: (m: ManualShopItem, section: ShopSection) =
   const onKey = (e: React.KeyboardEvent) => { if (e.key === 'Enter') add(); };
   return (
     <div className="shop-add">
-      <input className="field-sm" style={{ flex: '1 1 160px' }} value={name} onChange={e => setName(e.target.value)} onKeyDown={onKey}
+      <input className="field-sm compact" style={{ flex: '1 1 160px' }} value={name} onChange={e => setName(e.target.value)} onKeyDown={onKey}
         placeholder="Add an item, e.g. Milk" aria-label="Item to add" />
       <span className="ing-group">
         <span className="ing-label">Amount</span>
-        <input className="field-sm num" inputMode="decimal" value={qty} onChange={e => setQty(e.target.value)} onKeyDown={onKey} placeholder="qty" aria-label="Amount" />
-        <UnitSelect value={unit} onChange={setUnit} />
+        <input className="field-sm compact num" inputMode="decimal" value={qty} onChange={e => setQty(e.target.value)} onKeyDown={onKey} placeholder="qty" aria-label="Amount" />
+        <UnitSelect value={unit} onChange={setUnit} compact />
       </span>
       <span className="ing-group">
         <span className="ing-label">Price $</span>
-        <input className="field-sm num" inputMode="decimal" value={price} onChange={e => setPrice(e.target.value)} onKeyDown={onKey} placeholder="0.00" aria-label="Price" />
+        <input className="field-sm compact num" inputMode="decimal" value={price} onChange={e => setPrice(e.target.value)} onKeyDown={onKey} placeholder="0.00" aria-label="Price" />
       </span>
       <span className="ing-group">
         <span className="ing-label phone-only">Section</span>
-        <select className="field-sm" style={{ width: 108 }} value={section} onChange={e => setPicked(e.target.value as ShopSection)} aria-label="Section">
+        <select className="field-sm compact" style={{ width: 104 }} value={section} onChange={e => setPicked(e.target.value as ShopSection)} aria-label="Section">
           {SHOP_SECTIONS.map(x => <option key={x} value={x}>{SHOP_SECTION_LABEL[x]}</option>)}
         </select>
       </span>
-      <button className="pill dark" onClick={add}>Add</button>
+      <button className="pill-sm dark" style={{ padding: '0 16px' }} onClick={add}>Add</button>
     </div>
   );
 }

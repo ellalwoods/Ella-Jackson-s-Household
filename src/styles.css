@@ -18,8 +18,8 @@
   --h-sm: 32px;
   --h-xs: 26px;
   /* Number boxes (amounts, prices, percentages) and unit dropdowns. */
-  --w-num: 68px;
-  --w-unit: 72px;
+  --w-num: 58px;
+  --w-unit: 66px;
   --r-field: 10px;
 }
 /* Touch screens: compact controls and tags get a little taller to tap. */
@@ -154,7 +154,7 @@ select.field-sm.unit { width: var(--w-unit); padding: 0 4px 0 8px; }
 .ing-cost { order: 2; }
 .ing-row > .x-btn { order: 3; flex: none; }
 @media (max-width: 640px) {
-  .ing-name { flex-basis: calc(100% - 44px); max-width: none; }
+  .ing-name { flex-basis: calc(100% - var(--h-sm) - 16px); max-width: none; }
   .ing-row > .x-btn { order: 0; }
 }
 .shop-row { border-top: 1px solid #EFEBE3; display: flex; flex-wrap: wrap; align-items: center; gap: 0 10px; }
@@ -243,8 +243,8 @@ select.field-sm.unit { width: var(--w-unit); padding: 0 4px 0 8px; }
 .seg button { height: calc(var(--h-sm) - 6px); padding: 0 12px; border: none; border-radius: 999px; background: none; cursor: pointer; font-size: 12px; color: var(--ink); }
 .seg button.on { background: var(--ink); color: #fff; }
 /* A set expiry date (or N/A): the soft linen chip, matching the app's other tags */
-.date-pill { display: inline-flex; align-items: stretch; border-radius: 999px; background: var(--chip); color: var(--chip-ink); overflow: hidden; font-size: 11px; }
-.date-pill-main { display: inline-flex; gap: 5px; align-items: center; padding: 0 2px 0 10px; border: none; background: none; color: inherit; cursor: pointer; font-size: 11px; }
+.date-pill { display: inline-flex; align-items: stretch; border-radius: 999px; background: var(--chip); color: var(--chip-ink); overflow: hidden; font-size: 12px; }
+.date-pill-main { display: inline-flex; gap: 5px; align-items: center; padding: 0 2px 0 10px; border: none; background: none; color: inherit; cursor: pointer; font-size: 12px; }
 .date-pill-main:disabled { cursor: default; }
 .date-pill-x { border: none; background: none; color: var(--faint); cursor: pointer; padding: 0 9px 0 5px; font-size: 13px; line-height: 1; }
 .date-pill-x:hover { color: var(--ink); }
@@ -294,7 +294,7 @@ select.field-sm.unit { width: var(--w-unit); padding: 0 4px 0 8px; }
 }
 
 /* A number set with − and + (items per meal, picks from a bucket). */
-.stepper-panel { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; padding: 12px 14px; border-radius: 12px; background: #F7F2FA; border: 1px solid #E4D8EC; }
+.stepper-panel { display: flex; gap: 10px 12px; align-items: center; flex-wrap: wrap; padding: 8px 12px; border-radius: 12px; background: #F7F2FA; border: 1px solid #E4D8EC; }
 .stepper { display: inline-flex; align-items: center; border: 1px solid var(--border); border-radius: 999px; background: #fff; height: var(--h-md); }
 .stepper button { width: var(--h-md); height: 100%; border: none; background: none; cursor: pointer; font-size: 18px; color: var(--ink); border-radius: 999px; }
 .stepper button:disabled { color: var(--faint); }
@@ -320,8 +320,43 @@ select.field-sm.unit { width: var(--w-unit); padding: 0 4px 0 8px; }
   .shop-add .expiry-input > .ing-label:first-child { width: 56px; flex: none; }
   .ing-row > .ing-group.row-tags { padding-left: 60px; }
   .shop-add > input:first-child { flex-basis: 100% !important; }
-  .shop-add > .pill.dark { flex: 1 1 100%; }
+  .shop-add > .pill-sm.dark { flex: 1 1 100%; }
   .ing-row > .ing-group { gap: 6px; }
 }
 /* Labels only needed where fields stack (phones); on wider screens the box speaks for itself. */
 @media (min-width: 641px) { .phone-only { display: none; } }
+/* Pantry card: use-by and price side by side. */
+.card-fields { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; font-size: 12px; color: var(--muted); }
+.date-pill-main, .set-pill-main { padding-left: 12px; }
+
+/* Week controls: ← This week → joined as one control; Month is a separate shaded button. */
+.week-nav { display: inline-flex; align-items: stretch; height: var(--h-md); border: 1px solid var(--border); border-radius: 999px; background: #fff; overflow: hidden; }
+.week-nav button { border: none; background: none; cursor: pointer; font-size: 14px; color: var(--ink); padding: 0 12px; }
+.week-nav button:first-child, .week-nav button:last-child { width: 40px; padding: 0; font-size: 16px; }
+.week-nav .week-nav-now { border-left: 1px solid var(--line); border-right: 1px solid var(--line); padding: 0 14px; font-weight: 500; }
+.week-nav button:hover { background: var(--hover); }
+.month-btn { height: var(--h-md); padding: 0 16px; border-radius: 999px; border: none; background: #E3EDF6; color: #3F6A8F; font-size: 14px; font-weight: 600; cursor: pointer; }
+.month-btn:hover { background: #D6E4F1; }
+.month-btn.on { background: #3F6A8F; color: #fff; }
+
+/* Page tabs: a shaded track, so they don't look like the action buttons on each page. */
+.tabbar { display: flex; flex-wrap: wrap; gap: 2px; padding: 4px; border-radius: 22px; background: var(--chip); }
+.tab-btn { display: inline-flex; gap: 8px; align-items: center; height: calc(var(--h-md) - 4px); padding: 0 14px; border: none; border-radius: 999px; background: none; cursor: pointer; font-size: 14px; color: var(--chip-ink); }
+.tab-btn:hover { color: var(--ink); background: rgba(255, 255, 255, .6); }
+.tab-btn.on { background: var(--ink); color: #fff; font-weight: 500; }
+.tab-btn .count-badge { background: #fff; color: var(--ink); }
+.tab-btn.on .count-badge { background: #fff; color: var(--ink); }
+
+/* Filter rows under a page's search: a small label, then the choices. */
+.filter-rows { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+.filter-row { display: flex; gap: 10px; align-items: center; min-width: 0; }
+.filter-label { width: 36px; flex: none; font-size: 12px; font-weight: 600; color: var(--muted); }
+.filter-row > .seg { max-width: calc(100% - 46px); overflow-x: auto; scrollbar-width: none; }
+.seg button { flex: none; }
+.seg-count { opacity: .6; margin-left: 2px; }
+@media (max-width: 520px) {
+  .wide-only { display: none; }
+  .tabbar { flex-wrap: nowrap; width: 100%; justify-content: space-between; }
+  .tab-btn { padding: 0 9px; font-size: 13px; gap: 6px; }
+}
+@media (max-width: 520px) { .seg-count { display: none; } }

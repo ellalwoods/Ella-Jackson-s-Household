@@ -99,9 +99,9 @@ export default function BudgetPage({ D, update }: { D: HouseholdData; update: Up
                 <button className="filter" aria-pressed={c.pct !== null} onClick={() => update(x => toggleShare(x.cats, c.id, c))}
                   style={toggleStyle(c.pct !== null)}>Share of what’s left</button>
               )}
-              <span className="note">{c.fixed ? 'Always spent in full, like rent.'
-                : c.pct !== null ? 'Gets ' + Math.round(c.pct) + '% of what’s left after everything else. Change one % and the others shift to fit.'
-                : /grocer/i.test(c.name) ? 'Fills up from your planned meals and anything you log.' : 'Fills up as you log spends on the week page.'}</span>
+              <span className="note">{c.fixed ? 'Always full, like rent.'
+                : c.pct !== null ? Math.round(c.pct) + '% of what’s left. The others shift to fit.'
+                : /grocer/i.test(c.name) ? 'Fills from planned meals and spends.' : 'Fills as you log spends.'}</span>
             </div>
           </div>
         ))}
@@ -115,8 +115,7 @@ export default function BudgetPage({ D, update }: { D: HouseholdData; update: Up
           <div className="kv" style={{ borderTop: '1px solid #23221F', paddingTop: 6, marginTop: 2, fontWeight: 600 }}><span>Left</span><span>{money(b.left)}</span></div>
           {b.splits && <span className="note">
             {money(b.income)} income − {b.cats.filter(c => c.pct === null).map(c => c.name + ' ' + money(c.total)).join(' − ')} = <strong>{money(b.left)}</strong>,
-            shared between {listOf(b.cats.filter(c => c.pct !== null).map(c => c.name))}. Budgets count in full even before they’re spent.
-            On the week page it follows what’s actually left that week (less if something goes over budget).
+            shared between {listOf(b.cats.filter(c => c.pct !== null).map(c => c.name))}. Each week follows what’s actually left.
           </span>}
         </div>
       </section>

@@ -51,11 +51,11 @@ export default function Household({ data: D, update, status }: Props) {
   };
 
   const titles: Record<Page, [string, string]> = {
-    shop: ['Shopping list', label + ' · excludes what’s in the pantry'],
-    recipes: ['Recipes', mealRecipes(D).length + ' saved · search by name or ingredient'],
-    pantry: ['Pantry', D.pantry.length + ' ingredients tracked'],
-    chores: ['Chores', D.chores.length + ' tasks · recurring & one-off'],
-    budget: ['Budget', 'Your regular weekly budget, per person'],
+    shop: ['Shopping list', label],
+    recipes: ['Recipes', mealRecipes(D).length + ' saved'],
+    pantry: ['Pantry', D.pantry.length + ' items'],
+    chores: ['Chores', D.chores.length + ' chores'],
+    budget: ['Budget', 'Your regular week'],
     calendar: ['Month view', 'Plan ahead'],
   };
 
@@ -63,11 +63,14 @@ export default function Household({ data: D, update, status }: Props) {
     <div className="app" data-screen-label="Household">
       <header className="header">
         <Logo onClick={go(null)} />
-        <div className="row">
-          <button className="round-btn" aria-label="Previous week" onClick={() => setWeek(w => w - 1)}>←</button>
-          <button className="pill" onClick={() => setWeek(0)}>This week</button>
-          <button className="round-btn" aria-label="Next week" onClick={() => setWeek(w => w + 1)}>→</button>
-          <button className={'pill' + (page === 'calendar' ? ' nav-on' : '')} aria-current={page === 'calendar' ? 'page' : undefined}
+        <div className="row8" style={{ alignItems: 'center' }}>
+          {/* The arrows step the week, so they're joined to it. */}
+          <div className="week-nav" role="group" aria-label="Week">
+            <button aria-label="Previous week" onClick={() => setWeek(w => w - 1)}>←</button>
+            <button className="week-nav-now" onClick={() => setWeek(0)} aria-current={week === 0 ? 'date' : undefined}>This week</button>
+            <button aria-label="Next week" onClick={() => setWeek(w => w + 1)}>→</button>
+          </div>
+          <button className={'month-btn' + (page === 'calendar' ? ' on' : '')} aria-current={page === 'calendar' ? 'page' : undefined}
             onClick={go(page === 'calendar' ? null : 'calendar')}>Month</button>
         </div>
       </header>
@@ -82,19 +85,18 @@ export default function Household({ data: D, update, status }: Props) {
           </div>
           <h1 className="h1">{!page ? label : titles[page][0]}</h1>
         </div>
-        <div className="row8">
+        <nav className="tabbar" aria-label="Pages">
           {NAV.map(([p, text]) => {
             const on = page === p;
             return (
-              <button key={p} className={'pill ghost' + (on ? ' nav-on' : '')} aria-current={on ? 'page' : undefined} onClick={go(on ? null : p)}
-                style={p === 'shop' ? { display: 'flex', gap: 8, alignItems: 'center' } : undefined}>
-                {text}
+              <button key={p} className={'tab-btn' + (on ? ' on' : '')} aria-current={on ? 'page' : undefined} onClick={go(on ? null : p)}>
+                {p === 'shop' ? <span>Shopping<span className="wide-only"> list</span></span> : text}
                 {p === 'shop' && <span className="count-badge">{shop.items.length}</span>}
-                {p === 'recipes' && ' · ' + mealRecipes(D).length}
+                {p === 'recipes' && <span className="wide-only">· {mealRecipes(D).length}</span>}
               </button>
             );
           })}
-        </div>
+        </nav>
       </div>
 
       {!page ? (

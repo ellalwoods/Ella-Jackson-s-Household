@@ -203,14 +203,14 @@ export default function RecipeEditor({ D, update, recipe, bucket = null, kind = 
   // Each part of the form is its own numbered step, so it's clear what's asked for.
   const steps: { title: string; optional?: boolean; hint?: string; body: React.ReactNode }[] = [];
   steps.push({
-    title: isBucket ? 'Name the bucket' : 'Name the ' + thing,
-    hint: isBucket ? 'A group of interchangeable items, like Vegetables.' : isMini ? 'A garnish, sauce or dressing. You’ll add it to a bucket as one item.' : undefined,
+    title: 'Name',
+    hint: isBucket ? 'Interchangeable items, like Vegetables.' : isMini ? 'A garnish, sauce or dressing, used in buckets.' : undefined,
     body: <input className="field" value={name} onChange={e => setName(e.target.value)} aria-label="Name"
       placeholder={isBucket ? 'e.g. Vegetables' : isMini ? 'e.g. Salsa verde' : 'e.g. Spaghetti bolognese'} />,
   });
   if (isBucket) steps.push({
-    title: 'How many per meal',
-    hint: 'How many items from this bucket go in one meal. Each recipe can change it.',
+    title: 'Per meal',
+    hint: 'Items one meal uses. Recipes can change it.',
     body: (
       <div className="stepper-panel">
         <span className="field-label" style={{ fontSize: 14 }}>Items per meal</span>
@@ -219,8 +219,8 @@ export default function RecipeEditor({ D, update, recipe, bucket = null, kind = 
     ),
   });
   if (!isMini) steps.push({
-    title: isBucket ? 'Tags' : 'When it’s for & tags', optional: true,
-    hint: isBucket ? 'Sort the items into groups, e.g. Greens, to filter them when picking.' : 'Recipes tagged for a meal show first when you plan it. Tags help you filter.',
+    title: 'Tags', optional: true,
+    hint: isBucket ? 'Group items, e.g. Greens.' : 'Which meal it’s for, plus your own tags.',
     body: (<>
       {!isBucket && (
         <div className="row" style={{ alignItems: 'center' }}>
@@ -241,10 +241,8 @@ export default function RecipeEditor({ D, update, recipe, bucket = null, kind = 
     </>),
   });
   steps.push({
-    title: isBucket ? 'Add the items' : 'Add the ingredients',
-    hint: isBucket
-      ? 'How much of each a meal uses and what you pay. Type a mini recipe’s name to add it as one item. Staples (salt, spices) cost a nominal ' + money(STAPLE_COST) + '.'
-      : 'How much the ' + thing + ' uses and what you pay. Prices are shared, so set them once. Staples (salt, spices) cost a nominal ' + money(STAPLE_COST) + '.',
+    title: isBucket ? 'Items' : 'Ingredients',
+    hint: 'What it uses and what you pay. Staples cost ' + money(STAPLE_COST) + '.' + (isBucket ? ' Type a mini recipe’s name to add it.' : (!isMini ? ' Buckets are picked when you plan the meal.' : '')),
     body: (<>
       <datalist id="known-ingredients">{[...knownMinis, ...known.filter(k => !knownMinis.includes(k))].map(k => <option key={k} value={k} />)}</datalist>
       <div>
@@ -253,7 +251,7 @@ export default function RecipeEditor({ D, update, recipe, bucket = null, kind = 
           const mismatch = !r.staple && c === null && !!numOr(r.qty) && !!numOr(r.buyQty) && numOr(r.price) != null;
           return (
             <div key={r.key} className="ing-row">
-              <input className="field-sm ing-name" list="known-ingredients" value={r.name} placeholder={isBucket ? 'Item, e.g. Broccoli' : 'Ingredient'} aria-label={isBucket ? 'Item' : 'Ingredient'} onChange={e => setRow(r.key, { name: e.target.value })} />
+              <input className="field-sm compact ing-name" list="known-ingredients" value={r.name} placeholder={isBucket ? 'Item, e.g. Broccoli' : 'Ingredient'} aria-label={isBucket ? 'Item' : 'Ingredient'} onChange={e => setRow(r.key, { name: e.target.value })} />
               {r.recipe ? (
                 <span className="ing-group">
                   <span className="mini-tag dense on">Mini recipe</span>
@@ -262,22 +260,22 @@ export default function RecipeEditor({ D, update, recipe, bucket = null, kind = 
               ) : r.staple ? (
                 <span className="ing-group">
                   <span className="ing-label">Buy for $</span>
-                  <input className={'field-sm ing-num' + (r.name.trim() && !r.price.trim() ? ' needs' : '')} inputMode="decimal" value={r.price} placeholder="0.00"
+                  <input className={'field-sm compact ing-num' + (r.name.trim() && !r.price.trim() ? ' needs' : '')} inputMode="decimal" value={r.price} placeholder="0.00"
                     aria-label={'Purchase price of ' + (r.name || 'staple')} onChange={e => setRow(r.key, { price: e.target.value })} />
                   <span className="ing-label">{r.name.trim() && !r.price.trim() ? 'add the price you pay' : 'staple · ' + money(STAPLE_COST) + ' a meal'}</span>
                 </span>
               ) : (<>
                 <span className="ing-group">
                   <span className="ing-label">Uses</span>
-                  <input className="field-sm ing-num" inputMode="decimal" value={r.qty} placeholder="qty" aria-label="Amount used" onChange={e => setRow(r.key, { qty: e.target.value })} />
-                  <UnitSelect value={r.unit} onChange={u => setRow(r.key, { unit: u })} />
+                  <input className="field-sm compact ing-num" inputMode="decimal" value={r.qty} placeholder="qty" aria-label="Amount used" onChange={e => setRow(r.key, { qty: e.target.value })} />
+                  <UnitSelect value={r.unit} onChange={u => setRow(r.key, { unit: u })} compact />
                 </span>
                 <span className="ing-group">
                   <span className="ing-label">Buy</span>
-                  <input className="field-sm ing-num" inputMode="decimal" value={r.buyQty} placeholder="qty" aria-label="Amount you buy" onChange={e => setRow(r.key, { buyQty: e.target.value })} />
-                  <UnitSelect value={r.buyUnit} onChange={u => setRow(r.key, { buyUnit: u })} />
+                  <input className="field-sm compact ing-num" inputMode="decimal" value={r.buyQty} placeholder="qty" aria-label="Amount you buy" onChange={e => setRow(r.key, { buyQty: e.target.value })} />
+                  <UnitSelect value={r.buyUnit} onChange={u => setRow(r.key, { buyUnit: u })} compact />
                   <span className="ing-label">for $</span>
-                  <input className="field-sm ing-num" inputMode="decimal" value={r.price} placeholder="0.00" aria-label="Price" onChange={e => setRow(r.key, { price: e.target.value })} />
+                  <input className="field-sm compact ing-num" inputMode="decimal" value={r.price} placeholder="0.00" aria-label="Price" onChange={e => setRow(r.key, { price: e.target.value })} />
                 </span>
               </>)}
               {isBucket && bucketTags.length > 0 && (
@@ -296,13 +294,7 @@ export default function RecipeEditor({ D, update, recipe, bucket = null, kind = 
           );
         })}
       </div>
-      <div><button className="pill-sm" onClick={() => setRows(rs => [...rs, blankRow()])}>{isBucket ? '+ Add item' : '+ Add ingredient'}</button></div>
-    </>),
-  });
-  if (!isBucket && !isMini) steps.push({
-    title: 'Use a bucket', optional: true,
-    hint: 'Let the meal take a number of items from a bucket (e.g. 2 vegetables), picked when you plan it. Until then it counts at the bucket’s average cost.',
-    body: (<>
+      {!isBucket && !isMini && uses.length > 0 && <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       {uses.map(u => {
         const b = D.buckets.find(z => z.id === u.bucket), avg = bucketAverage(b, ctx);
         return (
@@ -319,7 +311,8 @@ export default function RecipeEditor({ D, update, recipe, bucket = null, kind = 
           </div>
         );
       })}
-      {choosing ? (
+      </div>}
+      {!isBucket && !isMini && choosing && (
         <div className="row" style={{ alignItems: 'center' }}>
           {D.buckets.filter(b => !uses.some(u => u.bucket === b.id)).map(b => (
             <button key={b.id} className="filter" onClick={() => { setUses(us => [...us, { bucket: b.id, count: b.perMeal ?? 1 }]); setChoosing(false); }}>
@@ -330,14 +323,18 @@ export default function RecipeEditor({ D, update, recipe, bucket = null, kind = 
           {D.buckets.length > 0 && D.buckets.every(b => uses.some(u => u.bucket === b.id)) && <span className="note">All your buckets are already in this recipe.</span>}
           <button className="link-btn" onClick={() => setChoosing(false)}>Cancel</button>
         </div>
-      ) : <div><button className="pill-sm" onClick={() => setChoosing(true)}>+ Add a bucket</button></div>}
+      )}
+
+      <div className="row8">
+        <button className="pill-sm" onClick={() => setRows(rs => [...rs, blankRow()])}>{isBucket ? '+ Add item' : '+ Add ingredient'}</button>
+        {!isBucket && !isMini && !choosing && <button className="pill-sm" onClick={() => setChoosing(true)}>+ Add bucket</button>}
+      </div>
     </>),
   });
   if (!isBucket) steps.push({
-    title: 'Method & link', optional: true,
-    hint: 'Write it out yourself, or link to where you found it.',
+    title: 'Instructions', optional: true,
     body: (<>
-      <textarea value={method} onChange={e => setMethod(e.target.value)} placeholder="Method" rows={5} className="textarea" aria-label="Method" />
+      <textarea value={method} onChange={e => setMethod(e.target.value)} placeholder="Steps to make it" rows={5} className="textarea" aria-label="Instructions" />
       <input className="field" value={link} onChange={e => setLink(e.target.value)} placeholder="Link, e.g. www.recipetineats.com/…" aria-label="Link to recipe" inputMode="url" autoCapitalize="off" />
     </>),
   });

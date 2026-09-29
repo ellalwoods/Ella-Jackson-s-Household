@@ -61,7 +61,7 @@ export default function CalendarPage({ D, update, mon, calOff, setCalOff, onPick
         })}
       </div>
       {dialog && <EventDialog D={D} update={update} date={dialog.date} event={dialog.event} onClose={() => setDialog(null)} />}
-      <p className="note" style={{ margin: '12px 0 0' }}>Tap + to add an event, or an event to edit it. Tap a day to jump to its week. Dots are chores in each person's colour, blue for shared.</p>
+      <p className="note" style={{ margin: '12px 0 0' }}>Tap + to add an event. Tap a day to open its week. Dots are chores.</p>
     </div>
   );
 }
