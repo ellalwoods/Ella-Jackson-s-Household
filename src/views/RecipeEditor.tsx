@@ -205,7 +205,7 @@ export default function RecipeEditor({ D, update, recipe, bucket = null, kind = 
   steps.push({
     title: 'Name',
     hint: isBucket ? 'Interchangeable items, like Vegetables.' : isMini ? 'A garnish, sauce or dressing, used in buckets.' : undefined,
-    body: <input className="field" value={name} onChange={e => setName(e.target.value)} aria-label="Name"
+    body: <input className="field-sm compact" value={name} onChange={e => setName(e.target.value)} aria-label="Name"
       placeholder={isBucket ? 'e.g. Vegetables' : isMini ? 'e.g. Salsa verde' : 'e.g. Spaghetti bolognese'} />,
   });
   if (isBucket) steps.push({
@@ -335,7 +335,7 @@ export default function RecipeEditor({ D, update, recipe, bucket = null, kind = 
     title: 'Instructions', optional: true,
     body: (<>
       <textarea value={method} onChange={e => setMethod(e.target.value)} placeholder="Steps to make it" rows={5} className="textarea" aria-label="Instructions" />
-      <input className="field" value={link} onChange={e => setLink(e.target.value)} placeholder="Link, e.g. www.recipetineats.com/…" aria-label="Link to recipe" inputMode="url" autoCapitalize="off" />
+      <input className="field-sm compact" value={link} onChange={e => setLink(e.target.value)} placeholder="Link, e.g. www.recipetineats.com/…" aria-label="Link to recipe" inputMode="url" autoCapitalize="off" />
     </>),
   });
 

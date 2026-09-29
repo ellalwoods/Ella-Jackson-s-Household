@@ -78,11 +78,15 @@ export default function ShopPage({ update, mon, label, items, skipped, pending =
     : [{ sec: null, list: sortBy === 'az' ? shown.slice().sort((a, b) => a.name.localeCompare(b.name)) : shown }];
 
   return (
-    <div className="flow">
-      <section className="card" style={{ flex: '2 1 420px', padding: '18px 20px' }}>
-        <div className="row8" style={{ marginBottom: 10 }}>
-          <button className="pill dark" onClick={copy}>{copied ? 'Copied ✓' : 'Copy list'}</button>
-          <button className="pill plain" onClick={print}>Print</button>
+    <div className="two-col">
+      <div>
+      <AddItem onAdd={addManual} />
+      <section className="card" style={{ padding: 18 }}>
+        <div className="card-title">To buy <span className="sub">{items.length} item{items.length === 1 ? '' : 's'}</span>
+          <span className="card-title-end row8">
+            <button className="pill-sm" onClick={copy}>{copied ? 'Copied ✓' : 'Copy'}</button>
+            <button className="pill-sm" onClick={print}>Print</button>
+          </span>
         </div>
         {pending.length > 0 && (
           <div className="pending-picks">
@@ -90,25 +94,29 @@ export default function ShopPage({ update, mon, label, items, skipped, pending =
             <ul>{pending.map(p => <li key={p}>{p}</li>)}</ul>
           </div>
         )}
-        <AddItem onAdd={addManual} />
         {items.length > 0 && (
-          <div className="shop-controls">
-            <div className="seg" role="group" aria-label="Sort">
-              {SORTS.map(([k, l]) => (
-                <button key={k} aria-pressed={sortBy === k} className={sortBy === k ? 'on' : ''} onClick={() => setView(v => ({ ...v, sort: k }))}>{l}</button>
-              ))}
+          <div className="filter-rows">
+            <div className="filter-row">
+              <span className="filter-label">Sort</span>
+              <div className="seg" role="group" aria-label="Sort">
+                {SORTS.map(([k, l]) => (
+                  <button key={k} aria-pressed={sortBy === k} className={sortBy === k ? 'on' : ''} onClick={() => setView(v => ({ ...v, sort: k }))}>{l}</button>
+                ))}
+              </div>
             </div>
-            <div className="row" style={{ gap: 4 }}>
-              {(['all', ...SHOP_SECTIONS] as const).map(f => {
-                const on = only === f, n = f === 'all' ? items.length : items.filter(i => i.section === f).length;
-                if (f !== 'all' && !n) return null;
-                return (
-                  <button key={f} className="filter" onClick={() => setView(v => ({ ...v, only: f }))}
-                    style={{ borderColor: on ? '#23221F' : '#DDD8CC', background: on ? '#23221F' : '#fff', color: on ? '#fff' : '#23221F' }}>
-                    {f === 'all' ? 'All' : SHOP_SECTION_LABEL[f]} · {n}
-                  </button>
-                );
-              })}
+            <div className="filter-row">
+              <span className="filter-label">Show</span>
+              <div className="seg" role="group" aria-label="Show section">
+                {(['all', ...SHOP_SECTIONS] as const).map(f => {
+                  const on = only === f, n = f === 'all' ? items.length : items.filter(i => i.section === f).length;
+                  if (f !== 'all' && !n) return null;
+                  return (
+                    <button key={f} className={on ? 'on' : ''} aria-pressed={on} onClick={() => setView(v => ({ ...v, only: f }))}>
+                      {f === 'all' ? 'All' : SHOP_SECTION_LABEL[f]} <span className="seg-count">{n}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
         )}
@@ -130,13 +138,13 @@ export default function ShopPage({ update, mon, label, items, skipped, pending =
                     <span style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, whiteSpace: 'normal' }}>
                       <span style={{ fontSize: 15, textDecoration: ck ? 'line-through' : 'none' }}>{i.name}</span>
                       <span style={{ fontSize: 12 }} className="muted">
-                        {i.manual ? 'Added by you' : 'For ' + i.days.join(', ')}{i.staple ? ' · staple' : ''}{i.need ? ' · uses ' + fmtAmount(i.need) : ''}{i.buy ? ' · buy ' + buyText(i) : ''}
+                        {i.manual ? 'Added by you' : 'For ' + i.days.join(', ')}{i.staple ? ' · staple' : ''}{i.need ? ' · uses ' + fmtAmount(i.need) : ''}{i.buy ? ' · buy ' + buyText(i) : ''}{i.status !== 'Not stocked' && <span className="phone-inline"> · {i.status}</span>}
                       </span>
                     </span>
                   </button>
                   <span className="shop-side">
                     <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                      <span className="chip" style={{ fontSize: 11, padding: '3px 8px' }}>{i.status}</span>
+                      <span className="chip wide-inline" style={{ fontSize: 11, padding: '3px 8px' }}>{i.status}</span>
                       {i.cost !== null && <span style={{ fontSize: 13, fontWeight: 600, minWidth: 40, textAlign: 'right' }}>{money(i.cost)}</span>}
                     </span>
                     <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -168,8 +176,9 @@ export default function ShopPage({ update, mon, label, items, skipped, pending =
           <button className="pill dark" style={{ marginTop: 12 }} onClick={stockTicked}>Add ticked items to pantry</button>
         )}
       </section>
-      <aside className="card" style={{ flex: '1 1 260px', padding: '18px 20px' }}>
-        <div className="eyebrow" style={{ marginBottom: 10 }}>Already in pantry — skipped</div>
+      </div>
+      <aside className="card" style={{ padding: 18 }}>
+        <div className="card-title">Already in the pantry <span className="sub">skipped</span></div>
         <div className="row">
           {skipped.map(s => <span key={s.name} className="chip">{s.name} · {s.note}</span>)}
         </div>
@@ -201,9 +210,11 @@ function AddItem({ onAdd }: { onAdd: (m: ManualShopItem, section: ShopSection) =
   };
   const onKey = (e: React.KeyboardEvent) => { if (e.key === 'Enter') add(); };
   return (
-    <div className="shop-add">
+    <div className="add-panel">
+    <div className="add-panel-title">+ Add to the list</div>
+    <div className="shop-add" style={{ padding: 0 }}>
       <input className="field-sm compact" style={{ flex: '1 1 160px' }} value={name} onChange={e => setName(e.target.value)} onKeyDown={onKey}
-        placeholder="Add an item, e.g. Milk" aria-label="Item to add" />
+        placeholder="Item, e.g. Milk" aria-label="Item to add" />
       <span className="ing-group">
         <span className="ing-label">Amount</span>
         <input className="field-sm compact num" inputMode="decimal" value={qty} onChange={e => setQty(e.target.value)} onKeyDown={onKey} placeholder="qty" aria-label="Amount" />
@@ -220,6 +231,7 @@ function AddItem({ onAdd }: { onAdd: (m: ManualShopItem, section: ShopSection) =
         </select>
       </span>
       <button className="pill-sm dark" style={{ padding: '0 16px' }} onClick={add}>Add</button>
+    </div>
     </div>
   );
 }

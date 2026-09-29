@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { key } from '../lib/dates';
 import { ChoreOwner, donutOf, EXTRA_COLOR, Extra, HouseholdData, money, nextOwner, OWNERS, Slice, Spend, uid } from '../lib/model';
+import { AddRow } from './SetField';
 import type { Update } from '../Household';
 import { CategoryWeek, weekBudget } from '../lib/food';
 
@@ -214,11 +215,7 @@ function WeekExtras({ extras, total, update, wk }: { extras: Extra[]; total: num
         <span style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 14 }}>
           <span className="swatch" style={{ background: EXTRA_COLOR }} />This week only
         </span>
-        <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          {total > 0 && <span style={{ fontWeight: 600, fontSize: 14 }}>{money(total)}</span>}
-          <button className="x-btn" aria-label="Add a one-off cost" title="Add a one-off cost this week" onClick={() => setOpen(o => !o)}
-            style={{ fontSize: 16, lineHeight: 1, color: 'var(--ink)' }}>{open ? '×' : '+'}</button>
-        </span>
+        {total > 0 && <span style={{ fontWeight: 600, fontSize: 14 }}>{money(total)}</span>}
       </div>
       {extras.map(x => (
         <div key={x.id} style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13 }}>
@@ -228,17 +225,18 @@ function WeekExtras({ extras, total, update, wk }: { extras: Extra[]; total: num
           <button className="link-btn" aria-label={'Remove ' + x.name} onClick={() => remove(x.id)}>Remove</button>
         </div>
       ))}
-      {open && (
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+      {!extras.length && !open && <span className="note">One-off costs that don’t change your regular budget.</span>}
+      <AddRow label="Add a one-off cost" open={open} onOpen={() => setOpen(true)}>
+        <div className="add-open-row">
           <OwnerTag o={who} onClick={() => setWho(nextOwner(who))} />
           <input className="field-sm compact" style={{ flex: '1 1 80px' }} autoFocus value={name} onChange={e => setName(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') add(); }} placeholder="e.g. Birthday gift" />
+            onKeyDown={e => { if (e.key === 'Enter') add(); }} placeholder="e.g. Birthday gift" aria-label="What for" />
           <input className="field-sm compact num" inputMode="decimal" value={amount} onChange={e => setAmount(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') add(); }} placeholder="$" aria-label="Amount" />
           <button className="pill-sm dark" onClick={add}>Add</button>
+          <button className="link-btn" onClick={() => setOpen(false)}>Cancel</button>
         </div>
-      )}
-      {!extras.length && !open && <span className="note">One-off costs for this week. They don’t change your regular budget.</span>}
+      </AddRow>
     </div>
   );
 }

@@ -21,6 +21,8 @@
   --w-num: 58px;
   --w-unit: 66px;
   --r-field: 10px;
+  /* Panels where you add something (pantry, shopping, chores, spends). */
+  --panel: #FAF7F1;
 }
 /* Touch screens: compact controls and tags get a little taller to tap. */
 @media (pointer: coarse) {
@@ -55,8 +57,8 @@ input:focus, textarea:focus, select:focus { outline: 2px solid var(--ink); outli
 .pill.outline-dark { border-color: var(--ink); font-weight: 400; }
 .pill.lg { height: var(--h-lg); padding: 0 18px; }
 .round-btn { width: var(--h-md); height: var(--h-md); border-radius: 999px; border: 1px solid var(--border); background: #fff; cursor: pointer; font-size: 16px; }
-.x-btn { width: var(--h-sm); height: var(--h-sm); border-radius: 50%; border: 1px solid var(--border); background: #fff; cursor: pointer; flex: none; padding: 0; color: var(--muted); }
-.x-btn:hover { color: var(--ink); border-color: var(--ink); }
+.x-btn { width: var(--h-sm); height: var(--h-sm); border-radius: 50%; border: none; background: none; cursor: pointer; flex: none; padding: 0; color: var(--faint); font-size: 16px; line-height: 1; }
+.x-btn:hover { color: var(--ink); background: var(--hover); }
 /* Text actions (Edit, Remove…): small text, but a comfortable tap area. */
 .link-btn { border: none; background: none; cursor: pointer; font-size: 13px; color: var(--muted); text-decoration: underline; padding: 4px 0; }
 .link-btn:hover { color: var(--ink); }
@@ -103,7 +105,7 @@ select.field-sm.unit { width: var(--w-unit); padding: 0 4px 0 8px; }
 /* Recipe picker */
 .scrim { position: fixed; inset: 0; z-index: 30; }
 .picker { position: absolute; top: calc(100% + 6px); left: 0; width: min(340px, 86vw); z-index: 31; background: #fff; border: 1px solid var(--border); border-radius: 14px; box-shadow: 0 14px 40px rgba(35, 34, 31, .16); padding: 10px; display: flex; flex-direction: column; gap: 6px; }
-.picker-input { height: 40px; padding: 0 12px; border: 1px solid var(--border); border-radius: 10px; background: #FBFAF7; font-size: 14px; }
+.picker-input { height: var(--h-md); padding: 0 12px 0 38px; border: 1px solid var(--border); border-radius: var(--r-field); font-size: 14px; background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238A857A' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E") no-repeat 14px center; }
 .picker-list { max-height: 260px; overflow-y: auto; display: flex; flex-direction: column; }
 .picker-item { display: flex; justify-content: space-between; align-items: center; gap: 10px; min-height: 44px; padding: 6px 10px; border: none; border-radius: 8px; cursor: pointer; text-align: left; }
 .picker-item:hover { background: var(--hover) !important; }
@@ -131,7 +133,7 @@ select.field-sm.unit { width: var(--w-unit); padding: 0 4px 0 8px; }
 .dot6 { width: 6px; height: 6px; border-radius: 50%; }
 .filter { height: var(--h-sm); padding: 0 12px; border-radius: 999px; cursor: pointer; font-size: 13px; border: 1px solid; }
 .state-btn { height: var(--h-sm); padding: 0 11px; border-radius: 999px; cursor: pointer; font-size: 12px; border: 1px solid; color: var(--ink); }
-.owner-pick { flex: 1; min-width: 0; height: var(--h-md); border-radius: 999px; border: 1.5px solid; cursor: pointer; font-size: 14px; font-weight: 600; }
+.owner-pick { flex: 1; min-width: 0; height: var(--h-sm); border-radius: 999px; border: 1.5px solid; cursor: pointer; font-size: 14px; font-weight: 600; }
 .person-tag { border-radius: 999px; border: none; cursor: pointer; font-size: 12px; font-weight: 600; }
 .budget-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr) 32px; gap: 6px; align-items: center; }
 .share-cell { grid-column: span 2; display: flex; align-items: center; gap: 10px; min-width: 0; flex-wrap: wrap; }
@@ -198,7 +200,7 @@ select.field-sm.unit { width: var(--w-unit); padding: 0 4px 0 8px; }
 .split-bar > div { height: 100%; }
 .split-bar > div:first-child { border-radius: 3px 0 0 3px; overflow: hidden; }
 .split-bar > div:last-child { border-radius: 0 3px 3px 0; overflow: hidden; }
-.spend-panel { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; margin-top: 2px; border-radius: 10px; background: #FBFAF7; border: 1px solid var(--line-soft); }
+.spend-panel { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; margin-top: 2px; border-radius: 12px; background: var(--panel); border: 1px solid var(--line); }
 .donut { touch-action: manipulation; cursor: default; }
 .donut-ring { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 .count-badge { min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 12px; font-weight: 600; display: inline-grid; place-items: center; }
@@ -286,7 +288,7 @@ select.field-sm.unit { width: var(--w-unit); padding: 0 4px 0 8px; }
 .step-title .opt { font-weight: 400; color: var(--muted); font-size: 13px; }
 .step-hint { font-size: 12px; color: var(--muted); line-height: 1.4; margin-top: 2px; }
 .step-body { display: flex; flex-direction: column; gap: 10px; padding-left: 34px; }
-.field-label { font-size: 12px; font-weight: 600; color: var(--chip-ink); }
+.field-label { font-size: 12px; font-weight: 600; color: var(--muted); }
 .editor-foot { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; justify-content: space-between; padding-top: 16px; border-top: 1px solid var(--line); }
 @media (max-width: 640px) {
   .editor { padding: 14px; }
@@ -362,16 +364,48 @@ select.field-sm.unit { width: var(--w-unit); padding: 0 4px 0 8px; }
 @media (max-width: 520px) { .seg-count { display: none; } }
 
 /* A saved value shown as text (tap to change) — reads as set, not as an open box. */
-.set-field { width: 100%; min-width: 0; height: var(--h-sm); padding: 0 8px; border: 1px solid transparent; border-radius: 8px; background: none; cursor: text; font-size: 14px; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.set-field:hover { background: var(--hover); border-color: var(--line); }
+.set-field { width: 100%; min-width: 0; height: var(--h-sm); padding: 0 4px; border: none; border-radius: 6px; background: none; cursor: pointer; font-size: 14px; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  text-decoration: underline; text-decoration-color: var(--border); text-decoration-thickness: 1px; text-underline-offset: 4px; }
+.set-field:hover { text-decoration-color: var(--ink); background: var(--hover); }
 /* "+ Add …": greyed until tapped, so the list doesn't look unfinished. */
-.add-row { width: 100%; height: var(--h-sm); padding: 0 12px; border: 1px dashed var(--border); border-radius: 10px; background: none; color: var(--faint); font-size: 13px; text-align: left; cursor: pointer; }
+.add-row { width: 100%; height: var(--h-sm); margin-top: 8px; padding: 0 12px; border: 1px dashed var(--border); border-radius: 10px; background: none; color: var(--faint); font-size: 13px; text-align: left; cursor: pointer; }
 .add-row:hover { color: var(--ink); border-color: var(--muted); }
-.add-open { display: flex; flex-direction: column; gap: 8px; padding: 10px; border-radius: 12px; background: #FBFAF7; border: 1px solid var(--line); }
+.add-open { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border-radius: 12px; background: var(--panel); border: 1px solid var(--line); }
 .add-open-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 
 /* Adding something: a tinted panel with its own title, set apart from search and lists. */
-.add-panel { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; margin-bottom: 22px; border-radius: 16px; background: #FAF7F1; border: 1px solid var(--line); }
+.add-panel { display: flex; flex-direction: column; gap: 8px; padding: 14px 16px; margin-bottom: 20px; border-radius: 16px; background: var(--panel); border: 1px solid var(--line); }
 .add-panel-title { font-size: 13px; font-weight: 600; }
 /* Search boxes carry a magnifier, so they read as search, not as a form field. */
 .search { padding-left: 38px; background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238A857A' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E") no-repeat 14px center; }
+
+/* ── Shared pieces ─────────────────────────────────────────────────────── */
+/* Card titles: like the week page's "Budget this week". */
+.card-title { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; font-size: 17px; font-weight: 600; }
+.card-title .sub { font-size: 13px; font-weight: 400; color: var(--muted); }
+.card-title-end { margin-left: auto; font-size: 14px; }
+.list > * + * { border-top: 1px solid var(--line-soft); }
+.field-sm.money { width: 90px; }
+
+/* Budget page */
+.two-col, .budget-layout { display: grid; grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr); gap: 16px; align-items: start; }
+.budget-row { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1fr) 56px; gap: 8px; align-items: center; min-height: 40px; }
+.budget-row > .link-btn { justify-self: end; }
+.income-row { grid-template-columns: 74px minmax(0, 1.5fr) minmax(0, 1fr) 56px; padding: 2px 0; }
+.budget-head { min-height: 0; padding-bottom: 4px; font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.budget-head > span:nth-child(2), .budget-head > span:nth-child(3) { text-align: right; padding-right: 4px; }
+.budget-cat { padding: 6px 0 10px; }
+.budget-mode { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding-left: 16px; }
+.budget-calc { text-align: right; padding-right: 4px; font-size: 14px; color: var(--muted); }
+@media (max-width: 860px) {
+  .two-col, .budget-layout { grid-template-columns: minmax(0, 1fr); }
+  .budget-layout > aside { order: -1; }
+}
+@media (max-width: 520px) {
+  .budget-row { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1fr) 52px; gap: 4px; }
+  .income-row { grid-template-columns: 66px minmax(0, 1.3fr) minmax(0, 1fr) 52px; }
+  .budget-mode { padding-left: 0; }
+}
+/* Phones: the shopping status joins the detail line, so item details aren't squeezed. */
+.phone-inline { display: none; }
+@media (max-width: 520px) { .phone-inline { display: inline; } .wide-inline { display: none; } }

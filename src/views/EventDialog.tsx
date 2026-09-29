@@ -118,7 +118,7 @@ export default function EventDialog({ D, update, date: initialDate, event, onClo
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <span style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-            <span className="eyebrow" style={{ fontSize: 11 }}>Tags</span>
+            <span className="field-label">Tags</span>
             {allTags.length > 0 && <button className="link-btn" onClick={() => setEditingTags(v => !v)}>{editingTags ? 'Done' : 'Edit tags'}</button>}
           </span>
           {editingTags ? (

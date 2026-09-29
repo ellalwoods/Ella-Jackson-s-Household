@@ -4,6 +4,7 @@ import { MON, parse } from '../lib/dates';
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 import { HouseholdData, INCLUDE_LOW, money, NO_EXPIRY, norm, PantryItem, Price, STATE_COLORS, STATES, StockState, Unit, UNIT_LABEL, UNITS } from '../lib/model';
 import { addToPantry, expiry, fmtQty, priceMap, setPrice } from '../lib/food';
+import { SetField } from './SetField';
 import type { Update } from '../Household';
 
 export const stockRule = (INCLUDE_LOW
@@ -66,8 +67,10 @@ export default function PantryPage({ D, update }: { D: HouseholdData; update: Up
               </div>
               {c.qty != null ? (
                 <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                  <input className="field-sm compact num" inputMode="decimal" value={String(c.qty)} aria-label="Amount left"
-                    onChange={e => { const v = e.target.value; edit(c.name, z => { z.qty = parseFloat(v) || 0; }); }} />
+                  <span style={{ width: 'var(--w-num)' }}>
+                    <SetField value={String(c.qty)} numeric align="right" label={'Amount of ' + c.name + ' left'}
+                      onCommit={v => edit(c.name, z => { z.qty = parseFloat(v) || 0; })} />
+                  </span>
                   <UnitSelect value={c.unit ?? 'g'} onChange={u => edit(c.name, z => { z.unit = u; })} compact />
                   <span style={{ fontSize: 12 }} className="muted">left</span>
                 </div>

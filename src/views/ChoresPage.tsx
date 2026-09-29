@@ -45,15 +45,15 @@ export default function ChoresPage({ D, update }: { D: HouseholdData; update: Up
   };
 
   return (
-    <div className="flow">
-      <section style={{ flex: '2 1 420px', minWidth: 0 }}>
+    <div className="two-col">
+      <section style={{ minWidth: 0 }}>
         <input className="search" style={{ width: '100%', marginBottom: 10 }} value={q} onChange={e => setQ(e.target.value)} placeholder="Search chores" />
         <div className="card" style={{ padding: '4px 18px' }}>
           {list.map((c, i) => {
             const p = OWNERS[c.person];
             return (
               <div key={c.id} style={{ display: 'flex', gap: 12, alignItems: 'center', padding: '12px 0', borderTop: i ? '1px solid #F0ECE4' : 'none' }}>
-                <button className="person-tag" title="Switch person" style={{ height: 'var(--h-sm)', minWidth: 78, padding: '0 10px', flex: 'none', background: p.tint, color: p.ink }}
+                <button className="person-tag" title="Switch person" style={{ height: 'var(--h-xs)', minWidth: 74, padding: '0 10px', flex: 'none', background: p.tint, color: p.ink }}
                   onClick={() => update(x => { const z = x.chores.find(z => z.id === c.id); if (z) z.person = nextOwner(z.person); })}>{p.name}</button>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 15 }}>{c.name}</div>
@@ -67,11 +67,11 @@ export default function ChoresPage({ D, update }: { D: HouseholdData; update: Up
         </div>
         {list.length > 0 && <p className="note" style={{ margin: '8px 2px 0' }}>Tap a name to change who does it.</p>}
       </section>
-      <aside className="card" style={{ flex: '1 1 300px', padding: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <div style={{ fontWeight: 600 }}>New chore</div>
-        <input className="field" value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Take bins out" />
+      <aside className="add-panel" style={{ marginBottom: 0 }}>
+        <div className="add-panel-title">+ New chore</div>
+        <input className="field-sm compact" value={name} onChange={e => setName(e.target.value)} placeholder="Chore, e.g. Take bins out" aria-label="Chore" />
         <div style={{ display: 'flex', gap: 6 }}>{CHORE_OWNERS.map(pick)}</div>
-        <select className="field" style={{ padding: '0 8px' }} value={type} onChange={e => setType(e.target.value as SchedType)}>
+        <select className="field-sm compact" value={type} aria-label="How often" onChange={e => setType(e.target.value as SchedType)}>
           <option value="weekly">Weekly on chosen days</option>
           <option value="every">Every N days</option>
           <option value="monthly">Monthly on a date</option>
@@ -83,24 +83,24 @@ export default function ChoresPage({ D, update }: { D: HouseholdData; update: Up
               const on = days.indexOf(i) >= 0;
               return (
                 <button key={l} onClick={() => setDays(on ? days.filter(z => z !== i) : days.concat(i))}
-                  style={{ height: 'var(--h-md)', borderRadius: 'var(--r-field)', cursor: 'pointer', fontSize: 12, fontWeight: 600, border: '1px solid #DDD8CC', background: on ? '#23221F' : '#fff', color: on ? '#fff' : '#23221F' }}>{l}</button>
+                  style={{ height: 'var(--h-sm)', borderRadius: 'var(--r-field)', cursor: 'pointer', fontSize: 12, fontWeight: 600, border: '1px solid #DDD8CC', background: on ? '#23221F' : '#fff', color: on ? '#fff' : '#23221F' }}>{l}</button>
               );
             })}
           </div>
         )}
         {type === 'every' && (
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 14, flexWrap: 'wrap' }}>
-            Every <input className="field-sm num" value={n} onChange={e => setN(e.target.value)} inputMode="numeric" aria-label="Number of days" /> days from{' '}
-            <input className="field-sm" type="date" value={start} onChange={e => setStart(e.target.value)} aria-label="Starting" />
+            Every <input className="field-sm compact num" value={n} onChange={e => setN(e.target.value)} inputMode="numeric" aria-label="Number of days" /> days from{' '}
+            <input className="field-sm compact" type="date" value={start} onChange={e => setStart(e.target.value)} aria-label="Starting" />
           </div>
         )}
         {type === 'monthly' && (
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 14 }}>
-            On day <input className="field-sm num" value={dom} onChange={e => setDom(e.target.value)} inputMode="numeric" aria-label="Day of the month" /> of each month
+            On day <input className="field-sm compact num" value={dom} onChange={e => setDom(e.target.value)} inputMode="numeric" aria-label="Day of the month" /> of each month
           </div>
         )}
-        {type === 'once' && <input className="field" type="date" value={date} onChange={e => setDate(e.target.value)} aria-label="Date" />}
-        <button className="pill dark" onClick={add}>Add chore</button>
+        {type === 'once' && <input className="field-sm compact" type="date" value={date} onChange={e => setDate(e.target.value)} aria-label="Date" />}
+        <button className="pill-sm dark" onClick={add}>Add chore</button>
       </aside>
     </div>
   );
