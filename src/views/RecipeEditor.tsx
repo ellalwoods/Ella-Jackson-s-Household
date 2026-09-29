@@ -312,6 +312,24 @@ export default function RecipeEditor({ D, update, recipe, bucket = null, kind = 
         );
       })}
       </div>}
+      {isBucket && choosing && (
+        <div className="row" style={{ alignItems: 'center' }}>
+          {minis.filter(m => !rows.some(r => r.recipe === m.id)).map(m => (
+            <button key={m.id} className="filter" onClick={() => {
+              // Fill an empty row if there is one, otherwise add a row for it.
+              setRows(rs => {
+                const row = { ...blankRow(), name: m.name, recipe: m.id };
+                const i = rs.findIndex(r => !r.name.trim());
+                return i >= 0 ? rs.map((r, j) => (j === i ? { ...row, key: r.key } : r)) : [...rs, row];
+              });
+              setChoosing(false);
+            }}>{m.name}</button>
+          ))}
+          {!minis.length && <span className="note">No mini recipes yet. Make one with + New mini recipe on the Recipes page.</span>}
+          {minis.length > 0 && minis.every(m => rows.some(r => r.recipe === m.id)) && <span className="note">All your mini recipes are already in this bucket.</span>}
+          <button className="link-btn" onClick={() => setChoosing(false)}>Cancel</button>
+        </div>
+      )}
       {!isBucket && !isMini && choosing && (
         <div className="row" style={{ alignItems: 'center' }}>
           {D.buckets.filter(b => !uses.some(u => u.bucket === b.id)).map(b => (
@@ -327,6 +345,7 @@ export default function RecipeEditor({ D, update, recipe, bucket = null, kind = 
 
       <div className="row8">
         <button className="pill-sm" onClick={() => setRows(rs => [...rs, blankRow()])}>{isBucket ? '+ Add item' : '+ Add ingredient'}</button>
+        {isBucket && !choosing && <button className="pill-sm" onClick={() => setChoosing(true)}>+ Add mini recipe</button>}
         {!isBucket && !isMini && !choosing && <button className="pill-sm" onClick={() => setChoosing(true)}>+ Add bucket</button>}
       </div>
     </>),
