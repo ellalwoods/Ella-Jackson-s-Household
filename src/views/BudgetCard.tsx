@@ -124,7 +124,7 @@ function CategoryRow({ c, open, onToggle, update, wk }: { c: CategoryWeek; open:
           <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <span className="swatch" style={{ background: c.color }} />{c.name}
             {c.pct !== null && <span className="muted" style={{ fontSize: 12 }}>{Math.round(c.pct)}% of left</span>}
-            {!c.fixed && <span className="cat-chevron" aria-hidden>{open ? '−' : '+'}</span>}
+            {!c.fixed && <span className={'cat-log' + (open ? ' on' : '')} aria-hidden>{open ? 'Close' : '+ Log'}</span>}
           </span>
           {c.fixed ? <span style={{ fontWeight: 600 }}>{money(c.budget.total)}</span>
             : c.over > 0 ? <span style={{ fontWeight: 600, color: OVER_INK }}>{money(c.spent.total)} <span style={{ fontWeight: 400, fontSize: 12 }}>· {money(c.over)} over</span></span>

@@ -194,7 +194,7 @@ function BucketLine({ D, recipe, picks, onOpen }: { D: HouseholdData; recipe: Re
     <button className={'bucket-line' + (todo ? ' todo' : '')} onClick={onOpen} title="Choose bucket items">
       {parts.map((p, i) => (
         <span key={i}>
-          🪣 {p.got.length ? p.name + ': ' + p.got.join(', ') : ''}{p.blanks ? (p.got.length ? ' + ' : p.name + ': ') + p.blanks + ' blank' + (p.blanks > 1 ? 's' : '') : ''}{p.missing > 0 ? (p.got.length || p.blanks ? ' · ' : '') + 'Pick ' + p.missing + (p.got.length || p.blanks ? ' more' : ' ' + p.name.toLowerCase()) : ''}
+          🪣 {p.got.length ? p.name + ': ' + p.got.join(', ') : ''}{p.blanks ? (p.got.length ? ' + ' : p.name + ': ') + p.blanks + ' blank' + (p.blanks > 1 ? 's' : '') : ''}{p.missing > 0 ? (p.got.length || p.blanks ? ' · ' : '') + 'Pick ' + p.missing + (p.got.length || p.blanks ? ' more' : ' from ' + p.name) : ''}
         </span>
       ))}
     </button>

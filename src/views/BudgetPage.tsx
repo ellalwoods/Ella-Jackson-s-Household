@@ -68,8 +68,8 @@ export default function BudgetPage({ D, update }: { D: HouseholdData; update: Up
         <div className="budget-grid eyebrow" style={{ fontSize: 11, marginBottom: 6 }}>
           <span>Category</span><span style={{ color: '#A9477B' }}>Ella $</span><span style={{ color: '#1B6B56' }}>Jackson $</span><span />
         </div>
-        {b.cats.map(c => (
-          <div key={c.id} className="budget-grid" style={{ marginBottom: 6 }}>
+        {b.cats.map((c, i) => (
+          <div key={c.id} className="budget-grid" style={{ padding: '10px 0 6px', borderTop: i ? '1px solid #F0ECE4' : 'none' }}>
             <div style={{ display: 'flex', gap: 6, alignItems: 'center', minWidth: 0 }}>
               <span className="dot8" style={{ background: c.color, flex: 'none' }} />
               <input className="field-sm" style={{ width: '100%' }} value={c.name} onChange={setCat(c.id, 'name')} />

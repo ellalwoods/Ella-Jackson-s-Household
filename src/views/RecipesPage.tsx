@@ -167,7 +167,7 @@ export default function RecipesPage({ D, update, mon }: { D: HouseholdData; upda
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontSize: 16, fontWeight: 600 }}>🪣 {b.name}</div>
                   <div style={{ fontSize: 13 }} className="muted">
-                    {b.items.length} item{b.items.length === 1 ? '' : 's'} · {b.perMeal ?? 1} per meal · avg {money(bucketAverage(b, prices))} each{usedBy ? ' · in ' + usedBy + ' recipe' + (usedBy > 1 ? 's' : '') : ''}
+                    {b.items.length} item{b.items.length === 1 ? '' : 's'} · {b.perMeal ?? 1} per meal · {bucketAverage(b, prices) ? 'avg ' + money(bucketAverage(b, prices)) + ' each' : 'no prices yet'}{usedBy ? ' · in ' + usedBy + ' recipe' + (usedBy > 1 ? 's' : '') : ''}
                   </div>
                 </div>
                 <span style={{ display: 'flex', gap: 10 }}>

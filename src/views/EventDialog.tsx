@@ -93,7 +93,7 @@ export default function EventDialog({ D, update, date: initialDate, event, onClo
   return (
     <div className="dialog-scrim" onClick={onClose}>
       <div className="dialog" role="dialog" aria-modal="true" aria-label={event ? 'Edit event' : 'New event'} onClick={e => e.stopPropagation()}
-        style={{ borderTop: '6px solid ' + soft(accent, 0.35) }}>
+        style={{ background: 'linear-gradient(' + soft(accent, 0.35) + ' 0 6px, #fff 6px)', paddingTop: 22 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
           <div style={{ fontWeight: 600, fontSize: 16 }}>{event ? 'Edit event' : 'New event'}</div>
           <span className="note">{longDate(date)}</span>

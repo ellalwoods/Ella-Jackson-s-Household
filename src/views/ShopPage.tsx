@@ -135,8 +135,10 @@ export default function ShopPage({ update, mon, label, items, skipped, pending =
                     </span>
                   </button>
                   <span className="shop-side">
-                    <span className="chip" style={{ fontSize: 11, padding: '3px 8px' }}>{i.status}</span>
-                    {i.cost !== null && <span style={{ fontSize: 12 }} className="muted">{money(i.cost)}</span>}
+                    <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <span className="chip" style={{ fontSize: 11, padding: '3px 8px' }}>{i.status}</span>
+                      {i.cost !== null && <span style={{ fontSize: 13, fontWeight: 600, minWidth: 40, textAlign: 'right' }}>{money(i.cost)}</span>}
+                    </span>
                     <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                       <select className="section-select" value={i.section} onChange={e => setSection(i, e.target.value as ShopSection)} aria-label={'Section for ' + i.name}>
                         {SHOP_SECTIONS.map(x => <option key={x} value={x}>{SHOP_SECTION_LABEL[x]}</option>)}
@@ -163,7 +165,7 @@ export default function ShopPage({ update, mon, label, items, skipped, pending =
         {items.length > 0 && !shown.length && <p className="empty" style={{ padding: '12px 0', margin: 0 }}>Nothing in this section.</p>}
         {!items.length && <p className="empty" style={{ padding: '16px 0', margin: 0 }}>Nothing to buy — plan some meals, add an item above, or everything's already in the pantry.</p>}
         {items.some(isTicked) && (
-          <button className="pill outline-dark" style={{ marginTop: 12 }} onClick={stockTicked}>Add ticked items to pantry</button>
+          <button className="pill dark" style={{ marginTop: 12 }} onClick={stockTicked}>Add ticked items to pantry</button>
         )}
       </section>
       <aside className="card" style={{ flex: '1 1 260px', padding: '18px 20px' }}>
@@ -212,7 +214,7 @@ function AddItem({ onAdd }: { onAdd: (m: ManualShopItem, section: ShopSection) =
         <input className="field-sm num" inputMode="decimal" value={price} onChange={e => setPrice(e.target.value)} onKeyDown={onKey} placeholder="0.00" aria-label="Price" />
       </span>
       <span className="ing-group">
-        <span className="ing-label">Section</span>
+        <span className="ing-label phone-only">Section</span>
         <select className="field-sm" style={{ width: 108 }} value={section} onChange={e => setPicked(e.target.value as ShopSection)} aria-label="Section">
           {SHOP_SECTIONS.map(x => <option key={x} value={x}>{SHOP_SECTION_LABEL[x]}</option>)}
         </select>

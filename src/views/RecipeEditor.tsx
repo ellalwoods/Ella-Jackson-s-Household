@@ -290,7 +290,7 @@ export default function RecipeEditor({ D, update, recipe, bucket = null, kind = 
                 </span>
               )}
               {!r.recipe && <button className={'pill-sm ing-staple' + (r.staple ? ' dark' : '')} aria-pressed={r.staple} onClick={() => setRow(r.key, { staple: !r.staple })}>Staple</button>}
-              <span className="ing-cost" title={mismatch ? 'Units don’t match (e.g. g vs ml)' : undefined}>{c !== null ? money(c) : mismatch ? 'units?' : '—'}</span>
+              <span className="ing-cost" title={mismatch ? 'Units don’t match (e.g. g vs ml)' : undefined}>{c !== null ? money(c) : mismatch ? 'units?' : ''}</span>
               <button className="x-btn" aria-label="Remove ingredient" onClick={() => setRows(rs => (rs.length > 1 ? rs.filter(z => z.key !== r.key) : [blankRow()]))}>×</button>
             </div>
           );
@@ -313,7 +313,7 @@ export default function RecipeEditor({ D, update, recipe, bucket = null, kind = 
               <Stepper value={u.count} min={1} small label={'Items from ' + (b?.name ?? 'bucket')}
                 onChange={c => setUses(us => us.map(z => (z.bucket === u.bucket ? { ...z, count: c } : z)))} />
             </span>
-            <span className="note">avg {money(avg)} each</span>
+            <span className="note">{avg ? 'avg ' + money(avg) + ' each' : 'no prices yet'}</span>
             <span className="ing-cost">{money(u.count * avg)}</span>
             <button className="x-btn" aria-label={'Remove ' + (b?.name ?? 'bucket')} onClick={() => setUses(us => us.filter(z => z.bucket !== u.bucket))}>×</button>
           </div>

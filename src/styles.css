@@ -143,8 +143,8 @@ select.field-sm.unit { width: var(--w-unit); padding: 0 4px 0 8px; }
 .footer { margin-top: 40px; display: flex; gap: 12px; justify-content: center; font-size: 12px; color: var(--muted); }
 
 /* Recipe editor ingredient rows: one line on wide screens, wraps on phones */
-.ing-row { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line-soft); }
-.ing-name { flex: 1 1 180px; }
+.ing-row { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line-soft); }
+.ing-name { flex: 1 1 180px; max-width: 280px; }
 .ing-group { display: flex; gap: 4px; align-items: center; }
 .ing-label { font-size: 12px; color: var(--muted); }
 .ing-num { width: var(--w-num); }
@@ -154,7 +154,7 @@ select.field-sm.unit { width: var(--w-unit); padding: 0 4px 0 8px; }
 .ing-cost { order: 2; }
 .ing-row > .x-btn { order: 3; flex: none; }
 @media (max-width: 640px) {
-  .ing-name { flex-basis: calc(100% - 44px); }
+  .ing-name { flex-basis: calc(100% - 44px); max-width: none; }
   .ing-row > .x-btn { order: 0; }
 }
 .shop-row { border-top: 1px solid #EFEBE3; display: flex; flex-wrap: wrap; align-items: center; gap: 0 10px; }
@@ -192,6 +192,8 @@ select.field-sm.unit { width: var(--w-unit); padding: 0 4px 0 8px; }
 
 /* Budget card: tap a category to log spends */
 .cat-toggle { display: flex; flex-direction: column; gap: 6px; width: 100%; padding: 0; border: none; background: none; text-align: left; font: inherit; color: inherit; }
+.cat-log { font-size: 11px; color: var(--muted); padding: 1px 7px; border-radius: 999px; border: 1px solid var(--line); }
+.cat-toggle:hover .cat-log, .cat-log.on { color: var(--ink); border-color: var(--border); }
 .cat-chevron { font-size: 12px; color: var(--muted); width: 14px; text-align: center; }
 .split-bar > div { height: 100%; }
 .split-bar > div:first-child { border-radius: 3px 0 0 3px; overflow: hidden; }
@@ -220,7 +222,7 @@ select.field-sm.unit { width: var(--w-unit); padding: 0 4px 0 8px; }
 .pill.nav-on { background: var(--ink); border-color: var(--ink); color: #fff; }
 .pill.nav-on .count-badge { background: #fff; color: var(--ink); }
 /* Shopping list: add your own items */
-.shop-add { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; padding: 4px 0 12px; }
+.shop-add { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; padding: 4px 0 12px; }
 .shop-add .ing-group { order: 0; }
 /* Phones: the recipe search opens as a full-width panel near the top, so it's never cut off. */
 @media (max-width: 720px) {
@@ -321,3 +323,5 @@ select.field-sm.unit { width: var(--w-unit); padding: 0 4px 0 8px; }
   .shop-add > .pill.dark { flex: 1 1 100%; }
   .ing-row > .ing-group { gap: 6px; }
 }
+/* Labels only needed where fields stack (phones); on wider screens the box speaks for itself. */
+@media (min-width: 641px) { .phone-only { display: none; } }
