@@ -454,3 +454,7 @@ select.field-sm.unit { width: var(--w-unit); padding: 0 4px 0 8px; }
   .hero-stat .hero-label { margin-top: 0 !important; }
   .hero-stat .hero-mid { font-size: 18px; text-align: right; }
 }
+/* Phones: a long filter bar wraps inside its rounded track rather than running off the edge. */
+@media (max-width: 520px) {
+  .filter-row > .seg { flex-wrap: wrap; overflow: visible; border-radius: 18px; }
+}

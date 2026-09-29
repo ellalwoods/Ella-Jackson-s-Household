@@ -226,17 +226,21 @@ export function expiry(expires: string | undefined, today = new Date()) {
 // ── Shopping sections ──────────────────────────────────────────────────────
 
 const CLEANING = /(clean|detergent|laundry|bleach|disinfect|sponge|scourer|dishwash|dish ?soap|wipes?\b|bin ?bags?|garbage bags?|rubbish bags?|fabric softener|polish|mop|gloves|steel wool|window|toilet (cleaner|duck)|napisan|vanish|glen ?20|domestos|jif|finish|air freshener)/i;
-const PERSONAL = /(tooth|floss|mouthwash|shampoo|conditioner|body ?wash|soap|deodorant|razor|shav|sunscreen|moistur|lotion|tampon|sanitary pads|panty|cotton|tissues|makeup|mascara|lip|hair|nail|vitamin|panadol|nurofen|paracetamol|ibuprofen|bandaid|plasters?|contact|skincare|cleanser|serum|perfume|cologne|condom|pill)/i;
+const PERSONAL = /(tooth|floss|mouthwash|shampoo|conditioner|body ?wash|soap|deodorant|razor|shav|sunscreen|moistur|lotion|tampon|sanitary pads|panty|cotton|tissues|makeup|mascara|lip|hair|nail|skincare|cleanser|serum|perfume|cologne)/i;
+const HEALTH = /(vitamin|supplement|panadol|nurofen|paracetamol|ibuprofen|aspirin|antihistamine|zyrtec|claratyne|cold (and|&) flu|codral|strepsils|lozenge|cough|medicine|prescription|script|band-?aids?|plasters?|first aid|antiseptic|savlon|dettol|thermometer|contact lens|lens solution|condom|\bpills?\b|probiotic|electrolyte|hydralyte|magnesium|fish oil)/i;
+const LEISURE = /(\bbooks?\b|magazine|\bgames?\b|puzzle|craft|\byarn\b|knitting|paints?\b|paintbrush|canvas|\bgifts?\b|wrapping paper|greeting card|birthday card|\bparty\b|balloons?|pot plant|potting mix|\bseeds\b|flowers|plant food|\btickets?\b|lego|batteries for)/i;
 const LAUNDRY = /(laundry|washing (powder|liquid)|fabric softener|softener|napisan|vanish|stain remov|pre-?wash|dryer sheets?|pegs|omo|cold power|biozet|dynamo|sard|ironing|starch)/i;
-const HOUSEHOLD = /(toilet paper|toilet roll|paper towel|foil|cling ?wrap|baking paper|batter(y|ies)|light ?bulb|candle|matches|zip ?lock|sandwich bags|freezer bags)/i;
+const HOUSEHOLD = /(toilet paper|toilet roll|paper towel|serviettes|napkins|foil|cling ?wrap|baking paper|batter(y|ies)|light ?bulb|candle|matches|zip ?lock|sandwich bags|freezer bags|bin ?bags?|garbage bags?|rubbish bags?|bin liners?|tape|glue|extension cord|hooks|storage|pillows?|towels?|hangers|doormat)/i;
 
 /** A best guess at where a hand-added item belongs; food unless it looks otherwise. */
 export function guessSection(name: string): ShopSection {
-  if (HOUSEHOLD.test(name)) return 'other';
+  if (HOUSEHOLD.test(name)) return 'household';
   if (/dish/i.test(name)) return 'cleaning';
   if (LAUNDRY.test(name)) return 'laundry';
   if (/detergent/i.test(name)) return 'cleaning';
+  if (HEALTH.test(name)) return 'health';
   if (PERSONAL.test(name)) return 'personal';
+  if (LEISURE.test(name)) return 'leisure';
   if (CLEANING.test(name)) return 'cleaning';
   return 'food';
 }
