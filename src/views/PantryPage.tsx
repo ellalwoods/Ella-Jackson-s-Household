@@ -31,28 +31,30 @@ export default function PantryPage({ D, update }: { D: HouseholdData; update: Up
   return (
     <>
       <AddToPantry D={D} update={update} />
-      <div className="row8" style={{ marginBottom: 10 }}>
-        <input className="search" style={{ flex: '1 1 260px' }} value={q} onChange={e => setQ(e.target.value)} placeholder="Search the pantry" />
+      {/* Finding things: search, then one joined filter bar (like the other pages). */}
+      <input className="search" style={{ width: '100%', marginBottom: 10 }} value={q} onChange={e => setQ(e.target.value)} placeholder="Search the pantry" aria-label="Search the pantry" />
+      <div className="filter-rows">
+        <div className="filter-row">
+          <span className="filter-label">Show</span>
+          <div className="seg" role="group" aria-label="Filter by stock level">
+            {(['All', ...STATES, 'Expiring'] as const).map(f => {
+              const on = filter === f;
+              const cnt = D.pantry.filter(c => matches(c, f)).length;
+              return <button key={f} className={on ? 'on' : ''} aria-pressed={on} onClick={() => setFilter(f)}>{f} <span className="seg-count">{cnt}</span></button>;
+            })}
+          </div>
+        </div>
       </div>
-      <div className="row" style={{ marginBottom: 14 }}>
-        {(['All', ...STATES, 'Expiring'] as const).map(f => {
-          const on = filter === f;
-          const cnt = D.pantry.filter(c => matches(c, f)).length;
-          return (
-            <button key={f} className="filter" onClick={() => setFilter(f)}
-              style={{ borderColor: on ? '#23221F' : '#DDD8CC', background: on ? '#23221F' : '#fff', color: on ? '#fff' : '#23221F' }}>{f} · {cnt}</button>
-          );
-        })}
-      </div>
-      <div className="auto-grid" style={{ gridTemplateColumns: 'repeat(auto-fill,minmax(min(100%,300px),1fr))', gap: 10 }}>
+      <div className="auto-grid" style={{ gridTemplateColumns: 'repeat(auto-fill,minmax(min(100%,264px),1fr))', gap: 10 }}>
         {items.map(c => {
           const n = D.recipes.filter(r => r.ingredients.some(g => norm(g.name) === norm(c.name))).length;
           const pr = prices.get(norm(c.name));
           return (
             <div key={c.name} className="card" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
-                <span style={{ fontSize: 15, fontWeight: 600 }}>
-                  {c.name} <span style={{ fontWeight: 400, fontSize: 12 }} className="muted">{n ? '· in ' + n + ' recipe' + (n > 1 ? 's' : '') : ''}</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                  <span style={{ fontSize: 15, fontWeight: 600 }}>{c.name}</span>
+                  {n > 0 && <span style={{ fontSize: 12 }} className="muted">In {n} recipe{n > 1 ? 's' : ''}</span>}
                 </span>
                 <span style={{ display: 'flex', gap: 12, flex: 'none' }}>
                   <button className="link-btn" onClick={() => edit(c.name, z => {
@@ -70,7 +72,7 @@ export default function PantryPage({ D, update }: { D: HouseholdData; update: Up
                   <span style={{ fontSize: 12 }} className="muted">left</span>
                 </div>
               ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 4 }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                   {STATES.map(st => {
                     const on = c.state === st;
                     return (
@@ -131,10 +133,11 @@ function AddToPantry({ D, update }: { D: HouseholdData; update: Update }) {
   const onKey = (e: React.KeyboardEvent) => { if (e.key === 'Enter') add(); };
 
   return (
-    <div className="card" style={{ padding: '12px 14px', marginBottom: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
+    <div className="add-panel">
+      <div className="add-panel-title">+ Add to pantry</div>
       <div className="shop-add" style={{ padding: 0 }}>
         <input className="field-sm compact" style={{ flex: '1 1 180px' }} list="pantry-known" value={name} onChange={e => setName(e.target.value)} onKeyDown={onKey}
-          placeholder="Add to pantry, e.g. Rice" aria-label="Item to add to pantry" />
+          placeholder="Item, e.g. Rice" aria-label="Item to add to pantry" />
         <datalist id="pantry-known">{known.map(k => <option key={k} value={k} />)}</datalist>
         <span className="ing-group">
           <span className="ing-label">Amount</span>

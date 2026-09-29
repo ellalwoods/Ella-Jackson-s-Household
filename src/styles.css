@@ -130,7 +130,7 @@ select.field-sm.unit { width: var(--w-unit); padding: 0 4px 0 8px; }
 .ing-tag { display: flex; gap: 5px; align-items: center; font-size: 12px; padding: 4px 9px; border-radius: 999px; background: var(--hover); }
 .dot6 { width: 6px; height: 6px; border-radius: 50%; }
 .filter { height: var(--h-sm); padding: 0 12px; border-radius: 999px; cursor: pointer; font-size: 13px; border: 1px solid; }
-.state-btn { height: var(--h-sm); border-radius: 999px; cursor: pointer; font-size: 12px; border: 1px solid; color: var(--ink); }
+.state-btn { height: var(--h-sm); padding: 0 11px; border-radius: 999px; cursor: pointer; font-size: 12px; border: 1px solid; color: var(--ink); }
 .owner-pick { flex: 1; min-width: 0; height: var(--h-md); border-radius: 999px; border: 1.5px solid; cursor: pointer; font-size: 14px; font-weight: 600; }
 .person-tag { border-radius: 999px; border: none; cursor: pointer; font-size: 12px; font-weight: 600; }
 .budget-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr) 32px; gap: 6px; align-items: center; }
@@ -360,3 +360,18 @@ select.field-sm.unit { width: var(--w-unit); padding: 0 4px 0 8px; }
   .tab-btn { padding: 0 9px; font-size: 13px; gap: 6px; }
 }
 @media (max-width: 520px) { .seg-count { display: none; } }
+
+/* A saved value shown as text (tap to change) — reads as set, not as an open box. */
+.set-field { width: 100%; min-width: 0; height: var(--h-sm); padding: 0 8px; border: 1px solid transparent; border-radius: 8px; background: none; cursor: text; font-size: 14px; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.set-field:hover { background: var(--hover); border-color: var(--line); }
+/* "+ Add …": greyed until tapped, so the list doesn't look unfinished. */
+.add-row { width: 100%; height: var(--h-sm); padding: 0 12px; border: 1px dashed var(--border); border-radius: 10px; background: none; color: var(--faint); font-size: 13px; text-align: left; cursor: pointer; }
+.add-row:hover { color: var(--ink); border-color: var(--muted); }
+.add-open { display: flex; flex-direction: column; gap: 8px; padding: 10px; border-radius: 12px; background: #FBFAF7; border: 1px solid var(--line); }
+.add-open-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+
+/* Adding something: a tinted panel with its own title, set apart from search and lists. */
+.add-panel { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; margin-bottom: 22px; border-radius: 16px; background: #FAF7F1; border: 1px solid var(--line); }
+.add-panel-title { font-size: 13px; font-weight: 600; }
+/* Search boxes carry a magnifier, so they read as search, not as a form field. */
+.search { padding-left: 38px; background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238A857A' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E") no-repeat 14px center; }
