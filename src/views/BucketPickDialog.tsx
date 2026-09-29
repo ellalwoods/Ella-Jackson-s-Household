@@ -97,7 +97,7 @@ export default function BucketPickDialog({ D, recipe, label, picks, onSave, onCl
                           : ctx.staples.has(norm(g.name)) ? <span className="muted" style={{ fontSize: 11 }}> · staple</span>
                           : g.qty && g.unit && <span className="muted" style={{ fontSize: 11 }}> · {fmtQty(g.qty, g.unit)}</span>}
                       </span>
-                      {c !== null && <span className="pick-price">{money(c)}</span>}
+                      {c !== null && !ctx.staples.has(norm(g.name)) && <span className="pick-price">{money(c)}</span>}
                     </button>
                   );
                 })}
