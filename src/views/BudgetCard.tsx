@@ -72,9 +72,10 @@ export default function BudgetCard({ D, update, mon, onEdit }: { D: HouseholdDat
         <button className="link-btn" style={{ fontSize: 13 }} onClick={onEdit}>Edit</button>
       </div>
       <div style={{ display: 'flex', gap: 20, alignItems: 'center', flexWrap: 'wrap', marginBottom: 16 }}>
-        <Donut slices={b.slices} size={140} hole={22}>
-          <span style={{ fontSize: 11 }} className="muted">Left over</span>
-          <span style={{ fontSize: 20, fontWeight: 600 }}>{money(b.left)}</span>
+        <Donut slices={b.slices} size={150} hole={20}>
+          <span style={{ fontSize: 11 }} className="muted">Left</span>
+          <span style={{ fontSize: 14, fontWeight: 600, color: '#A9477B' }}>Ella {money(b.ellaLeft)}</span>
+          <span style={{ fontSize: 14, fontWeight: 600, color: '#1B6B56' }}>Jackson {money(b.jacksonLeft)}</span>
         </Donut>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13, flex: 1, minWidth: 140 }}>
           <div className="kv"><span className="muted">Income</span><span style={{ fontWeight: 600 }}>{money(b.income)}</span></div>

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { budget, Category, HouseholdData, Income, isShare, money, num, otherPerson, PEOPLE, PersonId, setShare, toggleShare, uid } from '../lib/model';
+import { budget, Category, earnings, HouseholdData, Income, isShare, money, num, otherPerson, PEOPLE, PersonId, setShare, toggleShare, uid } from '../lib/model';
 import { confirmRemove } from './confirm';
 import { AddRow, SetField } from './SetField';
 import type { Update } from '../Household';
@@ -56,21 +56,29 @@ export default function BudgetPage({ D, update }: { D: HouseholdData; update: Up
     <div className="budget-page">
       {/* 1. The overall position first: what's left, then income and what's committed. */}
       <section className="card budget-hero">
-        <div className="hero-main">
-          <span className="hero-label">Left each week</span>
-          <span className="hero-big">{money(b.left)}</span>
-          <span className="hero-people"><span style={{ color: ELLA }}>Ella {money(b.ellaLeft)}</span> · <span style={{ color: JACKSON }}>Jackson {money(b.jacksonLeft)}</span></span>
+        {/* What's left is each person's own, so it's shown per person, not as one total. */}
+        <div className="hero-person">
+          <span className="hero-label">Ella has left</span>
+          <span className="hero-big" style={{ color: ELLA }}>{money(b.ellaLeft)}</span>
+          <span className="hero-sub">of {money(earnings(D, 'ella'))} income</span>
+        </div>
+        <div className="hero-person">
+          <span className="hero-label">Jackson has left</span>
+          <span className="hero-big" style={{ color: JACKSON }}>{money(b.jacksonLeft)}</span>
+          <span className="hero-sub">of {money(earnings(D, 'jackson'))} income</span>
         </div>
         <div className="hero-stat">
           <span className="hero-label">Income</span>
           <span className="hero-mid">{money(b.income)}</span>
-        </div>
-        <div className="hero-stat">
-          <span className="hero-label">Committed</span>
+          <span className="hero-label" style={{ marginTop: 8 }}>Committed</span>
           <span className="hero-mid">{money(b.spend)}</span>
-          <span className="hero-people"><span style={{ color: ELLA }}>Ella {money(b.ella)}</span> · <span style={{ color: JACKSON }}>Jackson {money(b.jackson)}</span></span>
         </div>
-        <div className="hero-donut"><Donut slices={b.slices} size={96} hole={16} /></div>
+        <div className="hero-donut">
+          <Donut slices={b.slices} size={150} hole={20}>
+            <span style={{ fontSize: 11 }} className="muted">Spending</span>
+            <span style={{ fontSize: 16, fontWeight: 600 }}>{money(b.spend)}</span>
+          </Donut>
+        </div>
       </section>
 
       {/* 2. Income: one row per source — who, name, amount. */}
