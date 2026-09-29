@@ -50,20 +50,41 @@ export default function BudgetPage({ D, update }: { D: HouseholdData; update: Up
   };
   const draftP = PEOPLE[incPerson];
   const shares = b.cats.filter(c => c.pct !== null);
+  const ELLA = '#A9477B', JACKSON = '#1B6B56';
 
   return (
-    <div className="budget-layout">
+    <div className="budget-page">
+      {/* 1. The overall position first: what's left, then income and what's committed. */}
+      <section className="card budget-hero">
+        <div className="hero-main">
+          <span className="hero-label">Left each week</span>
+          <span className="hero-big">{money(b.left)}</span>
+          <span className="hero-people"><span style={{ color: ELLA }}>Ella {money(b.ellaLeft)}</span> · <span style={{ color: JACKSON }}>Jackson {money(b.jacksonLeft)}</span></span>
+        </div>
+        <div className="hero-stat">
+          <span className="hero-label">Income</span>
+          <span className="hero-mid">{money(b.income)}</span>
+        </div>
+        <div className="hero-stat">
+          <span className="hero-label">Committed</span>
+          <span className="hero-mid">{money(b.spend)}</span>
+          <span className="hero-people"><span style={{ color: ELLA }}>Ella {money(b.ella)}</span> · <span style={{ color: JACKSON }}>Jackson {money(b.jackson)}</span></span>
+        </div>
+        <div className="hero-donut"><Donut slices={b.slices} size={96} hole={16} /></div>
+      </section>
+
+      {/* 2. Income: one row per source — who, name, amount. */}
       <section className="card" style={{ padding: 18 }}>
         <div className="card-title">Income <span className="sub">per week</span><span className="card-title-end">{money(b.income)}</span></div>
         <div className="list">
           {D.incomes.map(i => {
             const p = PEOPLE[i.person];
             return (
-              <div key={i.id} className="budget-row income-row">
-                <button className="person-tag" title="Switch person" style={{ height: 'var(--h-xs)', background: p.tint, color: p.ink }}
+              <div key={i.id} className="income-line">
+                <button className="person-tag" title="Tap to switch person" style={{ height: 'var(--h-xs)', background: p.tint, color: p.ink }}
                   onClick={() => update(x => { const z = x.incomes.find(z => z.id === i.id); if (z) z.person = otherPerson(z.person); })}>{p.name}</button>
                 <SetField value={i.name} onCommit={setInc(i.id, 'name')} label="Income name" />
-                <SetField value={String(num(i.amount))} display={money(num(i.amount))} onCommit={setInc(i.id, 'amount')} label={i.name + ' per week'} numeric align="right" />
+                <SetField value={String(num(i.amount))} display={money(num(i.amount))} onCommit={setInc(i.id, 'amount')} label={i.name + ' per week'} numeric align="right" strong />
                 <button className="link-btn" onClick={() => { if (confirmRemove('this income')) update(x => { x.incomes = x.incomes.filter(z => z.id !== i.id); }); }}>Remove</button>
               </div>
             );
@@ -80,47 +101,46 @@ export default function BudgetPage({ D, update }: { D: HouseholdData; update: Up
             <button className="link-btn" onClick={() => setAdding(null)}>Cancel</button>
           </div>
         </AddRow>
+      </section>
 
-        <div className="card-title" style={{ marginTop: 26 }}>Spending <span className="sub">per week</span></div>
-        <div className="budget-row budget-head">
-          <span>Category</span><span style={{ color: '#A9477B' }}>Ella</span><span style={{ color: '#1B6B56' }}>Jackson</span><span />
+      {/* 3. Spending: one row per category — name, how it fills, each person's part, total. */}
+      <section className="card" style={{ padding: 18 }}>
+        <div className="card-title">Spending <span className="sub">per week</span><span className="card-title-end">{money(b.spend)}</span></div>
+        <div className="cat-line cat-head">
+          <span className="c-name">Category</span><span className="c-mode">Fills</span>
+          <span className="c-ella" style={{ color: ELLA }}>Ella</span><span className="c-jack" style={{ color: JACKSON }}>Jackson</span>
+          <span className="c-total">Total</span><span className="c-remove" />
         </div>
         <div className="list">
           {b.cats.map(c => {
             const mode: Mode = c.fixed ? 'fixed' : c.pct !== null ? 'share' : 'spent';
             const grocery = /grocer/i.test(c.name);
             return (
-              <div key={c.id} className="budget-cat">
-                <div className="budget-row">
-                  <span style={{ display: 'flex', gap: 8, alignItems: 'center', minWidth: 0 }}>
-                    <span className="dot8" style={{ background: c.color, flex: 'none' }} />
-                    <SetField value={c.name} onCommit={setCat(c.id, 'name')} label="Category name" />
-                  </span>
-                  {c.pct !== null ? (<>
-                    <span className="budget-calc">{money(c.e)}</span>
-                    <span className="budget-calc">{money(c.j)}</span>
-                  </>) : (<>
-                    <SetField value={String(num(c.ella))} display={money(num(c.ella))} onCommit={setCat(c.id, 'ella')} label={'Ella, ' + c.name} numeric align="right" />
-                    <SetField value={String(num(c.jackson))} display={money(num(c.jackson))} onCommit={setCat(c.id, 'jackson')} label={'Jackson, ' + c.name} numeric align="right" />
-                  </>)}
-                  <button className="link-btn" onClick={() => { if (confirmRemove('the “' + c.name + '” category')) update(x => { x.cats = x.cats.filter(z => z.id !== c.id); }); }}>Remove</button>
-                </div>
-                <div className="budget-mode">
-                  <div className="seg" role="group" aria-label={'How ' + c.name + ' fills'}>
-                    {MODES.filter(([m]) => m !== 'share' || !grocery).map(([m, l]) => (
-                      <button key={m} className={mode === m ? 'on' : ''} aria-pressed={mode === m} onClick={() => setMode(c, m)}>{l}</button>
-                    ))}
-                  </div>
+              <div key={c.id} className="cat-line">
+                <span className="c-name">
+                  <span className="dot8" style={{ background: c.color, flex: 'none' }} />
+                  <SetField value={c.name} onCommit={setCat(c.id, 'name')} label="Category name" strong />
+                </span>
+                <span className="c-mode">
+                  <select className="section-select" value={mode} aria-label={'How ' + c.name + ' fills'} onChange={e => setMode(c, e.target.value as Mode)}>
+                    {MODES.filter(([m]) => m !== 'share' || !grocery).map(([m, l]) => <option key={m} value={m}>{l}</option>)}
+                  </select>
                   {mode === 'share' && shares.length > 1 && (
-                    <span className="note" style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
-                      <span style={{ width: 60 }}>
-                        <SetField value={String(Math.round(c.pct! * 10) / 10)} display={Math.round(c.pct! * 10) / 10 + '%'} numeric align="right"
-                          label={c.name + ' percentage of what’s left'} onCommit={v => { const n = parseFloat(v); if (!isNaN(n)) update(x => setShare(x.cats, c.id, n)); }} />
-                      </span>
-                      of what’s left
+                    <span style={{ width: 52, flex: 'none' }}>
+                      <SetField value={String(Math.round(c.pct! * 10) / 10)} display={Math.round(c.pct! * 10) / 10 + '%'} numeric align="right"
+                        label={c.name + ' percentage of what’s left'} onCommit={v => { const n = parseFloat(v); if (!isNaN(n)) update(x => setShare(x.cats, c.id, n)); }} />
                     </span>
                   )}
-                </div>
+                </span>
+                {c.pct !== null ? (<>
+                  <span className="c-ella budget-calc" style={{ color: ELLA }}>{money(c.e)}</span>
+                  <span className="c-jack budget-calc" style={{ color: JACKSON }}>{money(c.j)}</span>
+                </>) : (<>
+                  <span className="c-ella"><SetField value={String(num(c.ella))} display={money(num(c.ella))} onCommit={setCat(c.id, 'ella')} label={'Ella, ' + c.name} numeric align="right" color={ELLA} /></span>
+                  <span className="c-jack"><SetField value={String(num(c.jackson))} display={money(num(c.jackson))} onCommit={setCat(c.id, 'jackson')} label={'Jackson, ' + c.name} numeric align="right" color={JACKSON} /></span>
+                </>)}
+                <span className="c-total">{money(c.total)}</span>
+                <span className="c-remove"><button className="link-btn" onClick={() => { if (confirmRemove('the “' + c.name + '” category')) update(x => { x.cats = x.cats.filter(z => z.id !== c.id); }); }}>Remove</button></span>
               </div>
             );
           })}
@@ -134,30 +154,11 @@ export default function BudgetPage({ D, update }: { D: HouseholdData; update: Up
           </div>
           <span className="note">Split 50/50 between you; change it after.</span>
         </AddRow>
-        <p className="note" style={{ margin: '16px 0 0' }}>Tap anything underlined to change it. <strong>As spent</strong> fills as you log spends (groceries also from planned meals), <strong>Fixed</strong> is always full, and <strong>Share of left</strong> splits what’s left over.</p>
+        <p className="note" style={{ margin: '14px 0 0' }}>
+          Tap anything underlined to change it. <strong>As spent</strong> fills as you log spends, <strong>Fixed</strong> is always full,
+          and <strong>Share of left</strong> splits what’s left{shares.length ? ' (' + listOf(shares.map(c => c.name)) + ')' : ''}.
+        </p>
       </section>
-
-      {/* Summary, laid out like the week page's budget card. */}
-      <aside className="card" style={{ padding: 18 }}>
-        <div className="card-title">Each week</div>
-        <div style={{ display: 'flex', gap: 18, alignItems: 'center', flexWrap: 'wrap' }}>
-          <Donut slices={b.slices} size={130} hole={20}>
-            <span style={{ fontSize: 11 }} className="muted">Left</span>
-            <span style={{ fontSize: 18, fontWeight: 600 }}>{money(b.left)}</span>
-          </Donut>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13, flex: 1, minWidth: 150 }}>
-            <div className="kv"><span className="muted">Income</span><span style={{ fontWeight: 600 }}>{money(b.income)}</span></div>
-            <div className="kv"><span className="muted">Committed</span><span style={{ fontWeight: 600 }}>{money(b.spend)}</span></div>
-            <div className="kv"><span style={{ color: '#A9477B' }}>Ella pays</span><span>{money(b.ella)}</span></div>
-            <div className="kv"><span style={{ color: '#1B6B56' }}>Jackson pays</span><span>{money(b.jackson)}</span></div>
-            <div className="kv" style={{ borderTop: '1px solid #F0ECE4', paddingTop: 6 }}><span style={{ color: '#A9477B' }}>Ella has left</span><span style={{ fontWeight: 600 }}>{money(b.ellaLeft)}</span></div>
-            <div className="kv"><span style={{ color: '#1B6B56' }}>Jackson has left</span><span style={{ fontWeight: 600 }}>{money(b.jacksonLeft)}</span></div>
-          </div>
-        </div>
-        {b.splits && <p className="note" style={{ margin: '12px 0 0' }}>
-          The {money(b.left)} left is shared between {listOf(shares.map(c => c.name))}. Each week follows what’s actually left.
-        </p>}
-      </aside>
     </div>
   );
 }

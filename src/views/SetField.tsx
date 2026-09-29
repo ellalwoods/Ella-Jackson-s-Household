@@ -4,14 +4,14 @@ import { useState } from 'react';
  * A saved value shown as plain text, so it reads as set. Tap it to change it:
  * it becomes a box, and Enter (or tapping away) saves; Escape cancels.
  */
-export function SetField({ value, display, onCommit, label, numeric = false, align = 'left', placeholder }: {
+export function SetField({ value, display, onCommit, label, numeric = false, align = 'left', placeholder, color, strong = false }: {
   value: string; display?: string; onCommit: (v: string) => void; label: string;
-  numeric?: boolean; align?: 'left' | 'right'; placeholder?: string;
+  numeric?: boolean; align?: 'left' | 'right'; placeholder?: string; color?: string; strong?: boolean;
 }) {
   const [draft, setDraft] = useState<string | null>(null);
   if (draft === null) {
     return (
-      <button className="set-field" style={{ textAlign: align }} onClick={() => setDraft(value)} aria-label={label + ': ' + (display ?? value) + ', change'} title="Tap to change">
+      <button className="set-field" style={{ textAlign: align, color, fontWeight: strong ? 600 : undefined }} onClick={() => setDraft(value)} aria-label={label + ': ' + (display ?? value) + ', change'} title="Tap to change">
         {(display ?? value) || <span className="muted">{placeholder ?? 'Add'}</span>}
       </button>
     );
