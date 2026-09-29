@@ -39,6 +39,8 @@ export default function Household({ data: D, update, status }: Props) {
   const today = new Date();
   const mon = addDays(mondayOf(today), week * 7);
   const label = fmtWeek(mon);
+  /** "Last week", "This week", "Next week", then the dates further out. */
+  const relWeek = week === 0 ? 'This week' : week === 1 ? 'Next week' : week === -1 ? 'Last week' : null;
   const shop = useMemo(() => shoppingList(D, mon), [D, +mon]);
   // Planned meals whose bucket items haven't all been picked yet (they can't go on the list).
   const pending = weekMeals(D, mon).flatMap(m => pendingPicks(m, D).map(p =>
@@ -67,7 +69,8 @@ export default function Household({ data: D, update, status }: Props) {
           {/* The arrows step the week, so they're joined to it. */}
           <div className="week-nav" role="group" aria-label="Week">
             <button aria-label="Previous week" onClick={() => setWeek(w => w - 1)}>←</button>
-            <button className="week-nav-now" onClick={() => setWeek(0)} aria-current={week === 0 ? 'date' : undefined}>This week</button>
+            <button className="week-nav-now" onClick={() => setWeek(0)} aria-current={week === 0 ? 'date' : undefined}
+              title={week === 0 ? undefined : 'Back to this week'} aria-label={(relWeek ?? label) + (week === 0 ? '' : ', back to this week')}>{relWeek ?? label}</button>
             <button aria-label="Next week" onClick={() => setWeek(w => w + 1)}>→</button>
           </div>
           <button className={'month-btn' + (page === 'calendar' ? ' on' : '')} aria-current={page === 'calendar' ? 'page' : undefined}
@@ -79,7 +82,7 @@ export default function Household({ data: D, update, status }: Props) {
       <div className="week-head">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           <div style={{ fontSize: 13 }} className="muted">
-            {!page ? (week === 0 ? 'This week · ' : '') + 'Week ' + isoWeek(mon) : (
+            {!page ? (relWeek ? relWeek + ' · ' : '') + 'Week ' + isoWeek(mon) : (
               <><button className="link-btn" style={{ fontSize: 13 }} onClick={go(null)}>← Back to week</button> · {titles[page][1]}</>
             )}
           </div>

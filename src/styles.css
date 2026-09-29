@@ -335,7 +335,7 @@ select.field-sm.unit { width: var(--w-unit); padding: 0 4px 0 8px; }
 .week-nav { display: inline-flex; align-items: stretch; height: var(--h-md); border: 1px solid var(--border); border-radius: 999px; background: #fff; overflow: hidden; }
 .week-nav button { border: none; background: none; cursor: pointer; font-size: 14px; color: var(--ink); padding: 0 12px; }
 .week-nav button:first-child, .week-nav button:last-child { width: 40px; padding: 0; font-size: 16px; }
-.week-nav .week-nav-now { border-left: 1px solid var(--line); border-right: 1px solid var(--line); padding: 0 14px; font-weight: 500; }
+.week-nav .week-nav-now { min-width: 112px; border-left: 1px solid var(--line); border-right: 1px solid var(--line); padding: 0 14px; font-weight: 500; }
 .week-nav button:hover { background: var(--hover); }
 .month-btn { height: var(--h-md); padding: 0 16px; border-radius: 999px; border: none; background: #E3EDF6; color: #3F6A8F; font-size: 14px; font-weight: 600; cursor: pointer; }
 .month-btn:hover { background: #D6E4F1; }
