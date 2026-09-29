@@ -19,6 +19,9 @@ export default function BucketPickDialog({ D, recipe, label, picks, onSave, onCl
   const [chosen, setChosen] = useState<Record<string, string[]>>(() =>
     Object.fromEntries(uses.map(({ u }) => [u.bucket, (picks[u.bucket] ?? []).slice(0, u.count)])));
 
+  /** With more than one bucket, they're shown one at a time, like steps. */
+  const [step, setStep] = useState(0);
+  const last = step >= uses.length - 1;
   /** Tag filter per bucket ('' = all items). */
   const [filter, setFilter] = useState<Record<string, string>>({});
   const addBlank = (bucket: string, max: number) => setChosen(c => {
@@ -51,7 +54,19 @@ export default function BucketPickDialog({ D, recipe, label, picks, onSave, onCl
           <div style={{ fontWeight: 600, fontSize: 16 }}>{recipe.name}</div>
           <span className="note">{label}</span>
         </div>
-        {uses.map(({ u, b }) => {
+        {uses.length > 1 && (
+          <div className="pick-steps" aria-label={'Bucket ' + (step + 1) + ' of ' + uses.length}>
+            {uses.map(({ u, b }, i) => {
+              const done = (chosen[u.bucket] ?? []).length >= u.count;
+              return (
+                <button key={u.bucket} className={'pick-step' + (i === step ? ' on' : '') + (done ? ' done' : '')} onClick={() => setStep(i)} aria-current={i === step ? 'step' : undefined}>
+                  <span className="pick-step-num">{done ? '✓' : i + 1}</span>{b!.name}
+                </button>
+              );
+            })}
+          </div>
+        )}
+        {uses.filter((_, i) => i === step).map(({ u, b }) => {
           const list = chosen[u.bucket] ?? [];
           const blanks = list.filter(n => n === BLANK_PICK).length;
           const tag = filter[u.bucket] ?? '';
@@ -74,15 +89,15 @@ export default function BucketPickDialog({ D, recipe, label, picks, onSave, onCl
                 {items.map(g => {
                   const on = list.some(n => norm(n) === norm(g.name)), c = itemCost(g, ctx), mini = miniOf(g, ctx);
                   return (
-                    <button key={g.name} className={'pick-item' + (on ? ' on' : '')} aria-pressed={on} onClick={() => toggle(u.bucket, g.name, u.count)}>
+                    <button key={g.name} title={g.name} className={'pick-item' + (on ? ' on' : '')} aria-pressed={on} onClick={() => toggle(u.bucket, g.name, u.count)}>
                       <span className="box-check" style={{ width: 18, height: 18, borderRadius: 5, fontSize: 11, background: on ? '#23221F' : 'transparent' }}>{on ? '✓' : ''}</span>
-                      <span style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
+                      <span className="pick-name">
                         {g.name}
                         {mini ? <span className="muted" style={{ fontSize: 11 }}> · mini recipe</span>
                           : ctx.staples.has(norm(g.name)) ? <span className="muted" style={{ fontSize: 11 }}> · staple</span>
                           : g.qty && g.unit && <span className="muted" style={{ fontSize: 11 }}> · {fmtQty(g.qty, g.unit)}</span>}
                       </span>
-                      {c !== null && <span className="muted" style={{ fontSize: 12 }}>{money(c)}</span>}
+                      {c !== null && <span className="pick-price">{money(c)}</span>}
                     </button>
                   );
                 })}
@@ -102,8 +117,11 @@ export default function BucketPickDialog({ D, recipe, label, picks, onSave, onCl
           );
         })}
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 4 }}>
-          <button className="pill dark" style={{ padding: '0 18px' }} onClick={() => { onSave(chosen); onClose(); }}>Done</button>
-          <button className="pill plain" onClick={onClose}>Later</button>
+          {step > 0 && <button className="pill plain" onClick={() => setStep(s => s - 1)}>Back</button>}
+          {last
+            ? <button className="pill dark" style={{ padding: '0 18px' }} onClick={() => { onSave(chosen); onClose(); }}>Done</button>
+            : <button className="pill dark" style={{ padding: '0 18px' }} onClick={() => setStep(s => s + 1)}>Next</button>}
+          <button className="link-btn" onClick={onClose}>Later</button>
           <span className="note">Picked items go on the shopping list.</span>
         </div>
       </div>
