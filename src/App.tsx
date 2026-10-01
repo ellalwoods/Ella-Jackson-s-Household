@@ -52,7 +52,7 @@ function Synced({ householdKey: key, onInvalid }: { householdKey: string | null;
   useEffect(() => { if (status === 'invalid') onInvalid(); }, [status, onInvalid]);
 
   if (status === 'invalid') return <Message>Checking your household link…</Message>;
-  if (!data && status === 'offline') return <Message>Can’t reach your household right now. Check your internet connection; it’ll load as soon as you’re back online.</Message>;
+  if (!data && (status === 'offline' || status === 'retrying')) return <Message>Can’t reach your household right now. Check your internet connection; it’ll load as soon as you’re back online.</Message>;
   if (!data) return <Message>Loading…</Message>;
   return <Household data={data} update={m => store.update(m)} status={status} />;
 }

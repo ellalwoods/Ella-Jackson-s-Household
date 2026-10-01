@@ -1,7 +1,8 @@
 import { HouseholdData, migrate, seed } from './model';
 
 export type Mutation = (d: HouseholdData) => void;
-export type SyncStatus = 'local' | 'loading' | 'synced' | 'saving' | 'offline' | 'invalid';
+/** 'offline' = this device has no connection; 'retrying' = connected, but the server didn't answer. */
+export type SyncStatus = 'local' | 'loading' | 'synced' | 'saving' | 'offline' | 'retrying' | 'invalid';
 export interface StoreState { data: HouseholdData | null; status: SyncStatus }
 
 /** Where the shared household lives. Methods throw on network errors. */
@@ -19,7 +20,8 @@ export interface Backend {
 /** Same key the prototype used, so data saved there carries over. */
 const CACHE_KEY = 'hh-sydney-v1';
 const FLUSH_DELAY = 400;
-const RETRY_DELAY = 5000;
+/** First retry after a failed load or save; doubles each time, up to a minute. */
+const RETRY_FIRST = 3000, RETRY_MAX = 60000;
 
 const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v));
 
@@ -51,7 +53,10 @@ export class HouseholdStore {
   /** Bumped on start/stop so a stale start() never subscribes. */
   private run = 0;
 
-  constructor(private backend: Backend | null) {
+  private retryIn: number;
+
+  constructor(private backend: Backend | null, private retryFirst = RETRY_FIRST) {
+    this.retryIn = retryFirst;
     this.state = backend ? { data: readCache(), status: 'loading' } : { data: readCache() ?? seed(), status: 'local' };
   }
 
@@ -115,7 +120,8 @@ export class HouseholdStore {
 
   private async pull(): Promise<void> {
     let res;
-    try { res = await this.backend!.load(); } catch { this.set({ status: 'offline' }); return; }
+    try { res = await this.backend!.load(); } catch (e) { this.failed(e); return; }
+    this.retryIn = this.retryFirst;
     if (res === 'invalid') { this.set({ status: 'invalid' }); return; }
     const data = migrate(res.data);
     if (!data) {
@@ -134,22 +140,33 @@ export class HouseholdStore {
     this.set({ status: this.pending.length ? 'saving' : 'synced' });
   }
 
-  private retryLater() {
-    this.set({ status: 'offline' });
+  /**
+   * A load or save failed. Say "offline" only when the device really has no
+   * connection, and try again by itself (sooner at first, then backing off).
+   */
+  private failed(e?: unknown) {
+    if (e) console.warn('Household sync failed; retrying', e);
+    const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
+    this.set({ status: offline ? 'offline' : 'retrying' });
     clearTimeout(this.timer);
-    this.timer = setTimeout(() => this.flush(), RETRY_DELAY);
+    const run = this.run;
+    this.timer = setTimeout(() => { if (run === this.run) this.pull().then(() => this.flush()); }, this.retryIn);
+    this.retryIn = Math.min(this.retryIn * 2, RETRY_MAX);
   }
+
+  private get failing() { return this.state.status === 'offline' || this.state.status === 'retrying'; }
 
   private async flush(): Promise<void> {
     if (!this.backend || this.flushing || !this.pending.length) return;
-    if (!this.base) { await this.pull(); if (!this.base) return; }
+    if (!this.base || this.failing) { await this.pull(); if (!this.base || this.failing) return; }
     this.flushing = true;
     const n = this.pending.length;
     const next = clone(this.base);
     this.pending.slice(0, n).forEach(m => m(next));
     let saved: number | null;
-    try { saved = await this.backend.save(next, this.version); } catch { this.flushing = false; this.retryLater(); return; }
+    try { saved = await this.backend.save(next, this.version); } catch (e) { this.flushing = false; this.failed(e); return; }
     this.flushing = false;
+    this.retryIn = this.retryFirst;
     const remote = this.remoteWhileFlushing;
     this.remoteWhileFlushing = false;
 
@@ -163,7 +180,7 @@ export class HouseholdStore {
     } else {
       // Someone else saved first: take their version and replay our edits on it.
       await this.pull();
-      if (this.state.status === 'offline') { this.retryLater(); return; }
+      if (this.failing) return; // pull() has already scheduled a retry
     }
     if (this.pending.length) return this.flush();
     this.set({ status: 'synced' });

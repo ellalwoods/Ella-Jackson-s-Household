@@ -27,6 +27,7 @@ const STATUS_TEXT: Record<SyncStatus, string> = {
   synced: 'Synced',
   saving: 'Saving…',
   offline: 'Offline — changes will sync when you’re back online',
+  retrying: 'Reconnecting… your changes are kept on this device',
   invalid: '',
 };
 

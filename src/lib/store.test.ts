@@ -69,3 +69,19 @@ it('refuses a link with the wrong key', async () => {
   expect(store.getState().status).toBe('invalid');
   expect(server.version).toBe(0);
 });
+
+it('recovers by itself when the server briefly fails, without saying offline', async () => {
+  const { server, make } = fakeBackend();
+  server.data = seed();
+  server.version = 3;
+  const backend = make('k');
+  let fails = 2;
+  const load = backend.load;
+  backend.load = async () => { if (fails-- > 0) throw new Error('timeout'); return load(); };
+  const store = new HouseholdStore(backend, 10);
+  await store.start();
+  expect(store.getState().status).toBe('retrying');
+  await wait(100);
+  expect(store.getState().status).toBe('synced');
+  store.stop();
+});
