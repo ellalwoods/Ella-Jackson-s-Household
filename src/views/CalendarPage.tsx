@@ -1,6 +1,6 @@
 import { addDays, DOW, key, MONL, mondayOf, weekOffsetOf } from '../lib/dates';
 import { useState } from 'react';
-import { CalEvent, EAT_OUT, HouseholdData, MEALS, norm, occurs, OWNERS, soft } from '../lib/model';
+import { CalEvent, EAT_OUT, eatOutName, HouseholdData, MEALS, norm, occurs, OWNERS, soft } from '../lib/model';
 import type { Update } from '../Household';
 import EventDialog from './EventDialog';
 
@@ -21,7 +21,7 @@ export default function CalendarPage({ D, update, mon, calOff, setCalOff, onPick
   for (let i = 0; i < 42; i++) {
     const d = addDays(start, i), k = key(d), inM = d.getMonth() === base.getMonth(), inW = d >= mon && d <= end;
     if (i === 35 && !inM) break;
-    cells.push({ d, k, inM, inW, meal: MEALS.map(m => (D.plan[k]?.[m] === EAT_OUT ? 'Eating out' : rBy.get(D.plan[k]?.[m] ?? '')?.name)).filter(Boolean).join(' · '), dots: D.chores.filter(c => occurs(c, d)).map(c => OWNERS[c.person].color) });
+    cells.push({ d, k, inM, inW, meal: MEALS.map(m => (D.plan[k]?.[m] === EAT_OUT ? '🍽 ' + (eatOutName(D, k + '|' + m) || 'Eating out') : rBy.get(D.plan[k]?.[m] ?? '')?.name)).filter(Boolean).join(' · '), dots: D.chores.filter(c => occurs(c, d)).map(c => OWNERS[c.person].color) });
   }
 
   return (

@@ -1,6 +1,6 @@
 import { describe as group, expect, it } from 'vitest';
 import { addDays, key, mondayOf, weekLabel } from './dates';
-import { budget, Category, describe, HouseholdData, migrate, money, num, occurs, seed, setShare } from './model';
+import { budget, Category, describe, eatOutName, HouseholdData, migrate, money, num, occurs, seed, setShare } from './model';
 
 const mon = mondayOf(new Date(2026, 8, 23)); // Mon 21 Sep 2026
 
@@ -94,5 +94,18 @@ group('amounts', () => {
     expect(num('$1,200')).toBe(1200);
     expect(num(' 400 ')).toBe(400);
     expect(num('abc')).toBe(0);
+  });
+});
+
+group('places', () => {
+  it('names a meal out by its saved place, falling back to what was typed', () => {
+    const d = migrate({ cats: [] })!;
+    expect(d.places).toEqual([]);
+    d.places.push({ id: 'p1', name: 'Bella Brutta', kind: 'restaurant', been: true });
+    d.eatOutPlace['2026-10-02|dinner'] = 'p1';
+    d.eatOut['2026-10-03|lunch'] = 'Somewhere new';
+    expect(eatOutName(d, '2026-10-02|dinner')).toBe('Bella Brutta');
+    expect(eatOutName(d, '2026-10-03|lunch')).toBe('Somewhere new');
+    expect(eatOutName(d, '2026-10-04|lunch')).toBe('');
   });
 });

@@ -137,6 +137,24 @@ export interface ManualShopItem { id: string; name: string; qty?: number; unit?:
 
 /** A calendar tag: the name is whatever you type; colour is picked automatically. */
 export interface Tag { name: string; color: string }
+
+/** A restaurant, bar or café you like (or want to try). Can be planned as a meal out. */
+export const PLACE_KINDS = ['restaurant', 'bar', 'cafe', 'takeaway', 'other'] as const;
+export type PlaceKind = (typeof PLACE_KINDS)[number];
+export const PLACE_KIND_LABEL: Record<PlaceKind, string> = { restaurant: 'Restaurant', bar: 'Bar', cafe: 'Café', takeaway: 'Takeaway', other: 'Other' };
+export interface Place {
+  id: string;
+  name: string;
+  kind: PlaceKind;
+  suburb?: string;
+  /** Typical cost per person. */
+  cost?: number;
+  tags?: string[];
+  link?: string;
+  notes?: string;
+  /** Somewhere you've been, or still want to try. */
+  been: boolean;
+}
 export interface CalEvent {
   id: string;
   /** Date key, e.g. 2026-10-03. */
@@ -192,6 +210,11 @@ export interface HouseholdData {
   recipeTags: string[];
   /** Where you're eating out, by `${dateKey}|${meal}` (optional). */
   eatOut: Record<string, string>;
+  /** The saved place for a meal out, by `${dateKey}|${meal}`. */
+  eatOutPlace: Record<string, string>;
+  places: Place[];
+  /** Every place tag you've made, so they can be reused. */
+  placeTags: string[];
   /** Bucket items picked for a planned meal: `${dateKey}|${meal}` → bucket id → item names. */
   picks: Record<string, Record<string, string[]>>;
 }
@@ -270,6 +293,9 @@ export function seed(today = new Date()): HouseholdData {
     buckets: [],
     recipeTags: [],
     eatOut: {},
+    eatOutPlace: {},
+    places: [],
+    placeTags: [],
     picks: {},
   };
 }
@@ -285,7 +311,7 @@ export function migrate(d: any): HouseholdData | null {
     ];
   }
   delete d.income;
-  d.recipes ??= []; d.plan ??= {}; d.chores ??= []; d.done ??= {}; d.prices ??= []; d.staples ??= []; d.extras ??= {}; d.spends ??= {}; d.events ??= []; d.tags ??= []; d.shopExtras ??= {}; d.shopSections ??= {}; d.buckets ??= []; d.recipeTags ??= []; d.eatOut ??= {}; d.picks ??= {};
+  d.recipes ??= []; d.plan ??= {}; d.chores ??= []; d.done ??= {}; d.prices ??= []; d.staples ??= []; d.extras ??= {}; d.spends ??= {}; d.events ??= []; d.tags ??= []; d.shopExtras ??= {}; d.shopSections ??= {}; d.buckets ??= []; d.recipeTags ??= []; d.eatOut ??= {}; d.eatOutPlace ??= {}; d.places ??= []; d.placeTags ??= []; d.picks ??= {};
   for (const c of d.cats) if (c.fixed === undefined && /\b(rent|transport)\b/i.test(c.name)) c.fixed = true;
   // Fun money, discretionary and savings split what's left, in proportion to what they were set to.
   for (const c of d.cats) if (c.share === undefined && !c.fixed && /fun|discretion|saving/i.test(c.name)) c.share = num(c.ella) + num(c.jackson);
@@ -425,4 +451,10 @@ export function budget(D: HouseholdData) {
     splits: cats.some(c => c.pct !== null),
     slices: cats.map(c => ({ label: c.name, total: c.total, color: c.color })),
   };
+}
+
+/** What a meal out shows: the saved place's name, or what was typed. */
+export function eatOutName(D: HouseholdData, slot: string) {
+  const id = D.eatOutPlace[slot];
+  return (id && D.places.find(p => p.id === id)?.name) || D.eatOut[slot] || '';
 }

@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { addDays, DOW, key } from '../lib/dates';
-import { BLANK_PICK, EAT_OUT, HouseholdData, Meal, MEAL_LABEL, MEALS, money, norm, occurs, OWNERS, Recipe, uid, mealRecipes } from '../lib/model';
+import { BLANK_PICK, EAT_OUT, eatOutName, HouseholdData, Meal, MEAL_LABEL, MEALS, money, norm, occurs, OWNERS, Place, PLACE_KIND_LABEL, Recipe, uid, mealRecipes } from '../lib/model';
 import { costContext, recipeCost, searchRecipes } from '../lib/food';
 import BucketPickDialog from './BucketPickDialog';
+import { PlaceDialog } from './PlacesPage';
 import type { Update } from '../Household';
 
 interface Props { D: HouseholdData; update: Update; mon: Date }
@@ -14,6 +15,8 @@ export default function WeekTable({ D, update, mon }: Props) {
   const [idx, setIdx] = useState(0);
   /** Slot whose bucket items are being picked. */
   const [picking, setPicking] = useState<string | null>(null);
+  /** Saving a typed "where" as a new place, for this slot. */
+  const [newPlace, setNewPlace] = useState<{ slot: string; name: string } | null>(null);
 
   const tk = key(new Date());
   const rBy = new Map(D.recipes.map(r => [r.id, r]));
@@ -56,13 +59,25 @@ export default function WeekTable({ D, update, mon }: Props) {
       if (rid) p[meal] = rid; else delete p[meal];
       if (Object.keys(p).length) x.plan[k] = p; else delete x.plan[k];
       // Picks belong to the recipe that was there.
-      if (changed) { delete x.picks[slot]; delete x.eatOut[slot]; }
+      if (changed) { delete x.picks[slot]; delete x.eatOut[slot]; delete x.eatOutPlace[slot]; }
     });
     close();
     // A recipe with buckets asks straight away which items to use.
     const r = rid ? D.recipes.find(z => z.id === rid) : null;
     if (r?.buckets?.length && changed) setPicking(slot);
   };
+  /** Plan a meal out at a saved place. */
+  const choosePlace = (slot: string, p: Place) => {
+    const [k, meal] = slot.split('|') as [string, Meal];
+    update(x => {
+      x.plan[k] = { ...(x.plan[k] ?? {}), [meal]: EAT_OUT };
+      delete x.picks[slot];
+      x.eatOut[slot] = p.name;
+      x.eatOutPlace[slot] = p.id;
+    });
+    close();
+  };
+  const placeLine = (p: Place) => [PLACE_KIND_LABEL[p.kind], p.suburb, p.cost ? money(p.cost) + ' pp' : ''].filter(Boolean).join(' · ');
   const createFromPick = () => {
     const n = query.trim(), slot = picker;
     if (!n || !slot) return;
@@ -100,8 +115,8 @@ export default function WeekTable({ D, update, mon }: Props) {
                   style={{ borderColor: r || out ? '#E8E4DB' : '#EFEBE3', background: out ? '#F6F1EA' : r ? '#FBFAF7' : 'transparent' }}>
                   <span className="slot-label">{MEAL_LABEL[meal]}</span>
                   {out ? (<>
-                    <span className="slot-name" style={{ fontWeight: 500, color: '#23221F' }}>🍽 Eating out</span>
-                    {D.eatOut[slot] && <span className="slot-cost">{D.eatOut[slot]}</span>}
+                    <span className="slot-name" style={{ fontWeight: 500, color: '#23221F' }}>🍽 {eatOutName(D, slot) || 'Eating out'}</span>
+                    {eatOutName(D, slot) && <span className="slot-cost">Eating out{(() => { const p = D.places.find(z => z.id === D.eatOutPlace[slot]); return p?.cost ? ' · ' + money(p.cost) + ' pp' : ''; })()}</span>}
                   </>) : (<>
                     <span className="slot-name" style={{ fontWeight: r ? 500 : 400, color: r ? '#23221F' : '#A39D90' }}>{r ? r.name : '+'}</span>
                     {r && <span className="slot-cost">{money(cost(r, slot))}</span>}
@@ -114,6 +129,25 @@ export default function WeekTable({ D, update, mon }: Props) {
                     <div className={'picker' + (mi >= 2 ? ' picker-right' : '')}>
                       <input className="picker-input" autoFocus value={query} placeholder={'Search ' + MEAL_LABEL[meal].toLowerCase() + ' recipes or ingredients'}
                         onChange={e => { setQuery(e.target.value); setIdx(0); }} onKeyDown={onKey} />
+                      {out && (() => {
+                        const where = D.eatOut[slot] ?? '', wq = norm(where);
+                        const atPlace = D.eatOutPlace[slot];
+                        const ps = D.places.filter(p => p.id !== atPlace && (!wq || [p.name, p.suburb, ...(p.tags ?? [])].some(v => norm(v).includes(wq)))).slice(0, 6);
+                        const known = D.places.some(p => norm(p.name) === wq);
+                        return (<>
+                          <input className="field-sm" placeholder="Where? Type or pick a place" aria-label="Where you're eating out"
+                            value={where} onChange={e => { const v = e.target.value; update(x => { if (v.trim()) x.eatOut[slot] = v; else delete x.eatOut[slot]; delete x.eatOutPlace[slot]; }); }}
+                            onKeyDown={e => { if (e.key === 'Enter') close(); }} />
+                          {ps.length > 0 && (
+                            <div className="row" style={{ gap: 4 }}>
+                              {ps.map(p => <button key={p.id} className="mini-tag" onClick={() => choosePlace(slot, p)} title={placeLine(p)}>{p.name}</button>)}
+                            </div>
+                          )}
+                          {where.trim() && !atPlace && !known && (
+                            <button className="link-btn" style={{ alignSelf: 'flex-start' }} onClick={() => setNewPlace({ slot, name: where.trim() })}>Save “{where.trim()}” to Places</button>
+                          )}
+                        </>);
+                      })()}
                       <div className="picker-list">
                         {matches.slice(0, 50).map((m, i) => (
                           <button key={m.id} className="picker-item" onClick={() => setMeal(slot, m.id)}
@@ -128,13 +162,24 @@ export default function WeekTable({ D, update, mon }: Props) {
                             <span style={{ fontSize: 13 }} className="muted">{money(cost(m))}</span>
                           </button>
                         ))}
-                        {!matches.length && <span style={{ fontSize: 13, padding: '8px 10px' }} className="muted">No recipes match.</span>}
+                        {!matches.length && !(pq && D.places.some(p => [p.name, p.suburb, ...(p.tags ?? [])].some(v => norm(v).includes(pq)))) && <span style={{ fontSize: 13, padding: '8px 10px' }} className="muted">No recipes or places match.</span>}
+                        {(() => {
+                          // Typing a name also finds saved places, to plan a meal out there.
+                          const ps = pq ? D.places.filter(p => [p.name, p.suburb, ...(p.tags ?? [])].some(v => norm(v).includes(pq))).slice(0, 8) : [];
+                          return ps.length > 0 && (<>
+                            <span className="picker-group">Places</span>
+                            {ps.map(p => (
+                              <button key={p.id} className="picker-item" onClick={() => choosePlace(slot, p)}>
+                                <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0, whiteSpace: 'normal' }}>
+                                  <span style={{ fontSize: 14, fontWeight: 500 }}>🍽 {p.name}</span>
+                                  <span style={{ fontSize: 12 }} className="muted">{placeLine(p)}</span>
+                                </span>
+                              </button>
+                            ))}
+                          </>);
+                        })()}
                       </div>
-                      {out && (
-                        <input className="field-sm" placeholder="Where? (optional)" aria-label="Where you're eating out"
-                          value={D.eatOut[slot] ?? ''} onChange={e => { const v = e.target.value; update(x => { if (v.trim()) x.eatOut[slot] = v; else delete x.eatOut[slot]; }); }}
-                          onKeyDown={e => { if (e.key === 'Enter') close(); }} />
-                      )}
+
                       <div className="picker-actions">
                         {canCreate && <button className="pill-sm dark" onClick={createFromPick}>+ New “{query}”</button>}
                         {!out && <button className="pill-sm" onClick={() => { setMeal(slot, EAT_OUT); setPicker(slot); }}>🍽 Eat out</button>}
@@ -177,6 +222,10 @@ export default function WeekTable({ D, update, mon }: Props) {
             onSave={p => update(x => { x.picks[picking] = p; })} onClose={() => setPicking(null)} />
         ) : null;
       })()}
+      {newPlace && (
+        <PlaceDialog D={D} update={update} place={null} initialName={newPlace.name} onClose={() => setNewPlace(null)}
+          onSaved={p => { update(x => { x.eatOutPlace[newPlace.slot] = p.id; x.eatOut[newPlace.slot] = p.name; }); close(); }} />
+      )}
     </section>
   );
 }

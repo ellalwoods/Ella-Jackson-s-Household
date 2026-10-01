@@ -13,12 +13,13 @@ import RecipesPage from './views/RecipesPage';
 import PantryPage from './views/PantryPage';
 import ChoresPage from './views/ChoresPage';
 import BudgetPage from './views/BudgetPage';
+import PlacesPage from './views/PlacesPage';
 import CalendarPage from './views/CalendarPage';
 
-export type Page = 'shop' | 'recipes' | 'pantry' | 'chores' | 'budget' | 'calendar';
+export type Page = 'shop' | 'recipes' | 'places' | 'pantry' | 'chores' | 'budget' | 'calendar';
 export type Update = (m: Mutation) => void;
 
-const NAV: [Page, string][] = [['shop', 'Shopping list'], ['recipes', 'Recipes'], ['pantry', 'Pantry'], ['chores', 'Chores'], ['budget', 'Budget']];
+const NAV: [Page, string][] = [['shop', 'Shopping list'], ['recipes', 'Recipes'], ['places', 'Places'], ['pantry', 'Pantry'], ['chores', 'Chores'], ['budget', 'Budget']];
 
 const STATUS_TEXT: Record<SyncStatus, string> = {
   local: 'Saved on this device',
@@ -58,6 +59,7 @@ export default function Household({ data: D, update, status }: Props) {
     pantry: ['Pantry', D.pantry.length + ' items'],
     chores: ['Chores', D.chores.length + ' chores'],
     budget: ['Budget', 'Your regular week'],
+    places: ['Places', D.places.length + ' saved · restaurants, bars and cafés'],
     calendar: ['Month view', 'Plan ahead'],
   };
 
@@ -114,6 +116,7 @@ export default function Household({ data: D, update, status }: Props) {
           {page === 'pantry' && <PantryPage D={D} update={update} />}
           {page === 'chores' && <ChoresPage D={D} update={update} />}
           {page === 'budget' && <BudgetPage D={D} update={update} />}
+          {page === 'places' && <PlacesPage D={D} update={update} />}
           {page === 'calendar' && (
             <CalendarPage D={D} update={update} mon={mon} calOff={calOff} setCalOff={setCalOff}
               onPickWeek={w => { setWeek(w); setPage(null); setCalOff(0); }} />
