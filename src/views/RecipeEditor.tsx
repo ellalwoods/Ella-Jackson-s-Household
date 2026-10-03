@@ -426,7 +426,7 @@ function TagRow({ label, tags, selected, selectable, onToggle, onRename, onDelet
 }
 
 /** One tag in edit mode: rename it in place, or × to remove it. */
-function TagEdit({ tag, onRename, onDelete }: { tag: string; onRename: (n: string) => void; onDelete: () => void }) {
+export function TagEdit({ tag, onRename, onDelete }: { tag: string; onRename: (n: string) => void; onDelete: () => void }) {
   const [text, setText] = useState(tag);
   const commit = () => { if (text.trim() && text.trim() !== tag) onRename(text); else setText(tag); };
   return (

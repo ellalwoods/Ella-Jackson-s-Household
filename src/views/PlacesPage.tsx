@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { DOW, dowIndex, MON, parse, key } from '../lib/dates';
 import { HouseholdData, MEAL_LABEL, Meal, money, norm, Place, PLACE_KIND_LABEL, PLACE_KINDS, PlaceKind, uid } from '../lib/model';
 import type { Update } from '../Household';
-import { safeLink } from './RecipeEditor';
+import { safeLink, TagEdit } from './RecipeEditor';
 import { confirmRemove } from './confirm';
 
 type Show = 'all' | 'want' | 'been';
@@ -138,6 +138,7 @@ export function PlaceDialog({ D, update, place, onClose, onSaved, initialName = 
   const [cost, setCost] = useState(place?.cost != null ? String(place.cost) : '');
   const [tags, setTags] = useState<string[]>(place?.tags ?? []);
   const [newTag, setNewTag] = useState('');
+  const [editingTags, setEditingTags] = useState(false);
   const [link, setLink] = useState(place?.link ?? '');
   const [notes, setNotes] = useState(place?.notes ?? '');
   const [been, setBeen] = useState(place?.been ?? false);
@@ -149,6 +150,27 @@ export function PlaceDialog({ D, update, place, onClose, onSaved, initialName = 
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
 
+  // Place tags are shared, so renaming or removing one applies to every place.
+  const renameTag = (from: string, to: string) => {
+    const t = to.trim();
+    if (!t || norm(t) === norm(from)) return;
+    const swap = (ts: string[]) => ts.map(x => (norm(x) === norm(from) ? t : x)).filter((z, i, a) => a.findIndex(y => norm(y) === norm(z)) === i);
+    setTags(swap);
+    update(x => {
+      x.placeTags = swap(x.placeTags);
+      for (const p of x.places) if (p.tags) p.tags = swap(p.tags);
+    });
+  };
+  const deleteTag = (t: string) => {
+    const used = D.places.some(p => p.id !== place?.id && (p.tags ?? []).some(x => norm(x) === norm(t)));
+    if (used && !confirmRemove('the “' + t + '” tag from every place')) return;
+    const drop = (ts: string[]) => ts.filter(x => norm(x) !== norm(t));
+    setTags(drop);
+    update(x => {
+      x.placeTags = drop(x.placeTags);
+      for (const p of x.places) if (p.tags) { p.tags = drop(p.tags); if (!p.tags.length) delete p.tags; }
+    });
+  };
   const addTag = () => {
     const t = newTag.trim();
     if (!t) return;
@@ -190,13 +212,18 @@ export function PlaceDialog({ D, update, place, onClose, onSaved, initialName = 
         </div>
         <div className="row" style={{ alignItems: 'center' }}>
           <span className="field-label" style={{ width: 40 }}>Tags</span>
-          {allTags.map(t => {
-            const on = tags.some(x => norm(x) === norm(t));
-            return <button key={t} className={'mini-tag' + (on ? ' on' : '')} aria-pressed={on} onClick={() => setTags(ts => (on ? ts.filter(x => norm(x) !== norm(t)) : [...ts, t]))}>{t}</button>;
-          })}
-          <input className="field-sm compact" style={{ width: 150 }} value={newTag} onChange={e => setNewTag(e.target.value)} placeholder="+ New tag" aria-label="New tag"
-            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTag(); } }} />
-          {newTag.trim() && <button className="pill-sm" onClick={addTag}>Add</button>}
+          {editingTags
+            ? allTags.map(t => <TagEdit key={t} tag={t} onRename={n => renameTag(t, n)} onDelete={() => deleteTag(t)} />)
+            : allTags.map(t => {
+              const on = tags.some(x => norm(x) === norm(t));
+              return <button key={t} className={'mini-tag' + (on ? ' on' : '')} aria-pressed={on} onClick={() => setTags(ts => (on ? ts.filter(x => norm(x) !== norm(t)) : [...ts, t]))}>{t}</button>;
+            })}
+          {!editingTags && <>
+            <input className="field-sm compact" style={{ width: 150 }} value={newTag} onChange={e => setNewTag(e.target.value)} placeholder="+ New tag" aria-label="New tag"
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTag(); } }} />
+            {newTag.trim() && <button className="pill-sm" onClick={addTag}>Add</button>}
+          </>}
+          {allTags.length > 0 && <button className="link-btn" style={{ marginLeft: 4 }} onClick={() => setEditingTags(v => !v)}>{editingTags ? 'Done' : 'Edit tags'}</button>}
         </div>
         <input className="field-sm compact" value={link} onChange={e => setLink(e.target.value)} placeholder="Link (website or booking)" aria-label="Link" inputMode="url" autoCapitalize="off" />
         <textarea className="textarea" rows={3} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Notes, e.g. book ahead, get the lamb" aria-label="Notes" />
