@@ -458,3 +458,32 @@ export function eatOutName(D: HouseholdData, slot: string) {
   const id = D.eatOutPlace[slot];
   return (id && D.places.find(p => p.id === id)?.name) || D.eatOut[slot] || '';
 }
+
+// ── Shared tags (recipe tags, place tags) ─────────────────────────────────
+
+/** Swaps one tag for another in a list, keeping one of each. */
+export const swapTag = (ts: string[], from: string, to: string) =>
+  ts.map(x => (norm(x) === norm(from) ? to.trim() : x)).filter((z, i, a) => a.findIndex(y => norm(y) === norm(z)) === i);
+export const dropTag = (ts: string[], t: string) => ts.filter(x => norm(x) !== norm(t));
+
+const tagLists = (x: HouseholdData, kind: 'recipe' | 'place') =>
+  kind === 'recipe' ? { list: 'recipeTags' as const, items: x.recipes } : { list: 'placeTags' as const, items: x.places };
+
+/** Renames a recipe or place tag everywhere it's used. */
+export function renameTag(x: HouseholdData, kind: 'recipe' | 'place', from: string, to: string) {
+  if (!to.trim() || norm(to) === norm(from)) return;
+  const { list, items } = tagLists(x, kind);
+  x[list] = swapTag(x[list], from, to);
+  for (const it of items) if (it.tags) it.tags = swapTag(it.tags, from, to);
+}
+
+/** Removes a recipe or place tag from everything. */
+export function removeTag(x: HouseholdData, kind: 'recipe' | 'place', t: string) {
+  const { list, items } = tagLists(x, kind);
+  x[list] = dropTag(x[list], t);
+  for (const it of items) if (it.tags) { it.tags = dropTag(it.tags, t); if (!it.tags.length) delete it.tags; }
+}
+
+/** How many recipes or places use a tag (other than the one being edited). */
+export const tagUses = (D: HouseholdData, kind: 'recipe' | 'place', t: string, exceptId?: string) =>
+  (kind === 'recipe' ? D.recipes : D.places).filter(it => it.id !== exceptId && (it.tags ?? []).some(x => norm(x) === norm(t))).length;

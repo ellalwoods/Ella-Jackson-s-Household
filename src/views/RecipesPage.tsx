@@ -5,6 +5,7 @@ import { bucketAverage, fmtQty, isStocked, itemCost, costContext, miniCost, mini
 import type { Update } from '../Household';
 import RecipeEditor, { safeLink } from './RecipeEditor';
 import { confirmRemove } from './confirm';
+import TagFilter from './TagFilter';
 
 export default function RecipesPage({ D, update, mon }: { D: HouseholdData; update: Update; mon: Date }) {
   const [q, setQ] = useState('');
@@ -21,7 +22,6 @@ export default function RecipesPage({ D, update, mon }: { D: HouseholdData; upda
   const weekKeys = DOW.map((_, i) => key(addDays(mon, i)));
   const mains = mealRecipes(D);
   const minis = searchRecipes(miniRecipes(D), q).sort((a, b) => a.name.localeCompare(b.name));
-  const usedTags = D.recipeTags.filter(t => mains.some(r => (r.tags ?? []).some(x => norm(x) === norm(t))));
   const recipes = searchRecipes(mains, q).filter(r => mealFilter === 'all' || r.meals.includes(mealFilter))
     .filter(r => !tagFilter || (r.tags ?? []).some(x => norm(x) === norm(tagFilter))).sort((a, b) => a.name.localeCompare(b.name));
   const editingBucket = editing?.startsWith('bucket:');
@@ -131,18 +131,8 @@ export default function RecipesPage({ D, update, mon }: { D: HouseholdData; upda
             })}
           </div>
         </div>
-        {usedTags.length > 0 && (
-          <div className="filter-row">
-            <span className="filter-label">Tags</span>
-            <div className="row" style={{ gap: 4 }}>
-              {['', ...usedTags].map(t => (
-                <button key={t || 'all'} className={'mini-tag' + (tagFilter === t ? ' on' : '')} aria-pressed={tagFilter === t} onClick={() => setTagFilter(t)}>
-                  {t || 'Any'}{t && ' · ' + mains.filter(r => (r.tags ?? []).some(x => norm(x) === norm(t))).length}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+        <TagFilter D={D} update={update} kind="recipe" active={tagFilter} onPick={setTagFilter}
+          count={t => mains.filter(r => (r.tags ?? []).some(x => norm(x) === norm(t))).length} />
       </div>
       {editing && <RecipeEditor key={editing} D={D} update={update} recipe={editingRecipe} kind={editKind} bucket={bucketBeingEdited} onDone={() => setEditing(null)} />}
       <div className="auto-grid" style={{ gridTemplateColumns: 'repeat(auto-fill,minmax(min(100%,280px),1fr))' }}>

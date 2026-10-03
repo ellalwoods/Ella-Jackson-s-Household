@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { DOW, dowIndex, MON, parse, key } from '../lib/dates';
-import { HouseholdData, MEAL_LABEL, Meal, money, norm, Place, PLACE_KIND_LABEL, PLACE_KINDS, PlaceKind, uid } from '../lib/model';
+import { dropTag, HouseholdData, MEAL_LABEL, removeTag, renameTag, swapTag, tagUses, Meal, money, norm, Place, PLACE_KIND_LABEL, PLACE_KINDS, PlaceKind, uid } from '../lib/model';
 import type { Update } from '../Household';
 import { safeLink, TagEdit } from './RecipeEditor';
 import { confirmRemove } from './confirm';
+import TagFilter from './TagFilter';
 
 type Show = 'all' | 'want' | 'been';
 
@@ -18,7 +19,6 @@ export default function PlacesPage({ D, update }: { D: HouseholdData; update: Up
 
   const pq = norm(q);
   const visits = placeVisits(D);
-  const usedTags = D.placeTags.filter(t => D.places.some(p => (p.tags ?? []).some(x => norm(x) === norm(t))));
   const list = D.places
     .filter(p => !pq || [p.name, p.suburb, ...(p.tags ?? []), p.notes].some(v => norm(v).includes(pq)))
     .filter(p => kind === 'all' || p.kind === kind)
@@ -60,16 +60,7 @@ export default function PlacesPage({ D, update }: { D: HouseholdData; update: Up
               ))}
             </div>
           </div>
-          {usedTags.length > 0 && (
-            <div className="filter-row">
-              <span className="filter-label">Tags</span>
-              <div className="row" style={{ gap: 4 }}>
-                {['', ...usedTags].map(t => (
-                  <button key={t || 'any'} className={'mini-tag' + (tag === t ? ' on' : '')} aria-pressed={tag === t} onClick={() => setTag(t)}>{t || 'Any'}</button>
-                ))}
-              </div>
-            </div>
-          )}
+          <TagFilter D={D} update={update} kind="place" active={tag} onPick={setTag} />
         </div>
       )}
 
@@ -151,25 +142,15 @@ export function PlaceDialog({ D, update, place, onClose, onSaved, initialName = 
   }, [onClose]);
 
   // Place tags are shared, so renaming or removing one applies to every place.
-  const renameTag = (from: string, to: string) => {
-    const t = to.trim();
-    if (!t || norm(t) === norm(from)) return;
-    const swap = (ts: string[]) => ts.map(x => (norm(x) === norm(from) ? t : x)).filter((z, i, a) => a.findIndex(y => norm(y) === norm(z)) === i);
-    setTags(swap);
-    update(x => {
-      x.placeTags = swap(x.placeTags);
-      for (const p of x.places) if (p.tags) p.tags = swap(p.tags);
-    });
+  const renamePlaceTag = (from: string, to: string) => {
+    if (!to.trim() || norm(to) === norm(from)) return;
+    setTags(ts => swapTag(ts, from, to));
+    update(x => renameTag(x, 'place', from, to));
   };
-  const deleteTag = (t: string) => {
-    const used = D.places.some(p => p.id !== place?.id && (p.tags ?? []).some(x => norm(x) === norm(t)));
-    if (used && !confirmRemove('the “' + t + '” tag from every place')) return;
-    const drop = (ts: string[]) => ts.filter(x => norm(x) !== norm(t));
-    setTags(drop);
-    update(x => {
-      x.placeTags = drop(x.placeTags);
-      for (const p of x.places) if (p.tags) { p.tags = drop(p.tags); if (!p.tags.length) delete p.tags; }
-    });
+  const deletePlaceTag = (t: string) => {
+    if (tagUses(D, 'place', t, place?.id) && !confirmRemove('the “' + t + '” tag from every place')) return;
+    setTags(ts => dropTag(ts, t));
+    update(x => removeTag(x, 'place', t));
   };
   const addTag = () => {
     const t = newTag.trim();
@@ -213,7 +194,7 @@ export function PlaceDialog({ D, update, place, onClose, onSaved, initialName = 
         <div className="row" style={{ alignItems: 'center' }}>
           <span className="field-label" style={{ width: 40 }}>Tags</span>
           {editingTags
-            ? allTags.map(t => <TagEdit key={t} tag={t} onRename={n => renameTag(t, n)} onDelete={() => deleteTag(t)} />)
+            ? allTags.map(t => <TagEdit key={t} tag={t} onRename={n => renamePlaceTag(t, n)} onDelete={() => deletePlaceTag(t)} />)
             : allTags.map(t => {
               const on = tags.some(x => norm(x) === norm(t));
               return <button key={t} className={'mini-tag' + (on ? ' on' : '')} aria-pressed={on} onClick={() => setTags(ts => (on ? ts.filter(x => norm(x) !== norm(t)) : [...ts, t]))}>{t}</button>;

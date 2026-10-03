@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Bucket, BucketItem, BucketUse, HouseholdData, Meal, MEAL_LABEL, MEALS, miniRecipes, money, norm, Price, Recipe, RecipeIngredient, STAPLE_COST, uid, Unit } from '../lib/model';
+import { Bucket, BucketItem, removeTag, renameTag, swapTag, tagUses, BucketUse, HouseholdData, Meal, MEAL_LABEL, MEALS, miniRecipes, money, norm, Price, Recipe, RecipeIngredient, STAPLE_COST, uid, Unit } from '../lib/model';
 import { bucketAverage, costContext, itemCost, priceMap, stapleSet, useCost } from '../lib/food';
 import type { Update } from '../Household';
 import { UnitSelect } from './PantryPage';
@@ -163,7 +163,7 @@ export default function RecipeEditor({ D, update, recipe, bucket = null, kind = 
     onDone();
   };
 
-  const renameTag = (from: string, to: string) => {
+  const renameRecipeTag = (from: string, to: string) => {
     const t = to.trim();
     if (!t || norm(t) === norm(from)) return;
     const swap = (ts: string[]) => ts.map(x => (norm(x) === norm(from) ? t : x));
@@ -172,26 +172,21 @@ export default function RecipeEditor({ D, update, recipe, bucket = null, kind = 
       setRows(rs => rs.map(r => ({ ...r, tags: swap(r.tags) })));
     } else {
       // Recipe tags are shared, so a rename applies to every recipe.
-      setTags(swap);
-      update(x => {
-        x.recipeTags = swap(x.recipeTags).filter((z, i, a) => a.findIndex(y => norm(y) === norm(z)) === i);
-        for (const r of x.recipes) if (r.tags) r.tags = swap(r.tags);
-      });
+      setTags(ts => swapTag(ts, from, t));
+      update(x => renameTag(x, 'recipe', from, t));
     }
   };
-  const deleteTag = (t: string) => {
+  const deleteRecipeTag = (t: string) => {
     const drop = (ts: string[]) => ts.filter(x => norm(x) !== norm(t));
     if (isBucket) {
       setBucketTags(drop);
       setRows(rs => rs.map(r => ({ ...r, tags: drop(r.tags) })));
       return;
     }
-    if (!confirmRemove('the “' + t + '” tag from every recipe')) return;
+    // Only ask when other recipes would lose it too.
+    if (tagUses(D, 'recipe', t, recipe?.id) && !confirmRemove('the “' + t + '” tag from every recipe')) return;
     setTags(drop);
-    update(x => {
-      x.recipeTags = drop(x.recipeTags);
-      for (const r of x.recipes) if (r.tags) { r.tags = drop(r.tags); if (!r.tags.length) delete r.tags; }
-    });
+    update(x => removeTag(x, 'recipe', t));
   };
 
   const summary = isBucket ? (priced.length ? 'Average ' + money(average) + ' per item' : 'Add prices to work out the average')
@@ -236,7 +231,7 @@ export default function RecipeEditor({ D, update, recipe, bucket = null, kind = 
       )}
       <TagRow label={isBucket ? '' : 'Tags'} tags={isBucket ? bucketTags : allRecipeTags} selected={isBucket ? bucketTags : tags} selectable={!isBucket}
         onToggle={t => setTags(ts => ts.some(x => norm(x) === norm(t)) ? ts.filter(x => norm(x) !== norm(t)) : [...ts, t])}
-        onRename={renameTag} onDelete={deleteTag}
+        onRename={renameRecipeTag} onDelete={deleteRecipeTag}
         value={newTag} onValue={setNewTag} onAdd={addTag} placeholder={isBucket ? '+ New tag, e.g. Greens' : '+ New tag, e.g. Quick'} />
     </>),
   });

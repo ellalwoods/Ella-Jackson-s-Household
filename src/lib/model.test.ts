@@ -1,6 +1,6 @@
 import { describe as group, expect, it } from 'vitest';
 import { addDays, key, mondayOf, weekLabel } from './dates';
-import { budget, Category, describe, eatOutName, HouseholdData, migrate, money, num, occurs, seed, setShare } from './model';
+import { budget, Category, describe, eatOutName, removeTag, renameTag, tagUses, HouseholdData, migrate, money, num, occurs, seed, setShare } from './model';
 
 const mon = mondayOf(new Date(2026, 8, 23)); // Mon 21 Sep 2026
 
@@ -107,5 +107,22 @@ group('places', () => {
     expect(eatOutName(d, '2026-10-02|dinner')).toBe('Bella Brutta');
     expect(eatOutName(d, '2026-10-03|lunch')).toBe('Somewhere new');
     expect(eatOutName(d, '2026-10-04|lunch')).toBe('');
+  });
+});
+
+group('shared tags', () => {
+  it('renames and removes a tag everywhere, merging duplicates', () => {
+    const d = seed();
+    d.recipeTags = ['Qiuck', 'Quick', 'Kids'];
+    d.recipes[0].tags = ['Qiuck', 'Kids'];
+    d.recipes[1].tags = ['Quick', 'Qiuck'];
+    renameTag(d, 'recipe', 'Qiuck', 'Quick');
+    expect(d.recipeTags).toEqual(['Quick', 'Kids']);
+    expect(d.recipes[0].tags).toEqual(['Quick', 'Kids']);
+    expect(d.recipes[1].tags).toEqual(['Quick']);
+    expect(tagUses(d, 'recipe', 'Kids')).toBe(1);
+    removeTag(d, 'recipe', 'Kids');
+    expect(d.recipeTags).toEqual(['Quick']);
+    expect(d.recipes[0].tags).toEqual(['Quick']);
   });
 });
