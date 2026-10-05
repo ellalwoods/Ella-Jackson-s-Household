@@ -2,3 +2,9 @@ node_modules
 dist
 .env
 .env.local
+
+# Compiler output (type-check with tsc --noEmit)
+*.tsbuildinfo
+src/**/*.js
+supabase/**/*.js
+vite.config.js

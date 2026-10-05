@@ -122,6 +122,10 @@ const TOOLS = [
             },
           },
         },
+        buckets: {
+          type: 'array', description: 'Existing buckets this recipe draws from, e.g. [{name: "Vegetables", count: 2}] for "any 2 veg". Add the bucket first if it does not exist.',
+          items: { type: 'object', required: ['name'], additionalProperties: false, properties: { name: { type: 'string' }, count: { type: 'number', description: 'How many items from the bucket (default: the bucket’s usual number per meal, or 1).' } } },
+        },
         mini: { type: 'boolean', description: 'True for a mini recipe (sauce, dressing, garnish, side): not planned as a meal on its own, but picked from a bucket.' },
         bucket: { type: 'string', description: 'For a mini recipe: the existing bucket to add it to as an option (e.g. "Sauces").' },
         method: { type: 'string', description: 'Brief numbered steps, one per line.' },
@@ -171,6 +175,14 @@ const TOOLS = [
     },
   },
   {
+    name: 'link_bucket',
+    description: 'Make an existing recipe draw from an existing bucket (e.g. Stir-fry uses 2 from Vegetables), or change how many it uses. count 0 unlinks it.',
+    inputSchema: {
+      type: 'object', required: ['recipe', 'bucket'], additionalProperties: false,
+      properties: { recipe: { type: 'string' }, bucket: { type: 'string' }, count: { type: 'number', description: 'How many items from the bucket (default: the bucket’s usual number per meal, or 1). 0 removes the link.' } },
+    },
+  },
+  {
     name: 'rename_ingredient',
     description: 'Fix an ingredient name everywhere it is used (recipes, buckets, prices, staples, pantry, shopping list), e.g. a typo "Parprkia" → "Paprika". If the new name already exists, the two are merged and the existing price is kept.',
     inputSchema: {
@@ -206,7 +218,10 @@ function summary(d: Json) {
   const prices = new Map(((d.prices ?? []) as Json[]).map(p => [norm(p.name), p]));
   const staples = new Set(((d.staples ?? []) as string[]).map(norm));
   return {
-    recipes: recipes.filter(r => !r.mini).map(r => r.name),
+    recipes: recipes.filter(r => !r.mini).map(r => r.name + ((r.buckets ?? []) as Json[]).map(u => {
+      const b = ((d.buckets ?? []) as Json[]).find(x => x.id === u.bucket);
+      return b ? ` [${u.count} from ${b.name}]` : '';
+    }).join('')),
     mini_recipes: recipes.filter(r => r.mini).map(r => r.name),
     buckets: ((d.buckets ?? []) as Json[]).map(b => b.name + ': ' + (b.items ?? []).map((i: Json) => i.name).join(', ')),
     places: ((d.places ?? []) as Json[]).map(p => p.name),
@@ -217,6 +232,18 @@ function summary(d: Json) {
       return n + (staples.has(norm(n)) ? ' (staple)' : '') + (p ? ' — ' + priceText(p) : '');
     }),
   };
+}
+
+/** Link a recipe to a bucket by name. Returns a note for the reply. */
+function useBucket(d: Json, recipe: Json, bucketName: unknown, count: unknown): string {
+  const want = String(bucketName ?? '').trim();
+  const b = ((d.buckets ?? []) as Json[]).find(x => norm(x.name) === norm(want));
+  if (!b) return `There's no “${want}” bucket yet.`;
+  const n = count === 0 || count === '0' ? 0 : Math.round(num(count) ?? b.perMeal ?? 1);
+  const uses = (recipe.buckets ?? []).filter((u: Json) => u.bucket !== b.id);
+  if (n > 0) uses.push({ bucket: b.id, count: n });
+  if (uses.length) recipe.buckets = uses; else delete recipe.buckets;
+  return n > 0 ? `uses ${n} from ${b.name}` : `no longer uses ${b.name}`;
 }
 
 function addRecipe(d: Json, a: Json): string | Unchanged {
@@ -253,7 +280,13 @@ function addRecipe(d: Json, a: Json): string | Unchanged {
   if (tags.length) recipe.tags = tags;
   if (String(a.method ?? '').trim()) recipe.method = String(a.method).trim();
   if (safeLink(a.link)) recipe.link = safeLink(a.link);
-  let where = '';
+  const links: string[] = [], noBucket: string[] = [];
+  if (!a.mini) for (const u of Array.isArray(a.buckets) ? a.buckets : []) {
+    const note = useBucket(d, recipe, u?.name, u?.count);
+    (note.startsWith('uses') ? links : noBucket).push(note);
+  }
+  let where = links.length ? ` (${links.join(', ')})` : '';
+  if (noBucket.length) where += '. ' + noBucket.join(' ') + ' Add it with add_bucket, then link it with link_bucket';
   if (a.mini) {
     recipe.mini = true;
     const want = String(a.bucket ?? '').trim();
@@ -335,6 +368,16 @@ function addBucket(d: Json, a: Json): string | Unchanged {
     (missing.length ? ` Skipped ${missing.join(', ')}: there's no mini recipe by that name yet.` : '');
 }
 
+function linkBucket(d: Json, a: Json): string | Unchanged {
+  const r = (d.recipes as Json[]).find(x => !x.mini && norm(x.name) === norm(a.recipe));
+  if (!r) throw new Error(`There's no recipe called “${String(a.recipe ?? '')}”.`);
+  const before = JSON.stringify(r.buckets ?? []);
+  const note = useBucket(d, r, a.bucket, a.count);
+  if (note.startsWith('There')) throw new Error(note);
+  if (JSON.stringify(r.buckets ?? []) === before) return unchanged(`${r.name} already ${note}.`);
+  return `${r.name} now ${note}.`;
+}
+
 function renameIngredient(d: Json, a: Json): string | Unchanged {
   const from = String(a.from ?? '').trim(), to = String(a.to ?? '').trim();
   if (!from || !to) throw new Error('Give the name as it is now and the correct name.');
@@ -386,6 +429,7 @@ async function callTool(env: Env, key: string, name: string, args: Json): Promis
     case 'add_place': return change(env, key, d => addPlace(d, args));
     case 'save_prices': return change(env, key, d => savePrices(d, args));
     case 'add_bucket': return change(env, key, d => addBucket(d, args));
+    case 'link_bucket': return change(env, key, d => linkBucket(d, args));
     case 'rename_ingredient': return change(env, key, d => renameIngredient(d, args));
     default: throw new Error('Unknown tool: ' + name);
   }

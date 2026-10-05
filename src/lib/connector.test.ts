@@ -37,7 +37,7 @@ it('speaks MCP: initialize and list tools', async () => {
   expect(init.result.serverInfo.name).toBe('household');
   expect(init.result.protocolVersion).toBe('2025-06-18');
   const list = await call('tools/list');
-  expect(list.result.tools.map((t: any) => t.name)).toEqual(['get_household_summary', 'add_recipe', 'add_place', 'add_bucket', 'rename_ingredient', 'save_prices']);
+  expect(list.result.tools.map((t: any) => t.name)).toEqual(['get_household_summary', 'add_recipe', 'add_place', 'add_bucket', 'link_bucket', 'rename_ingredient', 'save_prices']);
 });
 
 it('adds a recipe the app can read, reusing tags and keeping existing prices', async () => {
@@ -128,6 +128,24 @@ it('adds a bucket, then more items to it, including a mini recipe', async () => 
   const mini = d.recipes.find(x => x.name === 'Tahini dressing')!;
   expect(b).toMatchObject({ perMeal: 2, tags: ['Greens'] });
   expect(b.items).toEqual([{ name: 'Broccoli', qty: 1, unit: 'each', tags: ['Greens'] }, { name: 'Zucchini', qty: 1, unit: 'each' }, { name: 'Tahini dressing', recipe: mini.id }]);
+});
+
+it('links recipes to buckets', async () => {
+  await tool('add_bucket', { name: 'Vegetables', per_meal: 2, items: [{ name: 'Broccoli' }] });
+  const r = await tool('add_recipe', { name: 'Stir-fry', ingredients: [{ name: 'Rice', qty: 150, unit: 'g' }], buckets: [{ name: 'vegetables' }, { name: 'Protein' }] });
+  expect(r.content[0].text).toContain('(uses 2 from Vegetables)');
+  expect(r.content[0].text).toContain('no “Protein” bucket');
+  const d = migrate(server.data)!;
+  const veg = d.buckets.find(b => b.name === 'Vegetables')!;
+  expect(d.recipes.find(x => x.name === 'Stir-fry')!.buckets).toEqual([{ bucket: veg.id, count: 2 }]);
+
+  expect((await tool('link_bucket', { recipe: 'stir-fry', bucket: 'Vegetables', count: 3 })).content[0].text).toBe('Stir-fry now uses 3 from Vegetables.');
+  expect((await tool('link_bucket', { recipe: 'Stir-fry', bucket: 'Vegetables', count: 3 })).content[0].text).toContain('already');
+  const s = JSON.parse((await tool('get_household_summary', {})).content[0].text);
+  expect(s.recipes).toContain('Stir-fry [3 from Vegetables]');
+  expect((await tool('link_bucket', { recipe: 'Stir-fry', bucket: 'Vegetables', count: 0 })).content[0].text).toBe('Stir-fry now no longer uses Vegetables.');
+  expect(migrate(server.data)!.recipes.find(x => x.name === 'Stir-fry')!.buckets).toBeUndefined();
+  expect((await tool('link_bucket', { recipe: 'Nope', bucket: 'Vegetables' })).isError).toBe(true);
 });
 
 it('renames a misspelled ingredient everywhere, merging into the correct one', async () => {
