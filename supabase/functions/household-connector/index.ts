@@ -7,8 +7,8 @@
 //   https://<project-ref>.supabase.co/functions/v1/household-connector/<household key>
 //
 // The household key in the URL is the same one at the end of your app link, so only someone
-// with your link can use it. The tools can only add things (and update ingredient prices) —
-// nothing is deleted. Saves use the same versioned `save_household` function as the app, so
+// with your link can use it. The tools add recipes, places and prices, and can rename an
+// ingredient (to fix a typo) — nothing else is changed or deleted. Saves use the same versioned `save_household` function as the app, so
 // it can't overwrite a change made on a phone at the same moment.
 //
 // Single file, no imports, so it can be pasted into the Supabase dashboard editor.
@@ -18,7 +18,7 @@ type Env = { url: string; apiKey: string };
 const UNITS = ['g', 'kg', 'ml', 'L', 'each'];
 const MEALS = ['breakfast', 'lunch', 'dinner', 'other'];
 const PLACE_KINDS = ['restaurant', 'bar', 'cafe', 'takeaway', 'other'];
-const SERVER = { name: 'household', version: '1.0.0' };
+const SERVER = { name: 'household', version: '1.1.0' };
 
 const norm = (s: unknown) => String(s ?? '').trim().toLowerCase();
 const uid = () => Math.random().toString(36).slice(2, 9);
@@ -96,7 +96,7 @@ const TOOLS = [
   },
   {
     name: 'add_recipe',
-    description: 'Add a recipe to the app. Amounts must already be for 2 people and the method already brief. Ingredient units must be one of g, kg, ml, L, each. Mark salt, pepper, oils, dried herbs/spices and similar as staple (no amount). Optionally include what a pack costs to buy (e.g. 500 g for 4.50) — saved only if that ingredient has no price yet.',
+    description: 'Add a recipe (a meal you plan) or a mini recipe (a sauce, dressing or garnish used inside a bucket — set mini: true). Amounts must already be for 2 people and the method already brief. Ingredient units must be one of g, kg, ml, L, each. Mark salt, pepper, oils, dried herbs/spices and similar as staple (no amount). Optionally include what a pack costs to buy (e.g. 500 g for 4.50) — saved only if that ingredient has no price yet.',
     inputSchema: {
       type: 'object',
       required: ['name', 'ingredients'],
@@ -122,6 +122,8 @@ const TOOLS = [
             },
           },
         },
+        mini: { type: 'boolean', description: 'True for a mini recipe (sauce, dressing, garnish, side): not planned as a meal on its own, but picked from a bucket.' },
+        bucket: { type: 'string', description: 'For a mini recipe: the existing bucket to add it to as an option (e.g. "Sauces").' },
         method: { type: 'string', description: 'Brief numbered steps, one per line.' },
         link: { type: 'string', description: 'Where the recipe came from, if known.' },
       },
@@ -142,6 +144,14 @@ const TOOLS = [
         notes: { type: 'string', description: 'One short line, e.g. what to order or whether to book.' },
         been: { type: 'boolean', description: 'True if they have already been; false for want to try.' },
       },
+    },
+  },
+  {
+    name: 'rename_ingredient',
+    description: 'Fix an ingredient name everywhere it is used (recipes, buckets, prices, staples, pantry, shopping list), e.g. a typo "Parprkia" → "Paprika". If the new name already exists, the two are merged and the existing price is kept.',
+    inputSchema: {
+      type: 'object', required: ['from', 'to'], additionalProperties: false,
+      properties: { from: { type: 'string', description: 'The name as it is now.' }, to: { type: 'string', description: 'The correct name.' } },
     },
   },
   {
@@ -174,6 +184,7 @@ function summary(d: Json) {
   return {
     recipes: recipes.filter(r => !r.mini).map(r => r.name),
     mini_recipes: recipes.filter(r => r.mini).map(r => r.name),
+    buckets: ((d.buckets ?? []) as Json[]).map(b => b.name + ': ' + (b.items ?? []).map((i: Json) => i.name).join(', ')),
     places: ((d.places ?? []) as Json[]).map(p => p.name),
     recipe_tags: d.recipeTags ?? [],
     place_tags: d.placeTags ?? [],
@@ -218,8 +229,18 @@ function addRecipe(d: Json, a: Json): string | Unchanged {
   if (tags.length) recipe.tags = tags;
   if (String(a.method ?? '').trim()) recipe.method = String(a.method).trim();
   if (safeLink(a.link)) recipe.link = safeLink(a.link);
+  let where = '';
+  if (a.mini) {
+    recipe.mini = true;
+    const want = String(a.bucket ?? '').trim();
+    if (want) {
+      const b = ((d.buckets ?? []) as Json[]).find(x => norm(x.name) === norm(want));
+      if (b) { (b.items ??= []).push({ name, recipe: recipe.id }); where = ` and to the ${b.name} bucket`; }
+      else where = `. There's no “${want}” bucket, so add it to one in the app`;
+    }
+  }
   d.recipes.push(recipe);
-  return `Added “${name}” with ${ingredients.length} ingredients.` +
+  return `Added ${a.mini ? 'mini recipe ' : ''}“${name}” with ${ingredients.length} ingredients${where}.` +
     (priced.length ? ` Saved prices for ${priced.join(', ')}.` : '') +
     (kept.length ? ` Kept the existing prices for ${kept.join(', ')}.` : '');
 }
@@ -253,6 +274,46 @@ function savePrices(d: Json, a: Json): string | Unchanged {
   return done.length ? 'Saved prices: ' + done.join('; ') + '.' : unchanged('No prices to save.');
 }
 
+function renameIngredient(d: Json, a: Json): string | Unchanged {
+  const from = String(a.from ?? '').trim(), to = String(a.to ?? '').trim();
+  if (!from || !to) throw new Error('Give the name as it is now and the correct name.');
+  if (from === to) return unchanged('Those are the same name.');
+  const f = norm(from), t = norm(to);
+  const known = (list: Json[]) => list.find(x => norm(x.name) === t)?.name;
+  const target = known(d.prices) ?? known(d.pantry ?? []) ?? (d.staples as string[]).find(s => norm(s) === t) ?? to;
+  let uses = 0;
+  const fix = (x: Json) => { if (norm(x.name) === f && !x.recipe) { x.name = target; uses++; } };
+  for (const r of d.recipes as Json[]) {
+    (r.ingredients ?? []).forEach(fix);
+    // If the recipe now lists it twice, keep the first.
+    if (r.ingredients) r.ingredients = r.ingredients.filter((g: Json, i: number, all: Json[]) => norm(g.name) !== t || all.findIndex(h => norm(h.name) === t) === i);
+  }
+  for (const b of (d.buckets ?? []) as Json[]) {
+    (b.items ?? []).forEach(fix);
+    if (b.items) b.items = b.items.filter((g: Json, i: number, all: Json[]) => g.recipe || norm(g.name) !== t || all.findIndex(h => !h.recipe && norm(h.name) === t) === i);
+  }
+  const merge = (list: Json[]) => {
+    const i = list.findIndex(x => norm(x.name) === f);
+    if (i < 0) return list;
+    uses++;
+    if (list.some(x => norm(x.name) === t)) return list.filter((_, j) => j !== i); // keep the correct one
+    list[i] = { ...list[i], name: target };
+    return list;
+  };
+  d.prices = merge(d.prices);
+  if (Array.isArray(d.pantry)) d.pantry = merge(d.pantry);
+  if ((d.staples as string[]).some(s => norm(s) === f)) {
+    uses++;
+    d.staples = (d.staples as string[]).filter(s => norm(s) !== f);
+    if (!(d.staples as string[]).some(s => norm(s) === t)) d.staples.push(target);
+  }
+  for (const week of Object.values(d.shopExtras ?? {}) as Json[][]) week.forEach(fix);
+  for (const meal of Object.values(d.picks ?? {}) as Json[]) for (const id of Object.keys(meal)) meal[id] = meal[id].map((n: string) => norm(n) === f ? target : n);
+  if (d.shopSections?.[f] && !d.shopSections[t]) d.shopSections[t] = d.shopSections[f];
+  if (d.shopSections) delete d.shopSections[f];
+  return uses ? `Renamed “${from}” to “${target}” in ${uses} place${uses === 1 ? '' : 's'}.` : unchanged(`Nothing is called “${from}”, so nothing changed.`);
+}
+
 async function callTool(env: Env, key: string, name: string, args: Json): Promise<string> {
   switch (name) {
     case 'get_household_summary': {
@@ -263,6 +324,7 @@ async function callTool(env: Env, key: string, name: string, args: Json): Promis
     case 'add_recipe': return change(env, key, d => addRecipe(d, args));
     case 'add_place': return change(env, key, d => addPlace(d, args));
     case 'save_prices': return change(env, key, d => savePrices(d, args));
+    case 'rename_ingredient': return change(env, key, d => renameIngredient(d, args));
     default: throw new Error('Unknown tool: ' + name);
   }
 }
@@ -307,7 +369,7 @@ async function answer(env: Env, key: string, m: any): Promise<unknown> {
           protocolVersion: m.params?.protocolVersion ?? '2025-06-18',
           capabilities: { tools: {} },
           serverInfo: SERVER,
-          instructions: 'Adds recipes, places and ingredient prices to Ella & Jackson\'s household app. Call get_household_summary before adding, to reuse names and avoid duplicates.',
+          instructions: 'Adds recipes, mini recipes, places and ingredient prices, and fixes misspelled ingredient names to Ella & Jackson\'s household app. Call get_household_summary before adding, to reuse names and avoid duplicates.',
         });
       case 'ping': return ok({});
       case 'tools/list': return ok({ tools: TOOLS });

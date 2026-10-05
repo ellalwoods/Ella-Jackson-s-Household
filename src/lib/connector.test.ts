@@ -37,7 +37,7 @@ it('speaks MCP: initialize and list tools', async () => {
   expect(init.result.serverInfo.name).toBe('household');
   expect(init.result.protocolVersion).toBe('2025-06-18');
   const list = await call('tools/list');
-  expect(list.result.tools.map((t: any) => t.name)).toEqual(['get_household_summary', 'add_recipe', 'add_place', 'save_prices']);
+  expect(list.result.tools.map((t: any) => t.name)).toEqual(['get_household_summary', 'add_recipe', 'add_place', 'rename_ingredient', 'save_prices']);
 });
 
 it('adds a recipe the app can read, reusing tags and keeping existing prices', async () => {
@@ -101,6 +101,35 @@ it('summarises what is there, and retries if a phone saved at the same moment', 
   });
   await tool('add_place', { name: 'Single O', kind: 'cafe' });
   expect(migrate(server.data)!.places.map(p => p.name)).toEqual(['Single O']);
+});
+
+it('adds a mini recipe into a bucket', async () => {
+  server.data.buckets = [{ id: 'b1', name: 'Sauces', items: [{ name: 'Pesto' }] }];
+  const r = await tool('add_recipe', { name: 'Salsa verde', mini: true, bucket: 'sauces', ingredients: [{ name: 'Parsley', qty: 1, unit: 'each' }] });
+  expect(r.content[0].text).toContain('to the Sauces bucket');
+  const d = migrate(server.data)!;
+  const salsa = d.recipes.find(x => x.name === 'Salsa verde')!;
+  expect(salsa.mini).toBe(true);
+  expect(d.buckets[0].items).toEqual([{ name: 'Pesto' }, { name: 'Salsa verde', recipe: salsa.id }]);
+  const s = JSON.parse((await tool('get_household_summary', {})).content[0].text);
+  expect(s.mini_recipes).toEqual(['Salsa verde']);
+  expect(s.buckets).toEqual(['Sauces: Pesto, Salsa verde']);
+});
+
+it('renames a misspelled ingredient everywhere, merging into the correct one', async () => {
+  server.data.recipes.push({ id: 'x', name: 'Goulash', meals: ['dinner'], ingredients: [{ name: 'Parprkia', qty: 5, unit: 'g' }] });
+  server.data.prices.push({ name: 'Parprkia', qty: 100, unit: 'g', price: 9 }, { name: 'Paprika', qty: 50, unit: 'g', price: 3 });
+  server.data.staples.push('Parprkia');
+  const r = await tool('rename_ingredient', { from: 'parprkia', to: 'paprika' });
+  expect(r.content[0].text).toContain('Renamed “parprkia” to “Paprika”');
+  const d = migrate(server.data)!;
+  expect(d.recipes.find(x => x.id === 'x')!.ingredients).toEqual([{ name: 'Paprika', qty: 5, unit: 'g' }]);
+  expect(d.prices.filter(p => /pa?r?p?r/i.test(p.name) && /ika|kia/i.test(p.name))).toEqual([{ name: 'Paprika', qty: 50, unit: 'g', price: 3 }]);
+  expect(d.staples).toContain('Paprika');
+  expect(d.staples).not.toContain('Parprkia');
+  const v = server.version;
+  expect((await tool('rename_ingredient', { from: 'Parprkia', to: 'Paprika' })).content[0].text).toContain('Nothing is called');
+  expect(server.version).toBe(v);
 });
 
 it('refuses the wrong key and non-POST requests', async () => {

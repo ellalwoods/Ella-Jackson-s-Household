@@ -4,7 +4,7 @@ A Claude Project with the **Household connector** adds things straight into the 
 recipe link or text, or a place name, and it appears on the Recipes or Places page.
 
 The connector (`supabase/functions/household-connector/index.ts`) can only **add** recipes and
-places and **save ingredient prices**. It can't delete or change anything else. It's protected by
+places, **save ingredient prices** and **fix misspelled ingredient names**. It can't delete or change anything else. It's protected by
 your household key, the same one at the end of your app link.
 
 ---
@@ -69,6 +69,17 @@ RECIPES (a link, a screenshot or pasted text)
 - Meals: breakfast, lunch, dinner and/or other. Tags: reuse existing tags where they fit; add "Quick" if it takes 30 minutes or less.
 - Include the original link.
 - Don't add prices unless I ask. When I do, follow the brand rules above.
+
+RECIPES vs MINI RECIPES vs BUCKETS
+- A recipe is a whole meal we plan on a day (e.g. "Chicken stir-fry"). Add it with add_recipe.
+- A bucket is a group of interchangeable options a recipe can draw from, chosen when the meal is planned (e.g. a "Vegetables" bucket with Broccoli, Zucchini, Capsicum; a "Sauces" bucket). The summary lists the buckets and what's in them.
+- A mini recipe is a small recipe that is never a meal on its own: a sauce, dressing, marinade, garnish or simple side (e.g. "Salsa verde", "Tahini dressing"). It lives inside a bucket as one option; picking it adds its ingredients to the shopping list. Add it with add_recipe and mini: true, and put it in the bucket that fits best (bucket: "Sauces"). If no bucket fits, add it without one and tell me.
+- If a recipe I paste has a separate sauce or dressing that would work with other meals too, ask whether to save that part as a mini recipe as well.
+- Mini recipes follow the same rules as recipes: for 2 people, brief method, plain ingredient names.
+
+FIXING NAMES
+- If I say an ingredient name is wrong (e.g. "Parprkia should be Paprika"), use rename_ingredient. It fixes it everywhere, so the wrong spelling stops appearing as a suggestion.
+- If you notice a name in the summary that looks misspelled or is a near-duplicate of another (e.g. "Garlic" and "Garlic cloves"), point it out and ask before renaming.
 
 PLACES (a name, maybe with a suburb, or a link)
 - Search the web to find the right place, in Sydney unless I say otherwise. If there are two likely matches, ask which one.
