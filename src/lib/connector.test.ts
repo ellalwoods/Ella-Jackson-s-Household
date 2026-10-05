@@ -37,7 +37,7 @@ it('speaks MCP: initialize and list tools', async () => {
   expect(init.result.serverInfo.name).toBe('household');
   expect(init.result.protocolVersion).toBe('2025-06-18');
   const list = await call('tools/list');
-  expect(list.result.tools.map((t: any) => t.name)).toEqual(['get_household_summary', 'add_recipe', 'add_place', 'rename_ingredient', 'save_prices']);
+  expect(list.result.tools.map((t: any) => t.name)).toEqual(['get_household_summary', 'add_recipe', 'add_place', 'add_bucket', 'rename_ingredient', 'save_prices']);
 });
 
 it('adds a recipe the app can read, reusing tags and keeping existing prices', async () => {
@@ -114,6 +114,20 @@ it('adds a mini recipe into a bucket', async () => {
   const s = JSON.parse((await tool('get_household_summary', {})).content[0].text);
   expect(s.mini_recipes).toEqual(['Salsa verde']);
   expect(s.buckets).toEqual(['Sauces: Pesto, Salsa verde']);
+});
+
+it('adds a bucket, then more items to it, including a mini recipe', async () => {
+  await tool('add_recipe', { name: 'Tahini dressing', mini: true, ingredients: [{ name: 'Tahini', qty: 30, unit: 'g' }] });
+  const r = await tool('add_bucket', { name: 'Vegetables', per_meal: 2, items: [{ name: 'Broccoli', qty: 1, unit: 'each', tags: ['Greens'] }, { name: 'Zucchini', qty: 1, unit: 'each' }] });
+  expect(r.content[0].text).toBe('Added the Vegetables bucket with 2 items.');
+  const more = await tool('add_bucket', { name: 'vegetables', items: [{ name: 'broccoli' }, { name: 'Tahini dressing', mini_recipe: true }, { name: 'Nope', mini_recipe: true }] });
+  expect(more.content[0].text).toContain('Added Tahini dressing to the Vegetables bucket');
+  expect(more.content[0].text).toContain('Skipped Nope');
+  const d = migrate(server.data)!;
+  const b = d.buckets.find(x => x.name === 'Vegetables')!;
+  const mini = d.recipes.find(x => x.name === 'Tahini dressing')!;
+  expect(b).toMatchObject({ perMeal: 2, tags: ['Greens'] });
+  expect(b.items).toEqual([{ name: 'Broccoli', qty: 1, unit: 'each', tags: ['Greens'] }, { name: 'Zucchini', qty: 1, unit: 'each' }, { name: 'Tahini dressing', recipe: mini.id }]);
 });
 
 it('renames a misspelled ingredient everywhere, merging into the correct one', async () => {

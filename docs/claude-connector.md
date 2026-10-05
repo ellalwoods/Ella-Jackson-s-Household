@@ -3,7 +3,7 @@
 A Claude Project with the **Household connector** adds things straight into the app: paste a
 recipe link or text, or a place name, and it appears on the Recipes or Places page.
 
-The connector (`supabase/functions/household-connector/index.ts`) can only **add** recipes and
+The connector (`supabase/functions/household-connector/index.ts`) can only **add** recipes, mini recipes, buckets and
 places, **save ingredient prices** and **fix misspelled ingredient names**. It can't delete or change anything else. It's protected by
 your household key, the same one at the end of your app link.
 
@@ -72,7 +72,8 @@ RECIPES (a link, a screenshot or pasted text)
 
 RECIPES vs MINI RECIPES vs BUCKETS
 - A recipe is a whole meal we plan on a day (e.g. "Chicken stir-fry"). Add it with add_recipe.
-- A bucket is a group of interchangeable options a recipe can draw from, chosen when the meal is planned (e.g. a "Vegetables" bucket with Broccoli, Zucchini, Capsicum; a "Sauces" bucket). The summary lists the buckets and what's in them.
+- A bucket is a group of interchangeable options a recipe can draw from, chosen when the meal is planned (e.g. a "Vegetables" bucket with Broccoli, Zucchini, Capsicum; a "Sauces" bucket). The summary lists the buckets and what's in them. Add one with add_bucket: plain item names, the amount each option uses per meal for 2 people, and how many items a meal usually uses (per_meal). Using add_bucket with an existing bucket's name adds new items to it. To put a mini recipe in a bucket, add the mini recipe first, then list it as an item with mini_recipe: true (or give bucket when adding the mini recipe).
+- When a recipe says something like "any green veg" or "your choice of protein", suggest a bucket for it instead of picking one.
 - A mini recipe is a small recipe that is never a meal on its own: a sauce, dressing, marinade, garnish or simple side (e.g. "Salsa verde", "Tahini dressing"). It lives inside a bucket as one option; picking it adds its ingredients to the shopping list. Add it with add_recipe and mini: true, and put it in the bucket that fits best (bucket: "Sauces"). If no bucket fits, add it without one and tell me.
 - If a recipe I paste has a separate sauce or dressing that would work with other meals too, ask whether to save that part as a mini recipe as well.
 - Mini recipes follow the same rules as recipes: for 2 people, brief method, plain ingredient names.

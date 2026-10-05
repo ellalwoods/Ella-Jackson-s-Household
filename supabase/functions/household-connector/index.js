@@ -7,7 +7,7 @@
 //   https://<project-ref>.supabase.co/functions/v1/household-connector/<household key>
 //
 // The household key in the URL is the same one at the end of your app link, so only someone
-// with your link can use it. The tools add recipes, places and prices, and can rename an
+// with your link can use it. The tools add recipes, buckets, places and prices, and can rename an
 // ingredient (to fix a typo) — nothing else is changed or deleted. Saves use the same versioned `save_household` function as the app, so
 // it can't overwrite a change made on a phone at the same moment.
 //
@@ -61,7 +61,7 @@ async function change(env, key, apply) {
         if (!cur)
             throw new Error('This connector link has the wrong household key.');
         const d = cur.data;
-        for (const k of ['recipes', 'prices', 'staples', 'recipeTags', 'places', 'placeTags'])
+        for (const k of ['recipes', 'prices', 'staples', 'recipeTags', 'places', 'placeTags', 'buckets'])
             if (!Array.isArray(d[k]))
                 d[k] = [];
         const message = apply(d);
@@ -143,6 +143,30 @@ const TOOLS = [
                 link: { type: 'string', description: 'Website or booking page.' },
                 notes: { type: 'string', description: 'One short line, e.g. what to order or whether to book.' },
                 been: { type: 'boolean', description: 'True if they have already been; false for want to try.' },
+            },
+        },
+    },
+    {
+        name: 'add_bucket',
+        description: 'Add a bucket: a group of interchangeable options a recipe draws from, picked when the meal is planned (e.g. "Vegetables": Broccoli, Zucchini, Capsicum). If a bucket with that name exists, the new items are added to it. An item can be an existing mini recipe (give its name and mini_recipe: true).',
+        inputSchema: {
+            type: 'object', required: ['name', 'items'], additionalProperties: false,
+            properties: {
+                name: { type: 'string' },
+                per_meal: { type: 'number', description: 'How many items a meal usually uses (default 1).' },
+                items: {
+                    type: 'array',
+                    items: {
+                        type: 'object', required: ['name'], additionalProperties: false,
+                        properties: {
+                            name: { type: 'string', description: 'Plain ingredient name, or the exact name of a mini recipe.' },
+                            qty: { type: 'number', description: 'Amount used per meal for 2 people.' },
+                            unit: { type: 'string', enum: UNITS },
+                            tags: { type: 'array', items: { type: 'string' }, description: 'Tags within this bucket, e.g. Greens, Root veg.' },
+                            mini_recipe: { type: 'boolean', description: 'True if this item is an existing mini recipe.' },
+                        },
+                    },
+                },
             },
         },
     },
@@ -300,6 +324,56 @@ function savePrices(d, a) {
     }
     return done.length ? 'Saved prices: ' + done.join('; ') + '.' : unchanged('No prices to save.');
 }
+function addBucket(d, a) {
+    const name = String(a.name ?? '').trim();
+    if (!name)
+        throw new Error('A bucket needs a name.');
+    if (!Array.isArray(d.buckets))
+        d.buckets = [];
+    let b = d.buckets.find(x => norm(x.name) === norm(name));
+    const isNew = !b;
+    if (!b) {
+        b = { id: uid(), name, items: [] };
+        const per = num(a.per_meal);
+        if (per)
+            b.perMeal = Math.round(per);
+        d.buckets.push(b);
+    }
+    b.items ??= [];
+    const added = [], missing = [];
+    for (const it of Array.isArray(a.items) ? a.items : []) {
+        const iname = String(it?.name ?? '').trim();
+        if (!iname || b.items.some(x => norm(x.name) === norm(iname)))
+            continue;
+        if (it.mini_recipe) {
+            const mini = d.recipes.find(r => r.mini && norm(r.name) === norm(iname));
+            if (!mini) {
+                missing.push(iname);
+                continue;
+            }
+            b.items.push({ name: mini.name, recipe: mini.id });
+            added.push(mini.name);
+            continue;
+        }
+        const item = { name: iname };
+        const q = num(it.qty), u = unitOf(it.unit);
+        if (q && u) {
+            item.qty = q;
+            item.unit = u;
+        }
+        const tags = tagsFor(it.tags, b.tags ??= []);
+        if (tags.length)
+            item.tags = tags;
+        if (!b.tags.length)
+            delete b.tags;
+        b.items.push(item);
+        added.push(iname);
+    }
+    if (!isNew && !added.length)
+        return unchanged(`The ${b.name} bucket already has all of those.` + (missing.length ? ` There's no mini recipe called ${missing.join(', ')}.` : ''));
+    return (isNew ? `Added the ${b.name} bucket with ${added.length} items.` : `Added ${added.join(', ')} to the ${b.name} bucket.`) +
+        (missing.length ? ` Skipped ${missing.join(', ')}: there's no mini recipe by that name yet.` : '');
+}
 function renameIngredient(d, a) {
     const from = String(a.from ?? '').trim(), to = String(a.to ?? '').trim();
     if (!from || !to)
@@ -366,6 +440,7 @@ async function callTool(env, key, name, args) {
         case 'add_recipe': return change(env, key, d => addRecipe(d, args));
         case 'add_place': return change(env, key, d => addPlace(d, args));
         case 'save_prices': return change(env, key, d => savePrices(d, args));
+        case 'add_bucket': return change(env, key, d => addBucket(d, args));
         case 'rename_ingredient': return change(env, key, d => renameIngredient(d, args));
         default: throw new Error('Unknown tool: ' + name);
     }
@@ -416,7 +491,7 @@ async function answer(env, key, m) {
                     protocolVersion: m.params?.protocolVersion ?? '2025-06-18',
                     capabilities: { tools: {} },
                     serverInfo: SERVER,
-                    instructions: 'Adds recipes, mini recipes, places and ingredient prices, and fixes misspelled ingredient names to Ella & Jackson\'s household app. Call get_household_summary before adding, to reuse names and avoid duplicates.',
+                    instructions: 'Adds recipes, mini recipes, buckets, places and ingredient prices, and fixes misspelled ingredient names to Ella & Jackson\'s household app. Call get_household_summary before adding, to reuse names and avoid duplicates.',
                 });
             case 'ping': return ok({});
             case 'tools/list': return ok({ tools: TOOLS });
