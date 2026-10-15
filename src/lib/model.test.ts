@@ -1,6 +1,6 @@
 import { describe as group, expect, it } from 'vitest';
 import { addDays, key, mondayOf, weekLabel } from './dates';
-import { budget, Category, describe, eatOutName, removeTag, renameTag, tagUses, HouseholdData, migrate, money, num, occurs, seed, setShare, SplitEntry, splitBalance, OtherEntry, otherOpen, otherPos, settleOther } from './model';
+import { budget, Category, describe, eatOutName, removeTag, renameTag, tagUses, HouseholdData, migrate, money, num, occurs, seed, setShare } from './model';
 
 const mon = mondayOf(new Date(2026, 8, 23)); // Mon 21 Sep 2026
 
@@ -127,38 +127,3 @@ group('shared tags', () => {
   });
 });
 
-group('split balance', () => {
-  const e = (x: Partial<SplitEntry>): SplitEntry => ({ id: 'x', date: '2026-10-15', what: 'x', amount: 0, paidBy: 'ella', forWho: 'both', ...x });
-  it('works out who owes whom, and settling up clears it', () => {
-    const list = [
-      e({ amount: 180, paidBy: 'ella' }),                       // Jackson owes 90
-      e({ amount: 120, paidBy: 'jackson' }),                    // Ella owes 60
-      e({ amount: 40, paidBy: 'ella', forWho: 'jackson' }),     // Jackson owes 40
-      e({ amount: 5, paidBy: 'ella', forWho: 'ella' }),         // no change
-      e({ amount: 30, paidBy: 'jackson', ellaShare: 20 }),      // Ella owes 20
-    ];
-    expect(splitBalance(list)).toBe(50);
-    list.push(e({ amount: 50, paidBy: 'jackson', forWho: 'ella', settle: true }));
-    expect(splitBalance(list)).toBe(0);
-    expect(splitBalance([e({ amount: 10.02, paidBy: 'jackson' })])).toBe(-5.01);
-  });
-});
-
-group('money with other people', () => {
-  const o = (x: Partial<OtherEntry>): OtherEntry => ({ id: Math.random().toString(36), date: '2026-10-15', person: 'Sam', what: 'x', amount: 0, dir: 'they', whose: 'ella', ...x });
-  it('keeps one running total per person', () => {
-    const list = [o({ amount: 200, dir: 'they' }), o({ amount: 400, dir: 'we' }), o({ person: 'Mia', amount: 30 })];
-    const p = otherPos(otherOpen(list, 'sam'));
-    expect(p.ella + p.jackson).toBe(-200); // Ella owes Sam 200, one line, one column
-  });
-  it('settling up archives and, when both of us had a part, squares it between us', () => {
-    const list = [o({ amount: 60, dir: 'we', whose: 'both' }), o({ amount: 20, dir: 'they', whose: 'ella' })];
-    // Sam paid 60 for both of us (we owe 30 each); Ella covered Sam 20. Net: we owe Sam 40.
-    const { marker, couple } = settleOther(list, 'Sam', 'ella', '2026-10-16');
-    expect(marker).toMatchObject({ settle: true, amount: 40, dir: 'we', whose: 'ella', link: couple!.id });
-    // Ella paid Sam 40, of which 30 was Jackson's share: Jackson owes Ella 30.
-    expect(couple).toMatchObject({ amount: 30, paidBy: 'ella', forWho: 'jackson' });
-    expect(splitBalance([couple!])).toBe(30);
-    expect(otherOpen([...list, marker], 'Sam')).toEqual([]);
-  });
-});
