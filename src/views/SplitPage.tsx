@@ -28,14 +28,20 @@ export default function SplitPage({ D, update }: { D: HouseholdData; update: Upd
   const [paidBy, setPaidBy] = useState<PersonId>(() => [...D.splits].reverse().find(e => !e.settle)?.paidBy ?? 'ella');
   const [how, setHow] = useState<SplitHow>('both');
   const [ellaShare, setEllaShare] = useState('');
-  const [showOld, setShowOld] = useState(false);
+  const [showArchive, setShowArchive] = useState(false);
+  const [openRound, setOpenRound] = useState<string | null>(null);
 
-  // Newest first; everything after the last settle-up is what the balance is made of.
-  const all = D.splits.map((e, i) => ({ e, i })).sort((a, b) => b.e.date.localeCompare(a.e.date) || b.i - a.i).map(x => x.e);
-  const lastSettle = all.findIndex(e => e.settle);
-  const current = lastSettle < 0 ? all : all.slice(0, lastSettle);
-  const earlier = lastSettle < 0 ? [] : all.slice(lastSettle);
-  const bal = splitBalance(D.splits);
+  // Each settle-up closes a round. Rounds follow the order things were added, so a cost
+  // back-dated after settling still counts as unsettled.
+  const rounds: { settle: SplitEntry; items: SplitEntry[] }[] = [];
+  let open: SplitEntry[] = [];
+  for (const e of D.splits) {
+    if (e.settle) { rounds.push({ settle: e, items: open }); open = []; } else open.push(e);
+  }
+  const newestFirst = (l: SplitEntry[]) => l.map((e, i) => ({ e, i })).sort((a, b) => b.e.date.localeCompare(a.e.date) || b.i - a.i).map(x => x.e);
+  const current = newestFirst(open);
+  const archive = rounds.slice().reverse();
+  const bal = splitBalance(open);
   const owed: PersonId | null = bal > 0 ? 'ella' : bal < 0 ? 'jackson' : null;
   const owes = owed && otherPerson(owed);
 
@@ -46,18 +52,32 @@ export default function SplitPage({ D, update }: { D: HouseholdData; update: Upd
     const e: SplitEntry = { id: uid(), date: date || key(new Date()), what: what.trim(), amount: Math.round(amt * 100) / 100, paidBy, forWho: how === 'custom' ? 'both' : how };
     if (how === 'custom') e.ellaShare = Math.round(share * 100) / 100;
     update(x => { x.splits.push(e); });
-    setWhat(''); setAmount(''); setEllaShare(''); setHow('both');
+    setWhat(''); setAmount(''); setEllaShare(''); setHow('both'); setDate(key(new Date()));
   };
 
+  const costs = current.length + ' cost' + (current.length === 1 ? '' : 's');
+  /** Record the payment (if any) and archive everything since the last settle-up. */
   const settle = () => {
-    if (!owed || !owes) return;
-    const text = PEOPLE[owes].name + ' paid ' + PEOPLE[owed].name + ' back ' + money(Math.abs(bal));
-    try { if (!window.confirm('Record that ' + text + '?')) return; } catch { /* no dialogs */ }
-    const e: SplitEntry = { id: uid(), date: key(new Date()), what: 'Settled up', amount: Math.abs(bal), paidBy: owes, forWho: owed, settle: true };
+    if (!current.length) return;
+    const ask = owed && owes
+      ? 'Record that ' + PEOPLE[owes].name + ' paid ' + PEOPLE[owed].name + ' back ' + money(Math.abs(bal)) + ', and archive these ' + costs + '?'
+      : 'These ' + costs + ' come to all square. Archive them?';
+    try { if (!window.confirm(ask)) return; } catch { /* no dialogs */ }
+    const e: SplitEntry = owed && owes
+      ? { id: uid(), date: key(new Date()), what: 'Settled up', amount: Math.abs(bal), paidBy: owes, forWho: owed, settle: true }
+      : { id: uid(), date: key(new Date()), what: 'Settled up', amount: 0, paidBy: 'ella', forWho: 'jackson', settle: true };
     update(x => { x.splits.push(e); });
   };
+  const undoSettle = (r: { settle: SplitEntry; items: SplitEntry[] }) => {
+    const n = r.items.length + ' cost' + (r.items.length === 1 ? '' : 's');
+    try { if (!window.confirm('Undo this settle-up? Its ' + n + ' go back to unsettled.')) return; } catch { /* no dialogs */ }
+    update(x => { x.splits = x.splits.filter(z => z.id !== r.settle.id); });
+  };
+  const settledText = (e: SplitEntry) => e.amount > 0
+    ? PEOPLE[e.paidBy].name + ' paid ' + PEOPLE[otherPerson(e.paidBy)].name + ' ' + money(e.amount)
+    : 'all square';
 
-  const row = (e: SplitEntry, i: number) => {
+  const row = (e: SplitEntry, i: number, archived = false) => {
     const effect = (e.paidBy === 'ella' ? e.amount : 0) - ellaPart(e); // + means Jackson owes Ella more
     return (
       <div key={e.id} className="split-row" style={{ borderTop: i ? '1px solid var(--line)' : 'none' }}>
@@ -80,8 +100,10 @@ export default function SplitPage({ D, update }: { D: HouseholdData; update: Upd
             </div>
           )}
         </div>
-        <button className="link-btn" style={{ flex: 'none' }}
-          onClick={() => { if (confirmRemove('“' + (e.settle ? 'Settled up' : e.what) + '”')) update(x => { x.splits = x.splits.filter(z => z.id !== e.id); }); }}>Remove</button>
+        {!archived && (
+          <button className="link-btn" style={{ flex: 'none' }}
+            onClick={() => { if (confirmRemove('“' + e.what + '”')) update(x => { x.splits = x.splits.filter(z => z.id !== e.id); }); }}>Remove</button>
+        )}
       </div>
     );
   };
@@ -109,19 +131,42 @@ export default function SplitPage({ D, update }: { D: HouseholdData; update: Upd
               <span className="hero-mid">All square</span>
             )}
           </div>
-          {owed && <button className="pill-sm dark" onClick={settle}>Settle up</button>}
+          {current.length > 0 && <button className="pill-sm dark" onClick={settle}>{owed ? 'Settle up' : 'Archive these'}</button>}
         </div>
 
         <div className="card" style={{ padding: '14px 18px' }}>
-          <div className="card-title">{earlier.length ? 'Since you last settled' : 'Shared costs'}</div>
-          {current.map(row)}
-          {!current.length && <p className="empty">{earlier.length ? 'Nothing since you settled up.' : 'Nothing yet. Add a shared cost when one of you pays for something together.'}</p>}
+          <div className="card-title">Unsettled<span className="sub">{current.length ? costs : ''}</span></div>
+          {current.map((e, i) => row(e, i))}
+          {!current.length && <p className="empty">{archive.length ? 'Nothing since you last settled up.' : 'Nothing yet. Add a shared cost when one of you pays for something together.'}</p>}
         </div>
 
-        {earlier.length > 0 && (
+        {archive.length > 0 && (
           <div>
-            <button className="link-btn" onClick={() => setShowOld(v => !v)}>{showOld ? 'Hide earlier' : 'Show earlier (' + earlier.length + ')'}</button>
-            {showOld && <div className="card" style={{ padding: '6px 18px', marginTop: 8, opacity: 0.8 }}>{earlier.map(row)}</div>}
+            <button className="link-btn" onClick={() => setShowArchive(v => !v)}>
+              {showArchive ? 'Hide archive' : 'Archive · ' + archive.length + ' settle-up' + (archive.length === 1 ? '' : 's')}
+            </button>
+            {showArchive && (
+              <div className="card" style={{ padding: '6px 18px', marginTop: 8 }}>
+                {archive.map((r, i) => {
+                  const isOpen = openRound === r.settle.id;
+                  return (
+                    <div key={r.settle.id} style={{ borderTop: i ? '1px solid var(--line)' : 'none', padding: '10px 0' }}>
+                      <div className="split-row" style={{ padding: 0 }}>
+                        <span className="split-date muted">{shortDate(r.settle.date)}</span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 15 }}>✓ Settled · {settledText(r.settle)}</div>
+                          <button className="link-btn note" onClick={() => setOpenRound(isOpen ? null : r.settle.id)}>
+                            {isOpen ? 'Hide' : 'Show'} {r.items.length} cost{r.items.length === 1 ? '' : 's'}
+                          </button>
+                        </div>
+                        {i === 0 && <button className="link-btn" style={{ flex: 'none' }} onClick={() => undoSettle(r)}>Undo</button>}
+                      </div>
+                      {isOpen && <div className="split-archived">{newestFirst(r.items).map((e, j) => row(e, j, true))}</div>}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
         <p className="note" style={{ margin: '0 2px' }}>Separate from the budget: only what you add here counts.</p>

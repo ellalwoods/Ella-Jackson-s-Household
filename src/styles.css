@@ -488,7 +488,9 @@ select.field-sm.unit { width: var(--w-unit); padding: 0 4px 0 8px; }
 .split-hero { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 24px; padding: 18px 20px; }
 .split-row { display: flex; gap: 12px; align-items: center; padding: 12px 0; }
 .split-date { width: 48px; flex: none; font-size: 12px; }
+.split-archived { margin: 8px 0 0 60px; padding-left: 12px; border-left: 2px solid var(--line); opacity: .85; }
 @media (max-width: 520px) {
   .split-row { flex-wrap: wrap; row-gap: 4px; }
   .split-date { width: 100%; }
+  .split-archived { margin-left: 0; }
 }
