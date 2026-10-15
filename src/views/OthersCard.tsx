@@ -21,7 +21,7 @@ export function otherTotals(D: HouseholdData) {
  * Money with people outside the household: two columns of running totals (what you owe,
  * what you're owed). Tap a name for the costs behind it, a part-payment or a settle-up.
  */
-export default function OthersCard({ D, update }: { D: HouseholdData; update: Update }) {
+export default function OthersCard({ D, update, onAdd }: { D: HouseholdData; update: Update; onAdd: () => void }) {
   const [openName, setOpenName] = useState<string | null>(null);
   const [showPast, setShowPast] = useState(false);
   const past = D.others.filter(e => e.settle).reverse();
@@ -31,8 +31,6 @@ export default function OthersCard({ D, update }: { D: HouseholdData; update: Up
   const even = people.filter(p => p.total === 0);
   const sum = (l: typeof people) => Math.abs(l.reduce((t, p) => t + p.total, 0));
   const sel = people.find(p => norm(p.name) === norm(openName ?? ''));
-
-  if (!people.length && !D.others.length) return null;
 
   const line = (p: (typeof people)[number]) => {
     const on = sel?.name === p.name;
@@ -46,7 +44,7 @@ export default function OthersCard({ D, update }: { D: HouseholdData; update: Up
 
   return (
     <div className="card" style={{ padding: '14px 18px' }}>
-      <div className="card-title">Other people</div>
+      <div className="card-title">Other people<button className="link-btn card-title-end" onClick={onAdd}>+ Add someone</button></div>
       <div className="other-cols">
         <div>
           <div className="other-head">You owe{owe.length > 0 && <span> · {money(sum(owe))}</span>}</div>
@@ -67,7 +65,7 @@ export default function OthersCard({ D, update }: { D: HouseholdData; update: Up
       )}
       {!sel && people.length > 0 && <p className="note" style={{ margin: '8px 0 0' }}>Tap a name to see what it’s made up of, or to settle up.</p>}
       {sel && <PersonDetail D={D} update={update} p={sel} onClose={() => setOpenName(null)} />}
-      {!people.length && <p className="empty">Everyone’s settled up.</p>}
+      {!people.length && <p className="note" style={{ margin: '8px 0 0' }}>{D.others.length ? 'Everyone’s settled up.' : 'Money you owe friends or family, or they owe you. Each person is kept as one running total.'}</p>}
       {past.length > 0 && (
         <div style={{ marginTop: 10 }}>
           <button className="link-btn note" onClick={() => setShowPast(v => !v)}>{showPast ? 'Hide past settle-ups' : 'Past settle-ups (' + past.length + ')'}</button>

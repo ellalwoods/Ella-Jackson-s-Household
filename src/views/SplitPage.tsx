@@ -188,7 +188,10 @@ export default function SplitPage({ D, update }: { D: HouseholdData; update: Upd
             )}
           </div>
         )}
-        <OthersCard D={D} update={update} />
+        <OthersCard D={D} update={update} onAdd={() => {
+          setMode('other');
+          setTimeout(() => { const el = document.querySelector<HTMLInputElement>('input[aria-label="Who"]'); el?.scrollIntoView({ behavior: 'smooth', block: 'center' }); el?.focus({ preventScroll: true }); }, 0);
+        }} />
         <p className="note" style={{ margin: '0 2px' }}>Separate from the budget: only what you add here counts.</p>
       </section>
 
