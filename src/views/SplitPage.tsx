@@ -27,7 +27,8 @@ export default function SplitPage({ D, update }: { D: HouseholdData; update: Upd
   const [date, setDate] = useState(key(new Date()));
   const [paidBy, setPaidBy] = useState<PersonId>(() => [...D.splits].reverse().find(e => !e.settle)?.paidBy ?? 'ella');
   const [how, setHow] = useState<SplitHow>('both');
-  const [ellaShare, setEllaShare] = useState('');
+  const [shareText, setShareText] = useState('');
+  const [shareOf, setShareOf] = useState<PersonId>('ella');
   const [showArchive, setShowArchive] = useState(false);
   const [openRound, setOpenRound] = useState<string | null>(null);
 
@@ -45,14 +46,16 @@ export default function SplitPage({ D, update }: { D: HouseholdData; update: Upd
   const owed: PersonId | null = bal > 0 ? 'ella' : bal < 0 ? 'jackson' : null;
   const owes = owed && otherPerson(owed);
 
-  const amt = num(amount), share = num(ellaShare);
-  const customBad = how === 'custom' && (!ellaShare.trim() || share < 0 || share > amt);
+  // Custom: type either person's share; the other person's is the rest.
+  const amt = num(amount), share = num(shareText);
+  const customBad = how === 'custom' && (!shareText.trim() || share < 0 || share > amt);
+  const otherShare = Math.round((amt - share) * 100) / 100;
   const add = () => {
     if (!what.trim() || !(amt > 0) || customBad) return;
     const e: SplitEntry = { id: uid(), date: date || key(new Date()), what: what.trim(), amount: Math.round(amt * 100) / 100, paidBy, forWho: how === 'custom' ? 'both' : how };
-    if (how === 'custom') e.ellaShare = Math.round(share * 100) / 100;
+    if (how === 'custom') e.ellaShare = shareOf === 'ella' ? Math.round(share * 100) / 100 : otherShare;
     update(x => { x.splits.push(e); });
-    setWhat(''); setAmount(''); setEllaShare(''); setHow('both'); setDate(key(new Date()));
+    setWhat(''); setAmount(''); setShareText(''); setHow('both'); setDate(key(new Date()));
   };
 
   const costs = current.length + ' cost' + (current.length === 1 ? '' : 's');
@@ -189,8 +192,14 @@ export default function SplitPage({ D, update }: { D: HouseholdData; update: Upd
         </div>
         {how === 'custom' && (
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 14, flexWrap: 'wrap' }}>
-            Ella’s share <input className="field-sm compact money" value={ellaShare} onChange={e => setEllaShare(e.target.value)} inputMode="decimal" placeholder="$0" aria-label="Ella’s share" />
-            <span className="muted">Jackson’s: {amt > 0 && !customBad ? money(Math.round((amt - share) * 100) / 100) : '—'}</span>
+            <div className="seg" role="group" aria-label="Whose share to enter">
+              {(['ella', 'jackson'] as PersonId[]).map(p => (
+                <button key={p} className={shareOf === p ? 'on' : ''} aria-pressed={shareOf === p}
+                  onClick={() => { if (p !== shareOf && shareText.trim() && amt > 0 && !customBad) setShareText(String(otherShare)); setShareOf(p); }}>{PEOPLE[p].name}’s</button>
+              ))}
+            </div>
+            <input className="field-sm compact money" value={shareText} onChange={e => setShareText(e.target.value)} inputMode="decimal" placeholder="$0" aria-label={PEOPLE[shareOf].name + '’s share'} />
+            <span className="muted">{PEOPLE[otherPerson(shareOf)].name}’s: {amt > 0 && !customBad ? money(otherShare) : '—'}</span>
           </div>
         )}
         <button className="pill-sm dark" onClick={add} disabled={!what.trim() || !(amt > 0) || customBad}>Add</button>
