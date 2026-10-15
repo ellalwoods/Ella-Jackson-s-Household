@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { key, MON, parse } from '../lib/dates';
-import { ChoreOwner, ellaPart, HouseholdData, money, num, otherPerson, PEOPLE, PersonId, SplitEntry, splitBalance, uid } from '../lib/model';
+import { OWNERS, ChoreOwner, ellaPart, HouseholdData, money, norm, num, OtherEntry, otherPerson, PEOPLE, PersonId, SplitEntry, splitBalance, uid } from '../lib/model';
 import { confirmRemove } from './confirm';
+import OthersCard from './OthersCard';
 import type { Update } from '../Household';
 
 type SplitHow = ChoreOwner | 'custom';
@@ -30,6 +31,12 @@ export default function SplitPage({ D, update }: { D: HouseholdData; update: Upd
   const [shareText, setShareText] = useState('');
   const [shareOf, setShareOf] = useState<PersonId>('ella');
   const [showArchive, setShowArchive] = useState(false);
+  // The add panel does both: a cost between the two of you, or money with someone else.
+  const [mode, setMode] = useState<'us' | 'other'>('us');
+  const [person, setPerson] = useState('');
+  const [dir, setDir] = useState<'they' | 'we'>('they');
+  const [whose, setWhose] = useState<ChoreOwner>('both');
+  const knownPeople = Array.from(new Map(D.others.map(e => [norm(e.person), e.person])).values());
   const [openRound, setOpenRound] = useState<string | null>(null);
 
   // Each settle-up closes a round. Rounds follow the order things were added, so a cost
@@ -50,7 +57,16 @@ export default function SplitPage({ D, update }: { D: HouseholdData; update: Upd
   const amt = num(amount), share = num(shareText);
   const customBad = how === 'custom' && (!shareText.trim() || share < 0 || share > amt);
   const otherShare = Math.round((amt - share) * 100) / 100;
+  const addOther = () => {
+    const name = knownPeople.find(n => norm(n) === norm(person)) ?? person.trim();
+    if (!name || !what.trim() || !(amt > 0)) return;
+    const e: OtherEntry = { id: uid(), date: date || key(new Date()), person: name, what: what.trim(), amount: Math.round(amt * 100) / 100, dir, whose };
+    update(x => { x.others.push(e); });
+    setWhat(''); setAmount(''); setDate(key(new Date()));
+  };
+  const us = whose === 'both' ? 'us' : PEOPLE[whose].name;
   const add = () => {
+    if (mode === 'other') return addOther();
     if (!what.trim() || !(amt > 0) || customBad) return;
     const e: SplitEntry = { id: uid(), date: date || key(new Date()), what: what.trim(), amount: Math.round(amt * 100) / 100, paidBy, forWho: how === 'custom' ? 'both' : how };
     if (how === 'custom') e.ellaShare = shareOf === 'ella' ? Math.round(share * 100) / 100 : otherShare;
@@ -172,16 +188,43 @@ export default function SplitPage({ D, update }: { D: HouseholdData; update: Upd
             )}
           </div>
         )}
+        <OthersCard D={D} update={update} />
         <p className="note" style={{ margin: '0 2px' }}>Separate from the budget: only what you add here counts.</p>
       </section>
 
       <aside className="add-panel" style={{ marginBottom: 0 }}>
-        <div className="add-panel-title">+ Add a shared cost</div>
-        <input className="field-sm compact" value={what} onChange={e => setWhat(e.target.value)} placeholder="What, e.g. Dinner at Chin Chin" aria-label="What" />
+        <div className="add-panel-title">+ Add</div>
+        <div className="seg" role="group" aria-label="Between" style={{ alignSelf: 'flex-start' }}>
+          <button className={mode === 'us' ? 'on' : ''} aria-pressed={mode === 'us'} onClick={() => setMode('us')}>Between us</button>
+          <button className={mode === 'other' ? 'on' : ''} aria-pressed={mode === 'other'} onClick={() => setMode('other')}>With someone else</button>
+        </div>
+        {mode === 'other' && (
+          <>
+            <input className="field-sm compact" list="split-people" value={person} onChange={e => setPerson(e.target.value)} placeholder="Who, e.g. Sam" aria-label="Who" />
+            <datalist id="split-people">{knownPeople.map(n => <option key={n} value={n} />)}</datalist>
+          </>
+        )}
+        <input className="field-sm compact" value={what} onChange={e => setWhat(e.target.value)} placeholder={mode === 'us' ? 'What, e.g. Dinner at Chin Chin' : 'What, e.g. Concert ticket'} aria-label="What" />
         <div style={{ display: 'flex', gap: 8 }}>
           <input className="field-sm compact" style={{ flex: 1, minWidth: 0 }} value={amount} onChange={e => setAmount(e.target.value)} inputMode="decimal" placeholder="$ Amount" aria-label="Amount" />
           <input className="field-sm compact" style={{ flex: 1, minWidth: 0 }} type="date" value={date} onChange={e => setDate(e.target.value)} aria-label="Date" />
         </div>
+        {mode === 'other' ? (
+          <>
+            <div className="note">Which of you</div>
+            <div style={{ display: 'flex', gap: 6 }}>
+              {(['ella', 'jackson', 'both'] as ChoreOwner[]).map(w => {
+                const on = whose === w, c = OWNERS[w];
+                return <button key={w} className="owner-pick" aria-pressed={on} onClick={() => setWhose(w)} style={{ borderColor: c.color, background: on ? c.color : '#fff', color: on ? '#fff' : c.ink }}>{c.name}</button>;
+              })}
+            </div>
+            <div className="seg" role="group" aria-label="Which way" style={{ alignSelf: 'flex-start', flexWrap: 'wrap', borderRadius: 18 }}>
+              <button className={dir === 'they' ? 'on' : ''} aria-pressed={dir === 'they'} onClick={() => setDir('they')}>{(person.trim() || 'They') + ' owe' + (person.trim() ? 's ' : ' ') + us}</button>
+              <button className={dir === 'we' ? 'on' : ''} aria-pressed={dir === 'we'} onClick={() => setDir('we')}>{(us === 'us' ? 'We owe ' : us + ' owes ') + (person.trim() || 'them')}</button>
+            </div>
+          </>
+        ) : (
+          <>
         <div className="note">Paid by</div>
         <div style={{ display: 'flex', gap: 6 }}>{(['ella', 'jackson'] as PersonId[]).map(pickPayer)}</div>
         <div className="note">Who it was for</div>
@@ -202,7 +245,9 @@ export default function SplitPage({ D, update }: { D: HouseholdData; update: Upd
             <span className="muted">{PEOPLE[otherPerson(shareOf)].name}’s: {amt > 0 && !customBad ? money(otherShare) : '—'}</span>
           </div>
         )}
-        <button className="pill-sm dark" onClick={add} disabled={!what.trim() || !(amt > 0) || customBad}>Add</button>
+          </>
+        )}
+        <button className="pill-sm dark" onClick={add} disabled={!what.trim() || !(amt > 0) || (mode === 'us' ? customBad : !person.trim())}>Add</button>
       </aside>
     </div>
   );

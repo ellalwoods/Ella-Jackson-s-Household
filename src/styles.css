@@ -494,3 +494,18 @@ select.field-sm.unit { width: var(--w-unit); padding: 0 4px 0 8px; }
   .split-date { width: 100%; }
   .split-archived { margin-left: 0; }
 }
+
+/* Split page, other people: two columns of running totals; tap one for its details. */
+.other-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 0 20px; }
+.other-cols > div + div { border-left: 1px solid var(--line); padding-left: 20px; }
+.other-head { font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 4px; }
+.other-head span { font-weight: 400; }
+.other-line { display: flex; width: 100%; align-items: baseline; gap: 8px; padding: 8px 6px; margin: 0 -6px; width: calc(100% + 12px); border: none; border-radius: 8px; background: none; cursor: pointer; text-align: left; color: var(--ink); }
+.other-line:hover, .other-line.on { background: var(--panel); }
+.other-name { flex: 1; min-width: 0; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-decoration: underline; text-decoration-color: var(--border); text-underline-offset: 4px; }
+.other-amt { font-size: 15px; font-weight: 600; }
+.other-detail { margin-top: 12px; padding: 12px 14px; border-radius: 12px; background: var(--panel); border: 1px solid var(--line); }
+@media (max-width: 520px) {
+  .other-cols { gap: 0 12px; }
+  .other-cols > div + div { padding-left: 12px; }
+}

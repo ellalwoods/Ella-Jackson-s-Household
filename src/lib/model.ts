@@ -206,6 +206,63 @@ export const ellaPart = (e: SplitEntry) =>
 export const splitBalance = (entries: SplitEntry[]) =>
   Math.round(entries.reduce((t, e) => t + (e.paidBy === 'ella' ? e.amount : 0) - ellaPart(e), 0) * 100) / 100;
 
+/**
+ * Money with someone outside the household (Split page). `dir` 'they': they owe (we covered
+ * them); 'we': we owe them. `whose` is which of us — 'both' counts half each. A `payment` is
+ * money handed over (recorded so it reduces what's owed); a `settle` marker closes that
+ * person's running total, and `link` is the Ella–Jackson entry it created, if any.
+ */
+export interface OtherEntry {
+  id: string;
+  date: string;
+  person: string;
+  what: string;
+  amount: number;
+  dir: 'they' | 'we';
+  whose: ChoreOwner;
+  payment?: boolean;
+  settle?: boolean;
+  link?: string;
+}
+
+/** Entries with this person since you last settled up with them (in the order added). */
+export const otherOpen = (list: OtherEntry[], person: string) => {
+  let open: OtherEntry[] = [];
+  for (const e of list) if (norm(e.person) === norm(person)) { if (e.settle) open = []; else open.push(e); }
+  return open;
+};
+
+/** What this person owes each of us across these entries (negative: that one of us owes them). */
+export function otherPos(entries: OtherEntry[]): Record<PersonId, number> {
+  const pos = { ella: 0, jackson: 0 };
+  for (const e of entries) {
+    if (e.settle) continue;
+    const v = e.dir === 'they' ? e.amount : -e.amount;
+    if (e.whose === 'both') { pos.ella += v / 2; pos.jackson += v / 2; } else pos[e.whose] += v;
+  }
+  return { ella: Math.round(pos.ella * 100) / 100, jackson: Math.round(pos.jackson * 100) / 100 };
+}
+
+/**
+ * Settle up with someone, with `by` handing over or receiving the whole net amount. Returns
+ * the settle marker, and the Ella–Jackson entry needed when the other one of us had a part.
+ */
+export function settleOther(list: OtherEntry[], person: string, by: PersonId, date: string): { marker: OtherEntry; couple: SplitEntry | null } {
+  const pos = otherPos(otherOpen(list, person));
+  const o = otherPerson(by), part = pos[o];
+  const total = Math.round((pos.ella + pos.jackson) * 100) / 100;
+  let couple: SplitEntry | null = null;
+  if (Math.abs(part) >= 0.005) {
+    // They owed `o`, and `by` collected it: `by` owes `o`. Or `o` owed them, and `by` paid it: `o` owes `by`.
+    couple = part > 0
+      ? { id: uid(), date, what: person + ': ' + PEOPLE[o].name + '’s part of settling up', amount: part, paidBy: o, forWho: by }
+      : { id: uid(), date, what: person + ': ' + PEOPLE[o].name + '’s part of settling up', amount: -part, paidBy: by, forWho: o };
+  }
+  const marker: OtherEntry = { id: uid(), date, person, what: 'Settled up', amount: Math.abs(total), dir: total >= 0 ? 'they' : 'we', whose: by, settle: true };
+  if (couple) marker.link = couple.id;
+  return { marker, couple };
+}
+
 export interface HouseholdData {
   incomes: Income[];
   cats: Category[];
@@ -243,6 +300,8 @@ export interface HouseholdData {
   picks: Record<string, Record<string, string[]>>;
   /** The Split page's shared costs and settle-ups. */
   splits: SplitEntry[];
+  /** The Split page's money with people outside the household. */
+  others: OtherEntry[];
 }
 
 export const uid = () => Math.random().toString(36).slice(2, 9);
@@ -324,6 +383,7 @@ export function seed(today = new Date()): HouseholdData {
     placeTags: [],
     picks: {},
     splits: [],
+    others: [],
   };
 }
 
@@ -338,7 +398,7 @@ export function migrate(d: any): HouseholdData | null {
     ];
   }
   delete d.income;
-  d.recipes ??= []; d.plan ??= {}; d.chores ??= []; d.done ??= {}; d.prices ??= []; d.staples ??= []; d.extras ??= {}; d.spends ??= {}; d.events ??= []; d.tags ??= []; d.shopExtras ??= {}; d.shopSections ??= {}; d.buckets ??= []; d.recipeTags ??= []; d.eatOut ??= {}; d.eatOutPlace ??= {}; d.places ??= []; d.placeTags ??= []; d.picks ??= {}; d.splits ??= [];
+  d.recipes ??= []; d.plan ??= {}; d.chores ??= []; d.done ??= {}; d.prices ??= []; d.staples ??= []; d.extras ??= {}; d.spends ??= {}; d.events ??= []; d.tags ??= []; d.shopExtras ??= {}; d.shopSections ??= {}; d.buckets ??= []; d.recipeTags ??= []; d.eatOut ??= {}; d.eatOutPlace ??= {}; d.places ??= []; d.placeTags ??= []; d.picks ??= {}; d.splits ??= []; d.others ??= [];
   for (const c of d.cats) if (c.fixed === undefined && /\b(rent|transport)\b/i.test(c.name)) c.fixed = true;
   // Fun money, discretionary and savings split what's left, in proportion to what they were set to.
   for (const c of d.cats) if (c.share === undefined && !c.fixed && /fun|discretion|saving/i.test(c.name)) c.share = num(c.ella) + num(c.jackson);
