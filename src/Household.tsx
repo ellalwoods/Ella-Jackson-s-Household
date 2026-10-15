@@ -15,11 +15,12 @@ import ChoresPage from './views/ChoresPage';
 import BudgetPage from './views/BudgetPage';
 import PlacesPage from './views/PlacesPage';
 import CalendarPage from './views/CalendarPage';
+import SplitPage from './views/SplitPage';
 
-export type Page = 'shop' | 'recipes' | 'places' | 'pantry' | 'chores' | 'budget' | 'calendar';
+export type Page = 'shop' | 'recipes' | 'places' | 'pantry' | 'chores' | 'budget' | 'split' | 'calendar';
 export type Update = (m: Mutation) => void;
 
-const NAV: [Page, string][] = [['shop', 'Shopping list'], ['recipes', 'Recipes'], ['places', 'Places'], ['pantry', 'Pantry'], ['chores', 'Chores'], ['budget', 'Budget']];
+const NAV: [Page, string][] = [['shop', 'Shopping list'], ['recipes', 'Recipes'], ['places', 'Places'], ['pantry', 'Pantry'], ['chores', 'Chores'], ['budget', 'Budget'], ['split', 'Split']];
 
 const STATUS_TEXT: Record<SyncStatus, string> = {
   local: 'Saved on this device',
@@ -61,6 +62,7 @@ export default function Household({ data: D, update, status }: Props) {
     chores: ['Chores', D.chores.length + ' chores'],
     budget: ['Budget', 'Your regular week'],
     places: ['Places', D.places.length + ' saved · restaurants, bars and cafés'],
+    split: ['Split', 'Shared costs and who owes whom'],
     calendar: ['Month view', 'Plan ahead'],
   };
 
@@ -118,6 +120,7 @@ export default function Household({ data: D, update, status }: Props) {
           {page === 'chores' && <ChoresPage D={D} update={update} />}
           {page === 'budget' && <BudgetPage D={D} update={update} />}
           {page === 'places' && <PlacesPage D={D} update={update} />}
+          {page === 'split' && <SplitPage D={D} update={update} />}
           {page === 'calendar' && (
             <CalendarPage D={D} update={update} mon={mon} calOff={calOff} setCalOff={setCalOff}
               onPickWeek={w => { setWeek(w); setPage(null); setCalOff(0); }} />

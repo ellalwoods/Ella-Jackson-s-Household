@@ -1,6 +1,6 @@
 import { describe as group, expect, it } from 'vitest';
 import { addDays, key, mondayOf, weekLabel } from './dates';
-import { budget, Category, describe, eatOutName, removeTag, renameTag, tagUses, HouseholdData, migrate, money, num, occurs, seed, setShare } from './model';
+import { budget, Category, describe, eatOutName, removeTag, renameTag, tagUses, HouseholdData, migrate, money, num, occurs, seed, setShare, SplitEntry, splitBalance } from './model';
 
 const mon = mondayOf(new Date(2026, 8, 23)); // Mon 21 Sep 2026
 
@@ -124,5 +124,22 @@ group('shared tags', () => {
     removeTag(d, 'recipe', 'Kids');
     expect(d.recipeTags).toEqual(['Quick']);
     expect(d.recipes[0].tags).toEqual(['Quick']);
+  });
+});
+
+group('split balance', () => {
+  const e = (x: Partial<SplitEntry>): SplitEntry => ({ id: 'x', date: '2026-10-15', what: 'x', amount: 0, paidBy: 'ella', forWho: 'both', ...x });
+  it('works out who owes whom, and settling up clears it', () => {
+    const list = [
+      e({ amount: 180, paidBy: 'ella' }),                       // Jackson owes 90
+      e({ amount: 120, paidBy: 'jackson' }),                    // Ella owes 60
+      e({ amount: 40, paidBy: 'ella', forWho: 'jackson' }),     // Jackson owes 40
+      e({ amount: 5, paidBy: 'ella', forWho: 'ella' }),         // no change
+      e({ amount: 30, paidBy: 'jackson', ellaShare: 20 }),      // Ella owes 20
+    ];
+    expect(splitBalance(list)).toBe(50);
+    list.push(e({ amount: 50, paidBy: 'jackson', forWho: 'ella', settle: true }));
+    expect(splitBalance(list)).toBe(0);
+    expect(splitBalance([e({ amount: 10.02, paidBy: 'jackson' })])).toBe(-5.01);
   });
 });
