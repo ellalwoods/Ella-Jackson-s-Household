@@ -23,19 +23,12 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: |
-            package-lock.json
-            good-word-charlie/package-lock.json
       - run: npm ci
       - run: npm test
       - run: npm run build
         env:
           VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
-      # Good Word, Charlie is published alongside, at <site>/good-word-charlie/
-      - run: npm ci && npm test && npm run build
-        working-directory: good-word-charlie
-      - run: cp -r good-word-charlie/dist dist/good-word-charlie
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
