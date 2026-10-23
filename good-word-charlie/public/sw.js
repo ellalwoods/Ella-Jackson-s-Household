@@ -1,7 +1,7 @@
 // Keeps the site opening instantly and offline once added to the home screen.
 // Progress lives in the browser's storage, never here.
 const CACHE = 'good-word-v1';
-const SHELL = ['/', '/manifest.webmanifest', '/icons/icon.svg', '/icons/apple-touch-icon.png', '/icons/icon-192.png'];
+const SHELL = ['./', './manifest.webmanifest', './icons/icon.svg', './icons/apple-touch-icon.png', './icons/icon-192.png'];
 const FONTS = /^https:\/\/fonts\.(googleapis|gstatic)\.com\//;
 
 self.addEventListener('install', event => {
@@ -29,7 +29,7 @@ self.addEventListener('fetch', event => {
   if (req.method !== 'GET') return;
   // Pages: network first, so newly loaded words arrive straight away.
   if (req.mode === 'navigate') {
-    event.respondWith(fetch(req).then(res => put('/', res)).catch(() => caches.match('/')));
+    event.respondWith(fetch(req).then(res => put('./', res)).catch(() => caches.match('./')));
     return;
   }
   // Built files (hashed, so they never change) and fonts: cache first.

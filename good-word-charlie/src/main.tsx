@@ -11,5 +11,5 @@ createRoot(document.getElementById('root')!).render(
 
 // Opens instantly and offline once installed (see public/sw.js). Only in the built site.
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
-  window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').catch(() => {}); });
+  window.addEventListener('load', () => { navigator.serviceWorker.register('./sw.js').catch(() => {}); });
 }

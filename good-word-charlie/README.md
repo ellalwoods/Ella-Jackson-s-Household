@@ -2,7 +2,7 @@
 
 A phone-first vocabulary site. Each day it deals three new words onto index cards. Practice is multiple choice, and reviews come back on a spaced-repetition schedule. It's named after Charlie, who says "farsicle".
 
-Everything is static. All the words are written ahead of time and published with the site, so visitors never trigger any AI calls or costs. Each person's progress is saved in their own browser.
+Everything is static. All the words are written ahead of time and published with the site, so visitors never trigger any AI calls or costs, and there's no server. Each person's progress is saved in their own browser.
 
 ## Run it locally
 
@@ -13,14 +13,11 @@ npm run dev      # http://localhost:5173
 npm test         # logic tests, plus checks on every word in the bank
 ```
 
-## Put it on Vercel (one time)
+## Where it lives online
 
-1. Go to vercel.com → **Add New… → Project** → import this GitHub repo.
-2. Set **Root Directory** to `good-word-charlie`. Vercel detects Vite by itself, so leave the build settings as they are.
-3. Choose **Deploy**. You'll get a `…vercel.app` address.
-4. Under **Settings → Git**, set the production branch to whichever branch you want live (e.g. `main`).
+It's published with the household app on GitHub Pages, in the same deploy (`.github/workflows/deploy.yml`), at the household address plus `/good-word-charlie/`. Every push to `main` rebuilds both. If any word fails its checks, the deploy stops, so a bad batch never goes live.
 
-No environment variables are needed. After that, every push redeploys the site.
+Unlike the household app, it doesn't need a household key, and it shares nothing with it. Each person's progress stays in their own browser.
 
 **On a phone:** open the address, then **Share → Add to Home Screen** (iPhone) or **⋮ → Install app** (Android). The site then opens full screen with its own icon and works offline.
 
@@ -31,7 +28,7 @@ The words live in `src/data/words.json`. When people run out, the site shows the
 1. In a Claude Code session on this repo, ask for another batch (e.g. "add 100 more words to Good Word, Charlie"). Point it at this README and `WORDS.md`.
 2. The new entries go on the **end** of `words.json`, so everyone keeps their place.
 3. `npm test` must pass. It checks every entry (see below).
-4. Commit and push. Vercel redeploys, and people get the new words the next time they open the site, the same day.
+4. Commit and merge to `main`. GitHub Pages redeploys, and people get the new words the next time they open the site, the same day.
 
 ### What the checks enforce (`src/lib/validate.ts`)
 
