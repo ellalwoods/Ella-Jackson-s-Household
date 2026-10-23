@@ -8,7 +8,7 @@ Avoid:
 - long, showy words for simple ideas (perspicacious, pellucid)
 - words an educated adult already uses daily (tacit, salient, glib)
 
-**Approved (positive examples):** paucity, modicum, glut, risible, specious, spurious, jejune, otiose, perfunctory, desultory, tawdry, nascent, querulous, febrile, oleaginous (of a person), facile, tendentious, nugatory, meretricious, turgid, fatuous, anodyne, inchoate, moribund, peremptory, ersatz, pyrrhic
+**Approved (positive examples):** farcical, paucity, modicum, glut, risible, specious, spurious, jejune, otiose, perfunctory, desultory, tawdry, nascent, querulous, febrile, oleaginous (of a person), facile, tendentious, nugatory, meretricious, turgid, fatuous, anodyne, inchoate, moribund, peremptory, ersatz, pyrrhic
 
 **Rejected (negative examples, also in `src/data/rejected.json`):** unctuous, louche, lugubrious, supercilious, bumptious, garrulous, officious, saturnine, popinjay, milquetoast, sclerotic, gimcrack, perspicacious, pellucid, tacit, glib, salient
 

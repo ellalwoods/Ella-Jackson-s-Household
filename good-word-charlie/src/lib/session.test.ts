@@ -28,14 +28,14 @@ describe('spaced repetition', () => {
 describe('daily words', () => {
   it('gives three new words a day, all due today', () => {
     const s = ensureToday(fresh(), bank, D);
-    expect(s.days[D]).toEqual(['paucity', 'modicum', 'glut']);
+    expect(s.days[D]).toEqual(['farcical', 'paucity', 'modicum']);
     expect(dueWords(s, bank, D)).toHaveLength(3);
     expect(ensureToday(s, bank, D)).toBe(s);
   });
   it('replaces a word marked known, and keeps it out for good', () => {
     let s = ensureToday(fresh(), bank, D);
     s = dismiss(s, bank, 'modicum', 'known', D);
-    expect(s.days[D]).toEqual(['paucity', 'glut', 'risible']);
+    expect(s.days[D]).toEqual(['farcical', 'paucity', 'glut']);
     expect(s.cards.modicum).toBeUndefined();
     expect(unseen(s, bank).some(w => w.word === 'modicum')).toBe(false);
   });
@@ -46,8 +46,8 @@ describe('daily words', () => {
   });
   it('tops up a short day when new words are published', () => {
     const s = ensureToday(fresh(), bank.slice(0, 1), D);
-    expect(s.days[D]).toEqual(['paucity']);
-    expect(ensureToday(s, bank, D).days[D]).toEqual(['paucity', 'modicum', 'glut']);
+    expect(s.days[D]).toEqual(['farcical']);
+    expect(ensureToday(s, bank, D).days[D]).toEqual(['farcical', 'paucity', 'modicum']);
   });
   it('counts the streak back from today or yesterday', () => {
     const s = { ...fresh(), done: { '2026-10-20': true, '2026-10-21': true, '2026-10-22': true } as Record<string, true> };
@@ -61,7 +61,7 @@ describe('practice session', () => {
   it('asks one question per due word, today\'s new words first', () => {
     const s = ensureToday(fresh(), bank, D);
     const sess = startSession(s, bank, D, fixed);
-    expect(sess.items.map(i => i.word)).toEqual(['paucity', 'modicum', 'glut']);
+    expect(sess.items.map(i => i.word)).toEqual(['farcical', 'paucity', 'modicum']);
     for (const it of sess.items) {
       expect(it.options).toHaveLength(4);
       expect(it.options).toContain(it.question.answer);
@@ -77,21 +77,21 @@ describe('practice session', () => {
 
   it('a wrong answer resets the word and asks it once more at the end, without changing the level', () => {
     let s = ensureToday(fresh(), bank, D);
-    s = { ...s, cards: { ...s.cards, paucity: { ...s.cards.paucity, level: 3 } } };
+    s = { ...s, cards: { ...s.cards, farcical: { ...s.cards.farcical, level: 3 } } };
     let sess = startSession(s, bank, D, fixed);
     const first = sess.items[0];
     let r = answer(s, sess, bank, first.question.distractors[0], D, fixed);
     expect(r.correct).toBe(false);
-    expect(r.state.cards.paucity).toMatchObject({ level: 0, due: '2026-10-24', asked: 1 });
+    expect(r.state.cards.farcical).toMatchObject({ level: 0, due: '2026-10-24', asked: 1 });
     expect(r.session.items).toHaveLength(4);
     const retry = r.session.items[3];
-    expect(retry).toMatchObject({ word: 'paucity', retry: true });
+    expect(retry).toMatchObject({ word: 'farcical', retry: true });
     expect(retry.question).not.toBe(first.question);
 
     s = r.state; sess = { ...r.session, i: 3 };
     r = answer(s, sess, bank, retry.question.answer, D, fixed);
     expect(r.correct).toBe(true);
-    expect(r.state.cards.paucity).toMatchObject({ level: 0, due: '2026-10-24', asked: 2 });
+    expect(r.state.cards.farcical).toMatchObject({ level: 0, due: '2026-10-24', asked: 2 });
     expect(r.session.firstRight).toBe(0);
     expect(r.session.items).toHaveLength(4);
   });
@@ -100,9 +100,9 @@ describe('practice session', () => {
     const s = ensureToday(fresh(), bank, D);
     const sess = startSession(s, bank, D, fixed);
     const r = answer(s, sess, bank, sess.items[0].question.answer, D, fixed);
-    expect(r.state.cards.paucity).toMatchObject({ level: 1, due: '2026-10-24', right: 1 });
-    expect(dueWords(r.state, bank, D)).not.toContain('paucity');
-    expect(canDismiss(r.state, 'paucity')).toBe(false);
+    expect(r.state.cards.farcical).toMatchObject({ level: 1, due: '2026-10-24', right: 1 });
+    expect(dueWords(r.state, bank, D)).not.toContain('farcical');
+    expect(canDismiss(r.state, 'farcical')).toBe(false);
     expect(finish(r.state, D).done[D]).toBe(true);
   });
 });

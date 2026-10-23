@@ -1,5 +1,64 @@
 [
   {
+    "word": "farcical",
+    "pos": "adjective",
+    "pron": "FAR-sih-kul",
+    "definition": "So absurd or badly handled as to be ridiculous.",
+    "example": "The meeting became farcical when nobody could find the agenda or the chair.",
+    "questions": [
+      {
+        "type": "pick-meaning",
+        "prompt": "farcical",
+        "answer": "So absurd or badly handled as to be ridiculous.",
+        "distractors": [
+          "Just coming into existence and beginning to develop.",
+          "In terminal decline; close to ending and lacking vitality.",
+          "Complaining in a whining, irritable way."
+        ]
+      },
+      {
+        "type": "pick-word",
+        "prompt": "Ridiculous because of how chaotically or absurdly something is being handled.",
+        "answer": "farcical",
+        "distractors": [
+          "nascent",
+          "querulous",
+          "pyrrhic"
+        ]
+      },
+      {
+        "type": "rewrite",
+        "prompt": "The ticketing system was {so chaotic it was ridiculous}, with three queues for the same door.",
+        "answer": "farcical",
+        "distractors": [
+          "nascent",
+          "querulous",
+          "pyrrhic"
+        ]
+      },
+      {
+        "type": "gap",
+        "prompt": "The election count turned ___ when two boxes of votes were found in a cupboard.",
+        "answer": "farcical",
+        "distractors": [
+          "nascent",
+          "querulous",
+          "oleaginous"
+        ]
+      },
+      {
+        "type": "gap",
+        "prompt": "Asking forty people to sign off on a two-line email is ___.",
+        "answer": "farcical",
+        "distractors": [
+          "nascent",
+          "pyrrhic",
+          "querulous"
+        ]
+      }
+    ]
+  },
+  {
     "word": "paucity",
     "pos": "noun",
     "pron": "PAW-suh-tee",
