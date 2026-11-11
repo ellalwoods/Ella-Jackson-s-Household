@@ -265,6 +265,8 @@ export interface ShopItem {
   buy: Price | null;
   packs: number;
   cost: number | null;
+  /** Left over from an earlier week's list (that week's Monday), not yet bought. */
+  carried?: string;
 }
 export interface Skipped { name: string; note: string }
 
@@ -304,8 +306,43 @@ function addNeed(needs: Map<string, Need>, g: RecipeIngredient, day: string) {
   else e.exact = false;
 }
 
-/** What to buy for the week's dinners, after what's already in the pantry. */
+/** How many earlier weeks the list looks back over for things not yet bought. */
+const CARRY_WEEKS = 8;
+
+/**
+ * The shopping list for a week: what that week's meals need after the pantry, anything an
+ * earlier week needed that still hasn't been bought, and everything added by hand (which
+ * stays until it's bought or removed, whichever week you're looking at).
+ */
 export function shoppingList(D: HouseholdData, mon: Date, today = new Date()) {
+  const { items, skipped } = mealItems(D, mon, today);
+  const seen = new Set(items.map(i => i.lk));
+  for (let back = 1; back <= CARRY_WEEKS; back++) {
+    const pm = addDays(mon, -7 * back), pk = key(pm);
+    if (!D.shopFrom || pk < D.shopFrom) break;
+    for (const i of mealItems(D, pm, today).items) {
+      if (seen.has(i.lk) || D.shopCleared[pk + '|' + i.lk]) continue;
+      seen.add(i.lk);
+      items.push({ ...i, id: 'c:' + pk + ':' + i.lk, carried: pk, status: 'Not bought yet' });
+    }
+  }
+  // Hand-added items always show, whatever the pantry holds, until bought or removed.
+  for (const list of Object.values(D.shopExtras)) for (const m of list) {
+    const buy: Price | null = m.qty && m.unit ? { name: m.name, qty: m.qty, unit: m.unit, price: m.price ?? 0 } : null;
+    items.push({
+      section: D.shopSections[norm(m.name)] ?? guessSection(m.name),
+      id: 'm:' + m.id, lk: norm(m.name), manual: m.id, name: m.name, days: [], status: 'Added',
+      need: null, have: null, buy, packs: buy ? 1 : 0, cost: m.price != null ? round(m.price) : null,
+    });
+  }
+  return { items, skipped };
+}
+
+/** "week of 2 Nov" */
+export const shortWeek = (mon: Date) => 'week of ' + mon.getDate() + ' ' + MON[mon.getMonth()];
+
+/** What one week's meals need, after what's already in the pantry. */
+function mealItems(D: HouseholdData, mon: Date, today: Date) {
   const wk = key(mon);
   // Expired items don't count as stock.
   const pantry = new Map(D.pantry.filter(p => !expiry(p.expires, today)?.expired).map(p => [norm(p.name), p]));
@@ -353,15 +390,6 @@ export function shoppingList(D: HouseholdData, mon: Date, today = new Date()) {
     });
   });
 
-  // Hand-added items always show, whatever the pantry holds.
-  for (const m of D.shopExtras[wk] ?? []) {
-    const buy: Price | null = m.qty && m.unit ? { name: m.name, qty: m.qty, unit: m.unit, price: m.price ?? 0 } : null;
-    items.push({
-      section: D.shopSections[norm(m.name)] ?? guessSection(m.name),
-      id: 'm:' + m.id, lk: norm(m.name), manual: m.id, name: m.name, days: [], status: 'Added',
-      need: null, have: null, buy, packs: buy ? 1 : 0, cost: m.price != null ? round(m.price) : null,
-    });
-  }
   return { items, skipped };
 }
 
@@ -375,11 +403,13 @@ export const buyText = (i: ShopItem) =>
  */
 export function stockUp(x: HouseholdData, items: ShopItem[], wk: string, expires: Record<string, string> = {}) {
   const bought = new Set(items.map(i => i.manual).filter(Boolean));
-  if (bought.size && x.shopExtras[wk]) {
-    x.shopExtras[wk] = x.shopExtras[wk].filter(m => !bought.has(m.id));
-    if (!x.shopExtras[wk].length) delete x.shopExtras[wk];
+  if (bought.size) for (const w of Object.keys(x.shopExtras)) {
+    x.shopExtras[w] = x.shopExtras[w].filter(m => !bought.has(m.id));
+    if (!x.shopExtras[w].length) delete x.shopExtras[w];
   }
   for (const i of items) {
+    // Bought now, so it's no longer owed by any earlier week's list either.
+    for (let back = 1; back <= CARRY_WEEKS; back++) x.shopCleared[key(addDays(parse(wk), -7 * back)) + '|' + i.lk] = 1;
     let p = x.pantry.find(c => norm(c.name) === i.lk);
     if (!p) { p = { name: i.name, state: 'Full' }; x.pantry.push(p); }
     const wasExpired = !!expiry(p.expires)?.expired;

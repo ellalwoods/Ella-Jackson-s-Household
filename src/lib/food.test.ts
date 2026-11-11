@@ -244,3 +244,31 @@ describe('mini recipes in buckets', () => {
     expect(names).not.toContain('Salsa verde');
   });
 });
+
+describe('the list carries on from week to week', () => {
+  it('keeps unbought items from earlier weeks and hand-added items, until bought', () => {
+    const D = seed();
+    const mon = mondayOf(new Date(2026, 10, 9)), last = addDays(mon, -7);
+    D.shopFrom = key(last);
+    D.pantry = [];
+    const r = D.recipes[0];
+    D.plan = { [key(last)]: { dinner: r.id } } as any;
+    D.shopExtras = { [key(last)]: [{ id: 'm1', name: 'Bin bags' }] };
+    const before = shoppingList(D, mon).items;
+    const carried = before.filter(i => i.carried === key(last));
+    expect(carried.length).toBeGreaterThan(0);
+    expect(before.some(i => i.manual === 'm1')).toBe(true);
+    // Buy everything: nothing is carried any more, and the hand-added item is gone.
+    stockUp(D, before, key(mon));
+    const after = shoppingList(D, mon).items;
+    expect(after.filter(i => i.carried)).toEqual([]);
+    expect(after.some(i => i.manual)).toBe(false);
+  });
+  it('does not look back before carrying over began', () => {
+    const D = seed();
+    const mon = mondayOf(new Date(2026, 10, 9));
+    D.shopFrom = key(mon);
+    D.plan = { [key(addDays(mon, -7))]: { dinner: D.recipes[0].id } } as any;
+    expect(shoppingList(D, mon).items.filter(i => i.carried)).toEqual([]);
+  });
+});

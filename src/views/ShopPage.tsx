@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { addDays, key } from '../lib/dates';
+import { addDays, key, parse } from '../lib/dates';
 import { ManualShopItem, money, norm, SHOP_SECTION_LABEL, SHOP_SECTIONS, ShopSection, Unit, uid } from '../lib/model';
-import { buyText, fmtAmount, guessSection, ShopItem, shoppingText, Skipped, stockUp } from '../lib/food';
+import { buyText, fmtAmount, shortWeek, guessSection, ShopItem, shoppingText, Skipped, stockUp } from '../lib/food';
 import type { Update } from '../Household';
 import { ExpiryInput, stockRule, UnitSelect } from './PantryPage';
 
@@ -32,7 +32,8 @@ export default function ShopPage({ update, mon, label, items, skipped, pending =
   const only = (view.only as ShopSection | 'all') || 'all';
   const [copied, setCopied] = useState(false);
   const wk = key(mon);
-  const tick = (i: ShopItem) => wk + '|' + i.id;
+  // Hand-added and carried-over items keep their tick whichever week you're looking at.
+  const tick = (i: ShopItem) => (i.manual || i.carried ? i.id : wk + '|' + i.id);
   const isTicked = (i: ShopItem) => !!ticks[tick(i)];
   const total = items.reduce((a, i) => a + (i.cost ?? 0), 0);
   const text = () => shoppingText(label + ' ' + addDays(mon, 6).getFullYear(), items, skipped);
@@ -59,13 +60,16 @@ export default function ShopPage({ update, mon, label, items, skipped, pending =
     got.forEach(i => { const d = dates[tick(i)]; if (d) exp[i.id] = d; });
     update(x => stockUp(x, got, wk, exp));
     setDates(ds => { const n = { ...ds }; got.forEach(i => delete n[tick(i)]); return n; });
-    // Hand-added items leave the list once they're in the pantry.
-    setTicks(t => { const n = { ...t }; got.filter(i => i.manual).forEach(i => delete n[tick(i)]); return n; });
+    // Hand-added and carried-over items leave the list once they're in the pantry.
+    setTicks(t => { const n = { ...t }; got.filter(i => i.manual || i.carried).forEach(i => delete n[tick(i)]); return n; });
   };
   const removeManual = (id: string) => update(x => {
-    const left = (x.shopExtras[wk] ?? []).filter(m => m.id !== id);
-    if (left.length) x.shopExtras[wk] = left; else delete x.shopExtras[wk];
+    for (const w of Object.keys(x.shopExtras)) {
+      const left = x.shopExtras[w].filter(m => m.id !== id);
+      if (left.length) x.shopExtras[w] = left; else delete x.shopExtras[w];
+    }
   });
+  const dropCarried = (i: ShopItem) => update(x => { x.shopCleared[i.carried + '|' + i.lk] = 1; });
   const addManual = (m: ManualShopItem, section: ShopSection) => update(x => {
     x.shopExtras[wk] = [...(x.shopExtras[wk] ?? []), m];
     x.shopSections[norm(m.name)] = section;
@@ -138,7 +142,7 @@ export default function ShopPage({ update, mon, label, items, skipped, pending =
                     <span style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, whiteSpace: 'normal' }}>
                       <span style={{ fontSize: 15, textDecoration: ck ? 'line-through' : 'none' }}>{i.name}</span>
                       <span style={{ fontSize: 12 }} className="muted">
-                        {i.manual ? 'Added by you' : 'For ' + i.days.join(', ')}{i.staple ? ' · staple' : ''}{i.need ? ' · uses ' + fmtAmount(i.need) : ''}{i.buy ? ' · buy ' + buyText(i) : ''}{i.status !== 'Not stocked' && <span className="phone-inline"> · {i.status}</span>}
+                        {i.manual ? 'Added by you' : i.carried ? 'From the ' + shortWeek(parse(i.carried)) + ' (' + i.days.join(', ') + ')' : 'For ' + i.days.join(', ')}{i.staple ? ' · staple' : ''}{i.need ? ' · uses ' + fmtAmount(i.need) : ''}{i.buy ? ' · buy ' + buyText(i) : ''}{i.status !== 'Not stocked' && !i.manual && !i.carried && <span className="phone-inline"> · {i.status}</span>}
                       </span>
                     </span>
                   </button>
@@ -152,6 +156,7 @@ export default function ShopPage({ update, mon, label, items, skipped, pending =
                         {SHOP_SECTIONS.map(x => <option key={x} value={x}>{SHOP_SECTION_LABEL[x]}</option>)}
                       </select>
                       {i.manual && <button className="link-btn" style={{ fontSize: 12 }} aria-label={'Remove ' + i.name} onClick={() => removeManual(i.manual!)}>Remove</button>}
+                      {i.carried && <button className="link-btn" style={{ fontSize: 12 }} aria-label={'Not needed: ' + i.name} title="Take it off the list" onClick={() => dropCarried(i)}>Not needed</button>}
                     </span>
                   </span>
                   {ck && (
