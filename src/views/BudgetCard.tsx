@@ -41,8 +41,8 @@ export function Donut({ slices, size, hole, children }: { slices: Slice[]; size:
             const [x1, y1] = pt(start, 49), [x2, y2] = pt(end, 49);
             const large = end - start > 0.5 ? 1 : 0;
             return end - start >= 0.999
-              ? <circle cx="50" cy="50" r="49" fill="none" stroke="#23221F" strokeWidth="1.5" />
-              : <path d={'M' + x1 + ' ' + y1 + ' A49 49 0 ' + large + ' 1 ' + x2 + ' ' + y2} fill="none" stroke="#23221F" strokeWidth="2" strokeLinecap="round" />;
+              ? <circle cx="50" cy="50" r="49" fill="none" stroke="#1a1a1a" strokeWidth="1.5" />
+              : <path d={'M' + x1 + ' ' + y1 + ' A49 49 0 ' + large + ' 1 ' + x2 + ' ' + y2} fill="none" stroke="#1a1a1a" strokeWidth="2" strokeLinecap="round" />;
           })()}
         </svg>
       )}
@@ -68,7 +68,7 @@ export default function BudgetCard({ D, update, mon, onEdit }: { D: HouseholdDat
   return (
     <section className="card" style={{ flex: '1 1 300px', padding: 20 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 16 }}>
-        <h2 style={{ margin: 0, fontSize: 17, fontWeight: 600 }}>Budget <span style={{ fontWeight: 400, fontSize: 13 }} className="muted">this week</span></h2>
+        <h2 style={{ margin: 0, fontSize: 21, fontWeight: 700, fontFamily: 'var(--display)', letterSpacing: '-0.015em' }}>Budget <span style={{ fontWeight: 400, fontSize: 13 }} className="muted">this week</span></h2>
         <button className="link-btn" style={{ fontSize: 13 }} onClick={onEdit}>Edit</button>
       </div>
       <div style={{ display: 'flex', gap: 20, alignItems: 'center', flexWrap: 'wrap', marginBottom: 16 }}>
@@ -83,7 +83,7 @@ export default function BudgetCard({ D, update, mon, onEdit }: { D: HouseholdDat
           <div className="kv"><span className="muted">Spent so far</span><span>{money(b.spent.total)}</span></div>
           <div className="kv"><span style={{ color: '#A9477B' }}>Ella pays</span><span>{money(b.committed.e)}</span></div>
           <div className="kv"><span style={{ color: '#1B6B56' }}>Jackson pays</span><span>{money(b.committed.j)}</span></div>
-          <div className="kv" style={{ borderTop: '1px solid #F0ECE4', paddingTop: 6 }}><span style={{ color: '#A9477B' }}>Ella has left</span><span style={{ fontWeight: 600 }}>{money(b.ellaLeft)}</span></div>
+          <div className="kv" style={{ borderTop: '1px solid var(--line-soft)', paddingTop: 6 }}><span style={{ color: '#A9477B' }}>Ella has left</span><span style={{ fontWeight: 600 }}>{money(b.ellaLeft)}</span></div>
           <div className="kv"><span style={{ color: '#1B6B56' }}>Jackson has left</span><span style={{ fontWeight: 600 }}>{money(b.jacksonLeft)}</span></div>
         </div>
       </div>
@@ -211,7 +211,7 @@ function WeekExtras({ extras, total, update, wk }: { extras: Extra[]; total: num
   });
 
   return (
-    <div style={{ borderTop: '1px solid #F0ECE4', paddingTop: 10, marginTop: 2, display: 'flex', flexDirection: 'column', gap: 6 }}>
+    <div style={{ borderTop: '1px solid var(--line-soft)', paddingTop: 10, marginTop: 2, display: 'flex', flexDirection: 'column', gap: 6 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
         <span style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 14 }}>
           <span className="swatch" style={{ background: EXTRA_COLOR }} />This week only

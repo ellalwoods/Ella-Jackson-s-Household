@@ -102,8 +102,8 @@ export default function WeekTable({ D, update, mon }: Props) {
       </div>
 
       {days.map(d => (
-        <div key={d.k} className="week-grid meals-row week-row" style={{ background: d.isToday ? '#FCFBF7' : '#fff' }}>
-          <div className="day" style={{ color: d.isToday ? '#23221F' : '#8A857A' }}>
+        <div key={d.k} className="week-grid meals-row week-row" style={{ background: d.isToday ? 'var(--today)' : '#fff' }}>
+          <div className="day" style={{ color: d.isToday ? 'var(--ink)' : 'var(--muted)' }}>
             <span className="day-dow">{d.dow}</span>
             <span className="day-num">{d.dateNum}</span>
           </div>
@@ -112,13 +112,13 @@ export default function WeekTable({ D, update, mon }: Props) {
             {d.meals.map(({ meal, slot, r, out }, mi) => (
               <div key={meal} style={{ position: 'relative', minWidth: 0 }}>
                 <button className="slot-btn" onClick={() => { setPicker(slot); setQuery(''); setIdx(0); }}
-                  style={{ borderColor: r || out ? '#E8E4DB' : '#EFEBE3', background: out ? '#F6F1EA' : r ? '#FBFAF7' : 'transparent' }}>
+                  style={{ borderColor: r || out ? 'transparent' : 'var(--line)', borderStyle: r || out ? 'solid' : 'dashed', background: out ? 'var(--chip)' : r ? 'var(--panel)' : 'transparent' }}>
                   <span className="slot-label">{MEAL_LABEL[meal]}</span>
                   {out ? (<>
-                    <span className="slot-name" style={{ fontWeight: 500, color: '#23221F' }}>🍽 {eatOutName(D, slot) || 'Eating out'}</span>
+                    <span className="slot-name" style={{ fontWeight: 500, color: 'var(--ink)' }}>🍽 {eatOutName(D, slot) || 'Eating out'}</span>
                     {eatOutName(D, slot) && <span className="slot-cost">Eating out{(() => { const p = D.places.find(z => z.id === D.eatOutPlace[slot]); return p?.cost ? ' · ' + money(p.cost) + ' pp' : ''; })()}</span>}
                   </>) : (<>
-                    <span className="slot-name" style={{ fontWeight: r ? 500 : 400, color: r ? '#23221F' : '#A39D90' }}>{r ? r.name : '+'}</span>
+                    <span className="slot-name" style={{ fontWeight: r ? 500 : 400, color: r ? 'var(--ink)' : 'var(--faint)' }}>{r ? r.name : '+'}</span>
                     {r && <span className="slot-cost">{money(cost(r, slot))}</span>}
                   </>)}
                 </button>
@@ -151,7 +151,7 @@ export default function WeekTable({ D, update, mon }: Props) {
                       <div className="picker-list">
                         {matches.slice(0, 50).map((m, i) => (
                           <button key={m.id} className="picker-item" onClick={() => setMeal(slot, m.id)}
-                            style={{ background: i === pIdx ? '#F5F2EC' : 'transparent' }}>
+                            style={{ background: i === pIdx ? 'var(--hover)' : 'transparent' }}>
                             <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0, whiteSpace: 'normal' }}>
                               <span style={{ fontSize: 14, fontWeight: 500 }}>{m.name}</span>
                               <span style={{ fontSize: 12 }} className="muted">
@@ -200,7 +200,7 @@ export default function WeekTable({ D, update, mon }: Props) {
                 <span style={{ textDecoration: done ? 'line-through' : 'none' }}>{c.name}</span>
               </button>
             ))}
-            {!d.chores.length && <span style={{ fontSize: 13, color: '#C2BCB0' }}>—</span>}
+            {!d.chores.length && <span style={{ fontSize: 13, color: 'var(--faint)' }}>—</span>}
           </div>
         </div>
       ))}
@@ -210,7 +210,7 @@ export default function WeekTable({ D, update, mon }: Props) {
         <span style={{ display: 'flex', gap: 12 }}>
           <span className="legend"><span className="dot8" style={{ background: '#E886B8' }} />Ella</span>
           <span className="legend"><span className="dot8" style={{ background: '#2A9E80' }} />Jackson</span>
-          <span className="legend"><span className="dot8" style={{ background: '#8FB0CF' }} />Both</span>
+          <span className="legend"><span className="dot8" style={{ background: '#8FB8DE' }} />Both</span>
         </span>
       </div>
       {picking && (() => {

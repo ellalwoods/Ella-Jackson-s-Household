@@ -28,7 +28,7 @@ export default function EventDialog({ D, update, date: initialDate, event, onClo
   }, [onClose]);
 
   const allTags = [...D.tags, ...created];
-  const tagColor = (n: string) => allTags.find(t => norm(t.name) === norm(n))?.color ?? '#BFB8AA';
+  const tagColor = (n: string) => allTags.find(t => norm(t.name) === norm(n))?.color ?? 'var(--extra)';
   const has = (n: string) => tags.some(t => norm(t) === norm(n));
   const toggle = (n: string) => setTags(ts => (ts.some(t => norm(t) === norm(n)) ? ts.filter(t => norm(t) !== norm(n)) : [...ts, n]));
   const addTag = () => {
@@ -95,7 +95,7 @@ export default function EventDialog({ D, update, date: initialDate, event, onClo
       <div className="dialog" role="dialog" aria-modal="true" aria-label={event ? 'Edit event' : 'New event'} onClick={e => e.stopPropagation()}
         style={{ background: 'linear-gradient(' + soft(accent, 0.35) + ' 0 6px, #fff 6px)', paddingTop: 22 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
-          <div style={{ fontWeight: 600, fontSize: 16 }}>{event ? 'Edit event' : 'New event'}</div>
+          <div style={{ fontWeight: 700, fontSize: 18, fontFamily: 'var(--display)', letterSpacing: '-0.015em' }}>{event ? 'Edit event' : 'New event'}</div>
           <span className="note">{longDate(date)}</span>
         </div>
         <input className="field" autoFocus value={title} onChange={e => setTitle(e.target.value)} placeholder="What’s on? e.g. Dinner with Sam"
@@ -132,7 +132,7 @@ export default function EventDialog({ D, update, date: initialDate, event, onClo
               const on = has(t.name);
               return (
                 <button key={t.name} className="tag-chip" aria-pressed={on} onClick={() => toggle(t.name)}
-                  style={{ background: on ? soft(t.color) : '#fff', borderColor: on ? t.color : '#DDD8CC' }}>
+                  style={{ background: on ? soft(t.color) : '#fff', borderColor: on ? t.color : 'var(--border)' }}>
                   <span className="dot8" style={{ background: t.color }} />{t.name}
                 </button>
               );
@@ -171,7 +171,7 @@ function TagEditor({ tag, onRename, onColour, onDelete }: { tag: Tag; onRename: 
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', paddingLeft: 14 }}>
         {TAG_COLORS.map(c => (
           <button key={c} aria-label={'Colour ' + c} aria-pressed={c === tag.color} onClick={() => onColour(c)}
-            style={{ width: 24, height: 24, borderRadius: '50%', background: c, cursor: 'pointer', padding: 0, border: c === tag.color ? '2px solid #23221F' : '2px solid #fff', boxShadow: '0 0 0 1px ' + (c === tag.color ? '#fff' : '#DDD8CC') }} />
+            style={{ width: 24, height: 24, borderRadius: '50%', background: c, cursor: 'pointer', padding: 0, border: c === tag.color ? '2px solid var(--ink)' : '2px solid #fff', boxShadow: '0 0 0 1px ' + (c === tag.color ? '#fff' : 'var(--border)') }} />
         ))}
       </div>
     </div>

@@ -52,7 +52,7 @@ export default function ChoresPage({ D, update }: { D: HouseholdData; update: Up
           {list.map((c, i) => {
             const p = OWNERS[c.person];
             return (
-              <div key={c.id} style={{ display: 'flex', gap: 12, alignItems: 'center', padding: '12px 0', borderTop: i ? '1px solid #F0ECE4' : 'none' }}>
+              <div key={c.id} style={{ display: 'flex', gap: 12, alignItems: 'center', padding: '12px 0', borderTop: i ? '1px solid var(--line-soft)' : 'none' }}>
                 <button className="person-tag" title="Switch person" style={{ height: 'var(--h-xs)', minWidth: 74, padding: '0 10px', flex: 'none', background: p.tint, color: p.ink }}
                   onClick={() => update(x => { const z = x.chores.find(z => z.id === c.id); if (z) z.person = nextOwner(z.person); })}>{p.name}</button>
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -83,7 +83,7 @@ export default function ChoresPage({ D, update }: { D: HouseholdData; update: Up
               const on = days.indexOf(i) >= 0;
               return (
                 <button key={l} onClick={() => setDays(on ? days.filter(z => z !== i) : days.concat(i))}
-                  style={{ height: 'var(--h-sm)', borderRadius: 'var(--r-field)', cursor: 'pointer', fontSize: 12, fontWeight: 600, border: '1px solid #DDD8CC', background: on ? '#23221F' : '#fff', color: on ? '#fff' : '#23221F' }}>{l}</button>
+                  style={{ height: 'var(--h-sm)', borderRadius: 'var(--r-field)', cursor: 'pointer', fontSize: 12, fontWeight: 600, border: '1px solid var(--border)', background: on ? 'var(--ink)' : '#fff', color: on ? '#fff' : 'var(--ink)' }}>{l}</button>
               );
             })}
           </div>

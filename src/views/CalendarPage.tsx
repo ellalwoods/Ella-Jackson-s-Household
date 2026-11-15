@@ -38,7 +38,7 @@ export default function CalendarPage({ D, update, mon, calOff, setCalOff, onPick
           return (
             <div key={c.k} className="cal-cell" onClick={() => onPickWeek(weekOffsetOf(c.d, today))} role="button" tabIndex={0}
               onKeyDown={e => { if (e.key === 'Enter' && e.target === e.currentTarget) onPickWeek(weekOffsetOf(c.d, today)); }}
-              style={{ opacity: c.inM ? 1 : 0.4, borderColor: c.k === tk ? '#23221F' : c.inW ? '#CFC9BC' : '#EFEBE3', background: c.inW ? '#F6F3EC' : '#fff' }}>
+              style={{ opacity: c.inM ? 1 : 0.4, borderColor: c.k === tk ? 'var(--ink)' : c.inW ? 'var(--border)' : 'var(--line-soft)', background: c.inW ? 'var(--hover)' : '#fff' }}>
               <span style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <span style={{ fontSize: 13, fontWeight: 600 }}>{c.d.getDate()}</span>
                 <button className="cal-add" aria-label={'Add event on ' + c.d.getDate()} title="Add event"

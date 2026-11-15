@@ -224,7 +224,7 @@ export default function RecipeEditor({ D, update, recipe, bucket = null, kind = 
             const on = meals.includes(m);
             return (
               <button key={m} className="filter" aria-pressed={on} onClick={() => setMeals(on ? meals.filter(z => z !== m) : [...meals, m])}
-                style={{ borderColor: on ? '#23221F' : '#DDD8CC', background: on ? '#23221F' : '#fff', color: on ? '#fff' : '#23221F' }}>{MEAL_LABEL[m]}</button>
+                style={{ borderColor: on ? 'var(--ink)' : 'var(--border)', background: on ? 'var(--ink)' : '#fff', color: on ? '#fff' : 'var(--ink)' }}>{MEAL_LABEL[m]}</button>
             );
           })}
         </div>

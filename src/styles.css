@@ -1,14 +1,19 @@
-/* Values follow project/Household v2.dc.html exactly. */
+/* Index-card design: a white page, near-black ink, hairline rules, big tight type,
+   and colour that means something (Ella's pink, Jackson's green, a few soft accents). */
 :root {
-  --ink: #23221F;
-  --muted: #8A857A;
-  --faint: #A39D90;
-  --line: #E8E4DB;
-  --line-soft: #F0ECE4;
-  --border: #DDD8CC;
-  --hover: #F5F2EC;
-  --chip: #F2EEE6;
-  --chip-ink: #6D675C;
+  --ink: #1a1a1a;
+  --muted: #6f6c66;
+  --faint: #a9a6a0;
+  --line: #e6e6e3;
+  --line-soft: #efefed;
+  --border: #dcdcd8;
+  --hover: #f5f5f3;
+  --chip: #f2f2f0;
+  --chip-ink: #55524c;
+  --today: #fafaf9;
+  --extra: #C9C6C0;
+  --display: 'Bricolage Grotesque', 'Hanken Grotesk', system-ui, sans-serif;
+  --body: 'Hanken Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --ella: #E886B8; --ella-ink: #A9477B; --ella-tint: #FAE3EE;
   --jackson: #2A9E80; --jackson-ink: #1B6B56; --jackson-tint: #DAEFE7;
   /* Control heights: page-level (search, page actions), form (inputs, buttons),
@@ -22,7 +27,7 @@
   --w-unit: 66px;
   --r-field: 10px;
   /* Panels where you add something (pantry, shopping, chores, spends). */
-  --panel: #FAF7F1;
+  --panel: #f7f7f5;
 }
 /* Touch screens: compact controls and tags get a little taller to tap. */
 @media (pointer: coarse) {
@@ -37,13 +42,13 @@ button { font: inherit; color: inherit; white-space: nowrap; }
 select, input, textarea { font: inherit; color: inherit; }
 input:focus, textarea:focus, select:focus { outline: 2px solid var(--ink); outline-offset: 1px; }
 
-.app { min-height: 100vh; background: #FFFFFF; font-family: Figtree, sans-serif; color: var(--ink); padding: 22px clamp(14px, 4vw, 48px) 64px; }
+.app { min-height: 100vh; background: #FFFFFF; font-family: var(--body); font-size: 15px; line-height: 1.45; color: var(--ink); padding: 22px clamp(14px, 4vw, 48px) 64px; }
 
 /* Header */
 .header { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; justify-content: space-between; margin-bottom: 22px; }
 .logo { border: none; background: none; padding: 0; cursor: pointer; text-align: left; display: flex; flex-direction: column; gap: 6px; }
 /* Logo 3e: Figtree wordmark with the heart mark in place of "&". */
-.logo-names { display: flex; align-items: center; gap: .22em; font-family: Figtree, sans-serif; font-weight: 500; font-size: clamp(26px, 4vw, 34px); line-height: 1; letter-spacing: -0.02em; }
+.logo-names { display: flex; align-items: center; gap: .22em; font-family: var(--display); font-weight: 700; font-size: clamp(26px, 4vw, 34px); line-height: 1; letter-spacing: -0.03em; }
 .logo-names .heart-mark { width: auto; height: .82em; flex: none; margin-top: .02em; }
 .logo-sub { font-size: 11px; letter-spacing: .24em; text-transform: uppercase; color: var(--muted); padding-left: 1px; }
 .row { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -523,4 +528,112 @@ select.field-sm.unit { width: var(--w-unit); padding: 0 4px 0 8px; }
 @media (max-width: 520px) {
   .others-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr); gap: 6px; }
   .bal { font-size: 12px; }
+}
+
+
+/* ═══ Index-card layer ═══════════════════════════════════════════════════
+   Sections are index cards: a rule across the top in ink, then rows split by
+   hairlines. No boxes, no shadows (except things that float), no beige. */
+
+/* Type: tight display face for titles and numbers, small caps-style labels. */
+.h1 { font-family: var(--display); font-weight: 800; font-size: clamp(34px, 5vw, 48px); letter-spacing: -0.035em; line-height: 1; }
+.card-title { font-family: var(--display); font-size: 21px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 14px; }
+.card-title .sub { font-family: var(--body); letter-spacing: 0; }
+.editor-title, .step-title { font-family: var(--display); letter-spacing: -0.015em; }
+.editor-title { font-size: 21px; font-weight: 700; }
+.eyebrow, .week-colhead, .filter-label, .shop-group-head, .cat-head, .split-kicker, .hero-label, .picker-group, .field-label, .slot-label, .day-dow {
+  font-family: var(--body); font-size: 11px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: var(--muted);
+}
+.week-colhead .meta { font-size: 12px; }
+.day-num, .hero-big, .hero-mid, .c-total, .count-badge, .stepper output, .others-tot, .bal, .ing-cost {
+  font-variant-numeric: tabular-nums;
+}
+.day-num, .hero-big, .hero-mid { font-family: var(--display); letter-spacing: -0.03em; }
+.day-num { font-size: 26px; font-weight: 800; line-height: 1; }
+.hero-big { font-size: 40px; font-weight: 800; }
+.hero-mid { font-size: 26px; font-weight: 800; }
+.c-total { font-family: var(--display); font-weight: 700; }
+
+/* Cards become index cards: a rule on top, no frame. */
+.card { border: none; border-top: 1.5px solid var(--ink); border-radius: 0; background: transparent; padding-left: 0 !important; padding-right: 0 !important; }
+.week-colhead, .week-row, .week-foot { padding-left: 0; padding-right: 0; }
+.week-row { border-top-color: var(--line); }
+.week-colhead { border-bottom-color: var(--line); }
+.place-card, .bucket-card, .mini-card { background: transparent; }
+.budget-hero { padding-left: 0; padding-right: 0; }
+.split-section { padding-top: 14px; }
+
+/* Header and navigation: tabs are words with an ink underline, not buttons. */
+.header { margin-bottom: 26px; }
+.tabbar { background: none; padding: 0; gap: 4px 18px; border-radius: 0; }
+.tab-btn { height: 34px; padding: 0 0 2px; border-radius: 0; color: var(--muted); font-size: 15px; font-weight: 500; border-bottom: 2px solid transparent; }
+.tab-btn:hover { background: none; color: var(--ink); }
+.tab-btn.on { background: none; color: var(--ink); font-weight: 700; border-bottom-color: var(--ink); }
+.tab-btn .count-badge, .tab-btn.on .count-badge { background: var(--ink); color: #fff; min-width: 20px; height: 20px; font-size: 11px; }
+.week-nav { border-color: var(--border); }
+.week-nav .week-nav-now { font-weight: 600; }
+.month-btn { background: #fff; color: var(--ink); border: 1px solid var(--border); font-weight: 600; }
+.month-btn:hover { background: var(--hover); }
+.month-btn.on { background: var(--ink); border-color: var(--ink); color: #fff; }
+@media (max-width: 520px) {
+  .tabbar { gap: 0 8px; }
+  .tab-btn { justify-content: flex-start; padding: 0 0 2px; font-size: 14px; }
+}
+
+/* Controls: hairline outlines, ink for the one main action. */
+.pill, .pill-sm, .round-btn, .field, .field-sm, .textarea, .search, .seg, .stepper, .mini-tag, .pick-item, .pick-step, .who-chip:not(.on) { border-color: var(--border); }
+.pill.dark, .pill-sm.dark { background: var(--ink); }
+@media (hover: hover) { .pill.dark:hover, .pill-sm.dark:hover { background: #333; } }
+input:focus, textarea:focus, select:focus { outline: 2px solid var(--ink); outline-offset: 1px; }
+.search { border-radius: 999px; background-color: var(--hover); border-color: transparent; }
+.search:focus { background-color: #fff; }
+
+/* Adding something: a quiet grey panel, so it reads apart from lists and search. */
+.add-panel, .add-open, .spend-panel, .other-detail, .stepper-panel { background: var(--panel); border: none; border-radius: 14px; }
+.add-panel-title { font-family: var(--display); font-size: 16px; font-weight: 700; letter-spacing: -0.01em; }
+.editor { border: none; border-top: 1.5px solid var(--ink); border-radius: 0; padding: 18px 0; }
+.editor-step, .editor-foot { border-top-color: var(--line); }
+.step-num { font-family: var(--display); }
+
+/* Week: today gets an ink day number; meals are soft fills, empty slots dashed. */
+.day { color: var(--faint); }
+.slot-btn { border-radius: 10px; }
+.slot-name { font-size: 14px; }
+.chore-chip { font-weight: 500; }
+
+/* Lists and rows: hairlines only. */
+.shop-row, .shop-item { border-top-color: var(--line); }
+.shop-controls { border-top-color: var(--line); }
+.shop-group-head { padding-top: 10px; }
+.box-check { border-radius: 7px; }
+.list > * + *, .cat-row, .ing-row, .picker-actions, .pick-steps { border-color: var(--line); }
+.split-list, .others-headrow, .others-line, .pair-line { border-color: var(--line); }
+.others-line:hover, .others-line.on { background: var(--hover); }
+.split-preview { border-color: var(--line); }
+.bucket-head { border-top: 1.5px solid var(--ink); }
+
+/* Chips and tags: neutral unless they carry a person or a meaning. */
+.chip, .exp-chip, .date-pill, .set-pill { background: var(--chip); color: var(--chip-ink); }
+.mini-tag.on { background: #F3ECFA; border-color: #C3A8DE; }
+.mini-tag.been { background: #E2F4EE; border-color: #7FCBB4; }
+.bucket-tag, .bucket-line { background: #F3ECFA; }
+.pick-item.on { border-color: var(--ink); background: var(--hover); }
+.pick-step.done .pick-step-num { background: #7FCBB4; }
+
+/* Floating things keep a soft shadow, in neutral rather than warm grey. */
+.picker { border-color: var(--line); box-shadow: 0 14px 40px rgba(26, 26, 26, .14); }
+.dialog { border-radius: 18px; box-shadow: 0 18px 50px rgba(26, 26, 26, .2); }
+.dialog-scrim { background: rgba(26, 26, 26, .28); }
+@media (max-width: 720px) { .scrim { background: rgba(26, 26, 26, .16); } }
+
+/* Money: owing in coral, owed in green. */
+.bal.owe { color: #C2563F; }
+.bal.owed { color: var(--jackson-ink); }
+
+/* Columns need clear air between their top rules. */
+.flow, .two-col, .budget-page { column-gap: 32px; row-gap: 28px; }
+@media (max-width: 520px) {
+  /* Phones: the page tabs wrap as words, so the count never runs into the next tab. */
+  .tabbar { display: flex; flex-wrap: wrap; gap: 2px 18px; width: 100%; }
+  .tab-btn { height: 32px; }
 }

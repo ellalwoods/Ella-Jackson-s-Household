@@ -80,7 +80,7 @@ export default function PantryPage({ D, update }: { D: HouseholdData; update: Up
                     const on = c.state === st;
                     return (
                       <button key={st} className="state-btn" onClick={() => edit(c.name, z => { z.state = st; })}
-                        style={{ background: on ? STATE_COLORS[st] : '#fff', borderColor: on ? STATE_COLORS[st] : '#DDD8CC' }}>{st}</button>
+                        style={{ background: on ? STATE_COLORS[st] : '#fff', borderColor: on ? STATE_COLORS[st] : 'var(--border)' }}>{st}</button>
                     );
                   })}
                 </div>
@@ -194,7 +194,7 @@ export function ExpiryInput({ label, value, onChange, compact = false }: { label
       <input type="date" className={'field-sm' + (compact ? ' compact' : '')} style={{ fontSize: 13 }} value={value} autoFocus={editing} aria-label={label}
         onChange={e => { onChange(e.target.value); if (e.target.value) setEditing(false); }} onBlur={() => setEditing(false)} />
       <button className="filter" aria-pressed={false} title="Doesn’t expire" onClick={() => { setEditing(false); onChange(NO_EXPIRY); }}
-        style={{ height: h, fontSize: 12, padding: '0 12px', borderColor: '#DDD8CC', background: '#fff', color: '#23221F' }}>N/A</button>
+        style={{ height: h, fontSize: 12, padding: '0 12px', borderColor: 'var(--border)', background: '#fff', color: 'var(--ink)' }}>N/A</button>
     </span>
   );
 }

@@ -14,17 +14,17 @@ export const otherPerson = (p: PersonId): PersonId => (p === 'ella' ? 'jackson' 
 export type ChoreOwner = PersonId | 'both';
 export const OWNERS: Record<ChoreOwner, { name: string; color: string; ink: string; tint: string }> = {
   ...PEOPLE,
-  both: { name: 'Both', color: '#8FB0CF', ink: '#3F6A8F', tint: '#E3EDF6' },
+  both: { name: 'Both', color: '#8FB8DE', ink: '#3D6E9E', tint: '#E6EFF8' },
 };
 export const CHORE_OWNERS: ChoreOwner[] = ['ella', 'jackson', 'both'];
 export const nextOwner = (o: ChoreOwner) => CHORE_OWNERS[(CHORE_OWNERS.indexOf(o) + 1) % CHORE_OWNERS.length];
 
 /** Pie chart / category colours, assigned by category order. */
-export const CAT_COLORS = ['#8FB0CF', '#C4A8D4', '#86C2BF', '#DCD690', '#F0A88C', '#E3CBC6', '#6F93B5', '#A98BBA'];
+export const CAT_COLORS = ['#8FB8DE', '#C3A8DE', '#7FCBB4', '#EBD37A', '#F4A08E', '#F2B8CF', '#6E9BCB', '#A88BD1'];
 
 export const STATES = ['Full', 'Half', 'Low', 'Replace'] as const;
 export type StockState = (typeof STATES)[number];
-export const STATE_COLORS: Record<StockState, string> = { Full: '#86C2BF', Half: '#C4A8D4', Low: '#DCD690', Replace: '#F0A88C' };
+export const STATE_COLORS: Record<StockState, string> = { Full: '#7FCBB4', Half: '#C3A8DE', Low: '#EBD37A', Replace: '#F4A08E' };
 
 /** When true, Low items still go on the shopping list (only Full/Half are skipped). */
 export const INCLUDE_LOW = true;
@@ -169,7 +169,7 @@ export interface CalEvent {
   /** Tag names; the first one colours the event. */
   tags: string[];
 }
-export const TAG_COLORS = ['#8FB0CF', '#C4A8D4', '#86C2BF', '#DCD690', '#F0A88C', '#E3CBC6', '#6F93B5', '#A98BBA', '#E886B8', '#2A9E80'];
+export const TAG_COLORS = ['#8FB8DE', '#C3A8DE', '#7FCBB4', '#EBD37A', '#F4A08E', '#F2B8CF', '#6E9BCB', '#A88BD1', '#E886B8', '#2A9E80'];
 
 /** Soft version of a colour for event boxes: mixed `t` of the way to white. */
 export function soft(hex: string, t = 0.72) {
@@ -369,7 +369,7 @@ export function describe(s: Schedule) {
   return 'Once · ' + f(s.date);
 }
 
-export const EXTRA_COLOR = '#BFB8AA';
+export const EXTRA_COLOR = '#C9C6C0';
 
 /** Ella's or Jackson's part of an amount paid by `who`. */
 export const shareOf = (who: ChoreOwner, amount: Amount, p: PersonId) =>
@@ -383,7 +383,7 @@ export interface Slice { label: string; total: number; color: string }
 /** Pie chart background for slices with a total and a colour. */
 export function donutOf(slices: { total: number; color: string }[]) {
   const sum = slices.reduce((a, c) => a + Math.max(0, c.total), 0);
-  if (!sum) return '#EAE6DD';
+  if (!sum) return '#ECECEA';
   let acc = 0;
   const stops = slices.filter(c => c.total > 0).map(c => {
     const a = acc / sum * 360;

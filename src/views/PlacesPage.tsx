@@ -71,7 +71,7 @@ export default function PlacesPage({ D, update }: { D: HouseholdData; update: Up
             <div key={p.id} className="card place-card">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 16, fontWeight: 600 }}>{p.name}</div>
+                  <div style={{ fontSize: 17, fontWeight: 700, fontFamily: 'var(--display)', letterSpacing: '-0.015em' }}>{p.name}</div>
                   <div style={{ fontSize: 13 }} className="muted">
                     {[PLACE_KIND_LABEL[p.kind], p.suburb, p.cost ? money(p.cost) + ' pp' : ''].filter(Boolean).join(' · ')}
                   </div>
@@ -181,7 +181,7 @@ export function PlaceDialog({ D, update, place, onClose, onSaved, initialName = 
   return (
     <div className="dialog-scrim" onClick={onClose}>
       <div className="dialog" role="dialog" aria-modal="true" aria-label={place ? 'Edit place' : 'New place'} onClick={e => e.stopPropagation()}>
-        <div style={{ fontWeight: 600, fontSize: 16 }}>{place ? 'Edit place' : 'New place'}</div>
+        <div style={{ fontWeight: 700, fontSize: 18, fontFamily: 'var(--display)', letterSpacing: '-0.015em' }}>{place ? 'Edit place' : 'New place'}</div>
         <input className="field" autoFocus value={name} onChange={e => setName(e.target.value)} placeholder="Name, e.g. Bella Brutta" aria-label="Name"
           onKeyDown={e => { if (e.key === 'Enter') save(); }} />
         <div className="seg" role="group" aria-label="Type" style={{ alignSelf: 'flex-start', flexWrap: 'wrap', borderRadius: 18 }}>

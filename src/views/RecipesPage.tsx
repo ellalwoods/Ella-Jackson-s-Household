@@ -59,7 +59,7 @@ export default function RecipesPage({ D, update, mon }: { D: HouseholdData; upda
       <div key={r.id} className={'card ' + cls} style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 16, fontWeight: 600 }}>{r.name}</div>
+            <div style={{ fontSize: 17, fontWeight: 700, fontFamily: 'var(--display)', letterSpacing: '-0.015em' }}>{r.name}</div>
             <div style={{ fontSize: 13 }} className="muted">{sub}</div>
             {r.meals.length > 0 && <div className="note" style={{ marginTop: 2 }}>{r.meals.map(m => MEAL_LABEL[m]).join(' · ')}</div>}
             {(r.tags ?? []).length > 0 && (
@@ -76,7 +76,7 @@ export default function RecipesPage({ D, update, mon }: { D: HouseholdData; upda
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
           {r.ingredients.map((g, i) => {
             const c = pantry.get(norm(g.name));
-            const dot = !c ? '#BFB8AA' : isStocked(c) ? STATE_COLORS.Full : STATE_COLORS.Replace;
+            const dot = !c ? 'var(--extra)' : isStocked(c) ? STATE_COLORS.Full : STATE_COLORS.Replace;
             return (
               <span key={i} className="ing-tag">
                 <span className="dot6" style={{ background: dot }} />{g.name}
@@ -100,7 +100,7 @@ export default function RecipesPage({ D, update, mon }: { D: HouseholdData; upda
             )}
           </div>
         )}
-        {showMethod && r.method && <div style={{ fontSize: 14, lineHeight: 1.5, whiteSpace: 'pre-wrap', borderTop: '1px solid #F0ECE4', paddingTop: 10 }}>{r.method}</div>}
+        {showMethod && r.method && <div style={{ fontSize: 14, lineHeight: 1.5, whiteSpace: 'pre-wrap', borderTop: '1px solid var(--line-soft)', paddingTop: 10 }}>{r.method}</div>}
       </div>
     );
   };
@@ -146,11 +146,11 @@ export default function RecipesPage({ D, update, mon }: { D: HouseholdData; upda
       <div className="note" style={{ marginTop: 14, display: 'flex', gap: 14, flexWrap: 'wrap' }}>
         <span className="legend" style={{ gap: 5 }}><span className="dot6" style={{ background: STATE_COLORS.Full }} />In stock</span>
         <span className="legend" style={{ gap: 5 }}><span className="dot6" style={{ background: STATE_COLORS.Replace }} />Low / replace</span>
-        <span className="legend" style={{ gap: 5 }}><span className="dot6" style={{ background: '#BFB8AA' }} />Not stocked</span>
+        <span className="legend" style={{ gap: 5 }}><span className="dot6" style={{ background: 'var(--extra)' }} />Not stocked</span>
       </div>
       <div className="bucket-head">
         <div>
-          <div style={{ fontWeight: 600, fontSize: 17 }}>Buckets</div>
+          <div style={{ fontWeight: 700, fontSize: 21, fontFamily: 'var(--display)', letterSpacing: '-0.015em' }}>Buckets</div>
           <div className="note">Interchangeable items, like Vegetables, picked when you plan a meal.</div>
         </div>
         {!editing && <button className="pill plain" onClick={() => edit('bucket:new')}>+ New bucket</button>}
@@ -162,7 +162,7 @@ export default function RecipesPage({ D, update, mon }: { D: HouseholdData; upda
             <div key={b.id} className="card bucket-card" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 16, fontWeight: 600 }}>🪣 {b.name}</div>
+                  <div style={{ fontSize: 17, fontWeight: 700, fontFamily: 'var(--display)', letterSpacing: '-0.015em' }}>🪣 {b.name}</div>
                   <div style={{ fontSize: 13 }} className="muted">
                     {b.items.length} item{b.items.length === 1 ? '' : 's'} · {b.perMeal ?? 1} per meal · {bucketAverage(b, prices) ? 'avg ' + money(bucketAverage(b, prices)) + ' each' : 'no prices yet'}{usedBy ? ' · in ' + usedBy + ' recipe' + (usedBy > 1 ? 's' : '') : ''}
                   </div>
@@ -196,7 +196,7 @@ export default function RecipesPage({ D, update, mon }: { D: HouseholdData; upda
 
       <div className="bucket-head">
         <div>
-          <div style={{ fontWeight: 600, fontSize: 17 }}>Mini recipes</div>
+          <div style={{ fontWeight: 700, fontSize: 21, fontFamily: 'var(--display)', letterSpacing: '-0.015em' }}>Mini recipes</div>
           <div className="note">Garnishes, sauces and dressings, used as one item in a bucket.</div>
         </div>
         {!editing && <button className="pill plain" onClick={() => edit('mini:new')}>+ New mini recipe</button>}

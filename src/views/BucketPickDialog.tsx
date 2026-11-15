@@ -51,7 +51,7 @@ export default function BucketPickDialog({ D, recipe, label, picks, onSave, onCl
     <div className="dialog-scrim" onClick={onClose}>
       <div className="dialog" role="dialog" aria-modal="true" aria-label={'Pick items for ' + recipe.name} onClick={e => e.stopPropagation()}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
-          <div style={{ fontWeight: 600, fontSize: 16 }}>{recipe.name}</div>
+          <div style={{ fontWeight: 700, fontSize: 18, fontFamily: 'var(--display)', letterSpacing: '-0.015em' }}>{recipe.name}</div>
           <span className="note">{label}</span>
         </div>
         {uses.length > 1 && (
@@ -90,7 +90,7 @@ export default function BucketPickDialog({ D, recipe, label, picks, onSave, onCl
                   const on = list.some(n => norm(n) === norm(g.name)), c = itemCost(g, ctx), mini = miniOf(g, ctx);
                   return (
                     <button key={g.name} title={g.name} className={'pick-item' + (on ? ' on' : '')} aria-pressed={on} onClick={() => toggle(u.bucket, g.name, u.count)}>
-                      <span className="box-check" style={{ width: 18, height: 18, borderRadius: 5, fontSize: 11, background: on ? '#23221F' : 'transparent' }}>{on ? '✓' : ''}</span>
+                      <span className="box-check" style={{ width: 18, height: 18, borderRadius: 5, fontSize: 11, background: on ? 'var(--ink)' : 'transparent' }}>{on ? '✓' : ''}</span>
                       <span className="pick-name">
                         {g.name}
                         {mini ? <span className="muted" style={{ fontSize: 11 }}> · mini recipe</span>
