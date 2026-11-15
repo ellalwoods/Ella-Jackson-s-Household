@@ -27,13 +27,58 @@ export default function PlacesPage({ D, update }: { D: HouseholdData; update: Up
     .filter(p => !tag || (p.tags ?? []).some(x => norm(x) === norm(tag)))
     .sort((a, b) => a.name.localeCompare(b.name));
   const remove = (p: Place) => {
-    if (!confirmRemove('“' + p.name + '”')) return;
+    if (!confirmRemove('“' + p.name + '”')) return false;
     update(x => {
       x.places = x.places.filter(z => z.id !== p.id);
       // Meals already planned there keep the name as plain text.
       for (const [slot, id] of Object.entries(x.eatOutPlace)) if (id === p.id) { x.eatOut[slot] = p.name; delete x.eatOutPlace[slot]; }
     });
+    return true;
   };
+
+  const top = () => { try { window.scrollTo(0, 0); } catch { /* not available */ } };
+  const go = (id: string | null) => { setOpenId(id); top(); };
+  const dialog = editing && <PlaceDialog D={D} update={update} place={editing === 'new' ? null : D.places.find(p => p.id === editing) ?? null} onClose={() => setEditing(null)} />;
+  const toggleBeen = (p: Place) => update(x => { const z = x.places.find(z => z.id === p.id); if (z) z.been = !z.been; });
+
+  // ── One place on its own page ──
+  const open = openId ? D.places.find(p => p.id === openId) : undefined;
+  if (open) {
+    const p = open, link = safeLink(p.link), v = visits.get(p.id);
+    return (
+      <div className="detail">
+        <button className="link-btn back-link" onClick={() => go(null)}>‹ Places</button>
+        <h2 className="detail-title">{p.name}</h2>
+        <div className="detail-meta">{[PLACE_KIND_LABEL[p.kind], p.suburb, p.cost ? money(p.cost) + ' per person' : ''].filter(Boolean).join(' · ')}</div>
+        <div className="detail-actions">
+          <button className="pill-sm dark" onClick={() => setEditing(p.id)}>Edit</button>
+          <button className={'mini-tag' + (p.been ? ' been' : '')} aria-pressed={p.been} title="Tap to switch" onClick={() => toggleBeen(p)}>{p.been ? '✓ Been' : 'Want to try'}</button>
+          {link && <a className="pill-sm detail-link" href={link} target="_blank" rel="noopener noreferrer">Website ↗</a>}
+          <button className="link-btn" onClick={() => { if (remove(p)) go(null); }}>Remove</button>
+        </div>
+        {(v?.next || v?.last) && (
+          <section className="detail-sec">
+            <div className="sec-label">Meals out</div>
+            {v.next && <div className="ing-line"><span className="ing-line-name">Planned</span><span className="ing-line-qty">{v.next}</span></div>}
+            {v.last && <div className="ing-line"><span className="ing-line-name">Last went</span><span className="ing-line-qty">{v.last}</span></div>}
+          </section>
+        )}
+        {p.notes && (
+          <section className="detail-sec">
+            <div className="sec-label">Notes</div>
+            <div className="method-text">{p.notes}</div>
+          </section>
+        )}
+        {(p.tags ?? []).length > 0 && (
+          <section className="detail-sec">
+            <div className="sec-label">Tags</div>
+            <div className="row" style={{ gap: 4, paddingTop: 6 }}>{p.tags!.map(t => <span key={t} className="mini-tag dense">{t}</span>)}</div>
+          </section>
+        )}
+        {dialog}
+      </div>
+    );
+  }
 
   return (
     <div className="list-page">
@@ -65,39 +110,22 @@ export default function PlacesPage({ D, update }: { D: HouseholdData; update: Up
         </div>
       )}
 
-      {/* One row per place; tap it for notes, tags, the link, and editing. */}
+      {/* One row per place; tap it to open its own page. */}
       <div className="item-list">
         {list.map(p => {
-          const link = safeLink(p.link), v = visits.get(p.id), on = openId === p.id;
+          const v = visits.get(p.id);
           const sub = [PLACE_KIND_LABEL[p.kind], p.suburb, p.cost ? money(p.cost) + ' pp' : '', v?.next ? 'Planned ' + v.next : ''].filter(Boolean).join(' · ');
           return (
-            <div key={p.id} className={'item-block' + (on ? ' open' : '')}>
+            <div key={p.id} className="item-block">
               <div className="item-row-wrap">
-                <button className="item-row" onClick={() => setOpenId(on ? null : p.id)} aria-expanded={on}>
+                <button className="item-row" onClick={() => go(p.id)}>
                   <span className="item-main">
                     <span className="item-name">{p.name}</span>
                     <span className="item-sub">{sub}</span>
                   </span>
                 </button>
-                <button className={'mini-tag' + (p.been ? ' been' : '')} aria-pressed={p.been} title="Tap to switch"
-                  onClick={() => update(x => { const z = x.places.find(z => z.id === p.id); if (z) z.been = !z.been; })}>{p.been ? '✓ Been' : 'Want to try'}</button>
+                <button className={'mini-tag' + (p.been ? ' been' : '')} aria-pressed={p.been} title="Tap to switch" onClick={() => toggleBeen(p)}>{p.been ? '✓ Been' : 'Want to try'}</button>
               </div>
-              {on && (
-                <div className="item-more">
-                  {p.notes && <p className="place-notes" style={{ WebkitLineClamp: 'unset' }}>{p.notes}</p>}
-                  {(p.tags ?? []).length > 0 && (
-                    <div className="row" style={{ gap: 4 }}>
-                      {p.tags!.map(t => <button key={t} className={'mini-tag dense' + (norm(tag) === norm(t) ? ' on' : '')} onClick={() => setTag(norm(tag) === norm(t) ? '' : t)}>{t}</button>)}
-                    </div>
-                  )}
-                  {!v?.next && v?.last && <span className="note">Last went {v.last}</span>}
-                  <div className="row" style={{ gap: 14, alignItems: 'center' }}>
-                    <button className="pill-sm dark" onClick={() => setEditing(p.id)}>Edit</button>
-                    {link && <a href={link} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13 }}>Open website ↗</a>}
-                    <button className="link-btn" onClick={() => remove(p)}>Remove</button>
-                  </div>
-                </div>
-              )}
             </div>
           );
         })}
@@ -105,7 +133,7 @@ export default function PlacesPage({ D, update }: { D: HouseholdData; update: Up
       {!list.length && (
         <p className="empty">{D.places.length ? 'No places match.' : 'No places yet. Add the restaurants, bars and cafés you like, or want to try. You can then pick them when planning a meal out.'}</p>
       )}
-      {editing && <PlaceDialog D={D} update={update} place={editing === 'new' ? null : D.places.find(p => p.id === editing) ?? null} onClose={() => setEditing(null)} />}
+      {dialog}
     </div>
   );
 }

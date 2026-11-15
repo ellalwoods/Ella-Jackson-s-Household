@@ -828,3 +828,9 @@ a.pill-sm.detail-link { display: inline-flex; align-items: center; color: var(--
 }
 /* A recipe or bucket open on its own page: just it, without the page title and tabs above. */
 .main:has(.page > .detail) > .page-top, .main:has(.page > .detail) > .tabbar { display: none; }
+/* Pop-up forms (places, events, bucket picks) slide up from the bottom on phones, like the add sheets. */
+@media (max-width: 860px) {
+  .dialog-scrim { align-items: end; padding: 0; }
+  .dialog { width: 100%; max-height: 88vh; border-radius: 20px 20px 0 0; padding-bottom: calc(20px + env(safe-area-inset-bottom)); }
+}
+.dialog-scrim { z-index: 60; }
