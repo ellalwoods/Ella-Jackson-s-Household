@@ -35,7 +35,8 @@ export default function HomePage({ D, update, shopCount, ellaLeft, jacksonLeft, 
   };
 
   const t = dayInfo(today);
-  const coming = [1, 2, 3, 4, 5, 6].map(i => dayInfo(addDays(today, i)));
+  // Only days with something on them; the section is left out when nothing is coming up.
+  const coming = [1, 2, 3, 4, 5, 6].map(i => dayInfo(addDays(today, i))).filter(x => x.meals.length || x.events.length || x.chores.length);
   const toggle = (dk: string) => update(x => { if (x.done[dk]) delete x.done[dk]; else x.done[dk] = 1; });
   const tagColour = (e: CalEvent) => D.tags.find(g => e.tags[0] && g.name.toLowerCase() === e.tags[0].toLowerCase())?.color ?? OWNERS[e.who].color;
   const eventLine = (e: CalEvent) => (e.time ? e.time + ' · ' : '') + e.title + (e.place ? ' · ' + e.place : '');
@@ -85,11 +86,10 @@ export default function HomePage({ D, update, shopCount, ellaLeft, jacksonLeft, 
         </div>
       </section>
 
-      <section className="home-coming">
+      {coming.length > 0 && <section className="home-coming">
         <div className="sec-label">Coming up</div>
         <div className="coming-grid">
         {coming.map(({ d, k, meals, events, chores }) => {
-          const empty = !meals.length && !events.length && !chores.length;
           return (
             <div key={k} className="coming-day">
               <div className="coming-date"><span>{DOW[dowOf(d)]}</span><b>{d.getDate()}</b></div>
@@ -109,13 +109,12 @@ export default function HomePage({ D, update, shopCount, ellaLeft, jacksonLeft, 
                     {chores.map(({ c, done }) => <span key={c.id} className={done ? 'done' : ''}><span className="dot6" style={{ background: OWNERS[c.person].color }} />{c.name}</span>)}
                   </div>
                 )}
-                {empty && <span className="quiet" style={{ fontSize: 14 }}>Nothing planned</span>}
               </div>
             </div>
           );
         })}
         </div>
-      </section>
+      </section>}
 
       <section className="home-also">
         <button className="also-link" onClick={onShop}><span className="sec-label">Shopping list</span><span>{shopCount} to buy ›</span></button>
