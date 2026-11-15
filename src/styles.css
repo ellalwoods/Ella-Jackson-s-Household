@@ -748,3 +748,83 @@ input:focus, textarea:focus, select:focus { outline: 2px solid var(--ink); outli
 .ing-summary { font-size: 13px; color: var(--muted); line-height: 1.45; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .ing-low { color: #C2563F; font-weight: 600; }
 @media (min-width: 721px) { .week-colhead > span:last-child .col-meal { display: inline; } }
+
+/* ═══ Food pages: the list first, one row per thing, details on tap, adding in a sheet ═══ */
+.list-page { max-width: 820px; }
+.list-tools { display: flex; gap: 10px; align-items: center; margin-bottom: 12px; }
+.list-tools .search { flex: 1 1 auto; min-width: 0; height: var(--h-md); }
+.list-tools .pill { flex: none; }
+.list-switch { margin-bottom: 14px; }
+.list-intro { margin: 0 0 8px; }
+.item-list { border-top: 1.5px solid var(--ink); }
+.item-block, .item-list > .item-row { border-bottom: 1px solid var(--line); }
+.item-row { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 60px; padding: 11px 0; border: none; background: none; cursor: pointer; text-align: left; color: var(--ink); white-space: normal; }
+.item-row:hover .item-name { text-decoration: underline; text-decoration-color: var(--border); text-underline-offset: 4px; }
+.item-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.item-name { font-family: var(--display); font-size: 18px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.2; }
+.item-sub { font-size: 13px; color: var(--muted); line-height: 1.35; }
+.item-chev { flex: none; font-size: 22px; color: var(--faint); line-height: 1; }
+.item-row-wrap { display: flex; align-items: center; gap: 10px; }
+.item-row-wrap > .item-row { flex: 1; }
+.item-row-wrap > .mini-tag { flex: none; }
+.item-more { display: flex; flex-direction: column; gap: 12px; padding: 2px 0 16px; }
+.state-tag { flex: none; display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--chip-ink); }
+
+/* One recipe (or bucket) on its own page. */
+.detail { max-width: 720px; display: flex; flex-direction: column; gap: 10px; }
+.back-link { align-self: flex-start; font-size: 14px; text-decoration: none; color: var(--muted); padding: 4px 0; }
+.back-link:hover { color: var(--ink); }
+.detail-title { margin: 4px 0 0; font-family: var(--display); font-size: clamp(30px, 5vw, 40px); font-weight: 800; letter-spacing: -0.035em; line-height: 1.05; }
+.detail-meta { font-size: 14px; color: var(--muted); }
+.detail-actions { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; margin: 6px 0 4px; }
+a.pill-sm.detail-link { display: inline-flex; align-items: center; color: var(--ink); text-decoration: none; }
+.detail-sec { border-top: 1.5px solid var(--ink); padding-top: 12px; margin-top: 14px; }
+.ing-line { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 16px; }
+.ing-line:last-of-type { border-bottom: none; }
+.ing-line-name { flex: 1; min-width: 0; }
+.ing-line-qty { flex: none; font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.detail-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 8px; }
+.detail-legend .dot6 { display: inline-block; vertical-align: middle; margin-right: 2px; }
+.method-text { font-size: 16px; line-height: 1.6; white-space: pre-wrap; padding-top: 6px; }
+
+/* Editor on its own page: plain labelled sections. */
+.detail .editor { border-top: none; padding-top: 0; }
+.editor .step-body { padding-left: 0; }
+.editor .step-title { font-size: 16px; }
+.editor-tip { margin: -6px 0 0; padding: 10px 12px; border-radius: 10px; background: var(--panel); font-size: 13px; color: var(--chip-ink); }
+.editor-fold { align-self: flex-start; font-size: 14px; }
+
+/* Shopping list: a summary line, then the items. */
+.shop-summary { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between; margin-bottom: 12px; font-size: 15px; }
+.shop-summary b { font-family: var(--display); font-weight: 700; font-size: 18px; letter-spacing: -0.02em; }
+.shop-group { border-top: 1.5px solid var(--ink); padding-top: 10px; margin-top: 16px; }
+.shop-group:first-of-type { margin-top: 4px; }
+.shop-sec { margin-bottom: 2px; }
+.shop-line { display: flex; flex-wrap: wrap; align-items: center; gap: 0 10px; border-bottom: 1px solid var(--line); }
+.shop-group .shop-line:last-child { border-bottom: none; }
+.shop-tick { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 8px 0; border: none; background: none; cursor: pointer; text-align: left; color: var(--ink); white-space: normal; }
+.shop-name { font-size: 16px; font-weight: 500; }
+.shop-line.done .shop-tick { opacity: .5; }
+.shop-line.done .shop-name { text-decoration: line-through; }
+.shop-end { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.shop-cost { font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.link-btn.small { font-size: 12px; padding: 0; }
+.shop-line > .shop-expiry { flex-basis: 100%; }
+.shop-stock { margin-top: 14px; }
+.shop-foot { display: flex; flex-direction: column; gap: 8px; margin-top: 22px; padding-top: 12px; border-top: 1px solid var(--line); }
+
+/* The add sheet: slides up on a phone, a centred panel on a laptop. */
+.sheet-scrim { position: fixed; inset: 0; z-index: 60; background: rgba(26, 26, 26, .28); display: flex; align-items: center; justify-content: center; padding: 16px; }
+.sheet { width: min(480px, 100%); max-height: calc(100vh - 32px); overflow-y: auto; background: #fff; border-radius: 18px; padding: 18px 18px 20px; box-shadow: 0 18px 50px rgba(26, 26, 26, .2); display: flex; flex-direction: column; gap: 12px; }
+.sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.sheet-title { font-family: var(--display); font-size: 21px; font-weight: 700; letter-spacing: -0.02em; }
+.sheet-form { display: flex; flex-direction: column; gap: 10px; }
+.sheet-form .shop-add .ing-group { flex-basis: 100%; }
+.sheet-form .shop-add .ing-label:first-child, .sheet-form .shop-add .expiry-input > .ing-label:first-child { width: 64px; flex: none; }
+.sheet-form .shop-add > .pill-sm.dark { flex: 1 1 100%; height: var(--h-md); }
+@media (max-width: 860px) {
+  .sheet-scrim { align-items: flex-end; padding: 0; }
+  .sheet { width: 100%; max-height: 88vh; border-radius: 20px 20px 0 0; padding-bottom: calc(20px + env(safe-area-inset-bottom)); }
+}
+/* A recipe or bucket open on its own page: just it, without the page title and tabs above. */
+.main:has(.page > .detail) > .page-top, .main:has(.page > .detail) > .tabbar { display: none; }

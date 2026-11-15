@@ -5,6 +5,7 @@ const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 import { HouseholdData, INCLUDE_LOW, money, NO_EXPIRY, norm, PantryItem, Price, STATE_COLORS, STATES, StockState, Unit, UNIT_LABEL, UNITS } from '../lib/model';
 import { addToPantry, expiry, fmtQty, priceMap, setPrice } from '../lib/food';
 import { SetField } from './SetField';
+import Sheet from './Sheet';
 import type { Update } from '../Household';
 
 export const stockRule = (INCLUDE_LOW
@@ -29,11 +30,16 @@ export default function PantryPage({ D, update }: { D: HouseholdData; update: Up
   const edit = (name: string, f: (c: PantryItem) => void) => update(x => { const c = x.pantry.find(c => c.name === name); if (c) f(c); });
   const remove = (name: string) => update(x => { x.pantry = x.pantry.filter(c => c.name !== name); });
 
+  const [adding, setAdding] = useState(false);
+  const [openName, setOpenName] = useState<string | null>(null);
+  const stateLine = (c: PantryItem) => (c.qty != null ? fmtQty(c.qty, c.unit ?? 'g') + ' left' : c.state);
+
   return (
-    <>
-      <AddToPantry D={D} update={update} />
-      {/* Finding things: search, then one joined filter bar (like the other pages). */}
-      <input className="search" style={{ width: '100%', marginBottom: 10 }} value={q} onChange={e => setQ(e.target.value)} placeholder="Search the pantry" aria-label="Search the pantry" />
+    <div className="list-page">
+      <div className="list-tools">
+        <input className="search" value={q} onChange={e => setQ(e.target.value)} placeholder="Search the pantry" aria-label="Search the pantry" />
+        <button className="pill dark" onClick={() => setAdding(true)}>+ Add</button>
+      </div>
       <div className="filter-rows">
         <div className="filter-row">
           <span className="filter-label">Show</span>
@@ -46,59 +52,68 @@ export default function PantryPage({ D, update }: { D: HouseholdData; update: Up
           </div>
         </div>
       </div>
-      <div className="auto-grid" style={{ gridTemplateColumns: 'repeat(auto-fill,minmax(min(100%,264px),1fr))', gap: 10 }}>
+
+      {/* One row per item; tap it for the level, amount, use-by date and price. */}
+      <div className="item-list">
         {items.map(c => {
           const n = D.recipes.filter(r => r.ingredients.some(g => norm(g.name) === norm(c.name))).length;
           const pr = prices.get(norm(c.name));
+          const e = expiry(c.expires);
+          const on = openName === c.name;
+          const sub = [n ? 'In ' + n + ' recipe' + (n > 1 ? 's' : '') : '', pr ? money(pr.price) : ''].filter(Boolean).join(' · ');
           return (
-            <div key={c.name} className="card" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-                <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-                  <span style={{ fontSize: 15, fontWeight: 600 }}>{c.name}</span>
-                  {n > 0 && <span style={{ fontSize: 12 }} className="muted">In {n} recipe{n > 1 ? 's' : ''}</span>}
+            <div key={c.name} className={'item-block' + (on ? ' open' : '')}>
+              <button className="item-row" onClick={() => setOpenName(on ? null : c.name)} aria-expanded={on}>
+                <span className="item-main">
+                  <span className="item-name">{c.name}</span>
+                  {(sub || (e && (e.soon || e.expired))) && (
+                    <span className="item-sub">{sub}{e && (e.soon || e.expired) && <span className={'exp-chip ' + (e.expired ? 'expired' : 'soon')} style={{ marginLeft: sub ? 6 : 0 }}>{e.label}</span>}</span>
+                  )}
                 </span>
-                <span style={{ display: 'flex', gap: 12, flex: 'none' }}>
-                  <button className="link-btn" onClick={() => edit(c.name, z => {
-                    if (z.qty != null) { delete z.qty; delete z.unit; delete z.forWeek; z.state = 'Full'; }
-                    else { z.qty = 0; z.unit = pr?.unit ?? 'g'; }
-                  })}>{c.qty != null ? 'Track by level' : 'Track amount'}</button>
-                  <button className="link-btn" onClick={() => remove(c.name)}>Remove</button>
+                <span className="state-tag">
+                  {c.qty == null && <span className="dot8" style={{ background: STATE_COLORS[c.state] }} />}{stateLine(c)}
                 </span>
-              </div>
-              {c.qty != null ? (
-                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                  <span style={{ width: 'var(--w-num)' }}>
-                    <SetField value={String(c.qty)} numeric align="right" label={'Amount of ' + c.name + ' left'}
-                      onCommit={v => edit(c.name, z => { z.qty = parseFloat(v) || 0; })} />
-                  </span>
-                  <UnitSelect value={c.unit ?? 'g'} onChange={u => edit(c.name, z => { z.unit = u; })} compact />
-                  <span style={{ fontSize: 12 }} className="muted">left</span>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                  {STATES.map(st => {
-                    const on = c.state === st;
-                    return (
-                      <button key={st} className="state-btn" onClick={() => edit(c.name, z => { z.state = st; })}
-                        style={{ background: on ? STATE_COLORS[st] : '#fff', borderColor: on ? STATE_COLORS[st] : 'var(--border)' }}>{st}</button>
-                    );
-                  })}
+              </button>
+              {on && (
+                <div className="item-more">
+                  {c.qty != null ? (
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      <span style={{ width: 'var(--w-num)' }}>
+                        <SetField value={String(c.qty)} numeric align="right" label={'Amount of ' + c.name + ' left'}
+                          onCommit={v => edit(c.name, z => { z.qty = parseFloat(v) || 0; })} />
+                      </span>
+                      <UnitSelect value={c.unit ?? 'g'} onChange={u => edit(c.name, z => { z.unit = u; })} compact />
+                      <span style={{ fontSize: 12 }} className="muted">left</span>
+                    </div>
+                  ) : (
+                    <div className="seg" role="group" aria-label={'How much ' + c.name + ' is left'}>
+                      {STATES.map(st => (
+                        <button key={st} className={c.state === st ? 'on' : ''} aria-pressed={c.state === st} onClick={() => edit(c.name, z => { z.state = st; })}>{st}</button>
+                      ))}
+                    </div>
+                  )}
+                  <div className="card-fields">
+                    <ExpiryInput label="Use by" compact value={c.expires ?? ''}
+                      onChange={v => edit(c.name, z => { if (v) z.expires = v; else delete z.expires; })} />
+                    <PriceField key={String(pr?.price)} name={c.name} update={update} price={pr} />
+                  </div>
+                  <div className="row" style={{ gap: 14 }}>
+                    <button className="link-btn" onClick={() => edit(c.name, z => {
+                      if (z.qty != null) { delete z.qty; delete z.unit; delete z.forWeek; z.state = 'Full'; }
+                      else { z.qty = 0; z.unit = pr?.unit ?? 'g'; }
+                    })}>{c.qty != null ? 'Track by level instead' : 'Track an amount instead'}</button>
+                    <button className="link-btn" onClick={() => remove(c.name)}>Remove</button>
+                  </div>
                 </div>
               )}
-              {/* Use by and price: label, then the value (a box until it's set, then a soft pill). */}
-              <div className="card-fields">
-                <ExpiryInput label="Use by" compact value={c.expires ?? ''}
-                  onChange={v => edit(c.name, z => { if (v) z.expires = v; else delete z.expires; })} />
-                <PriceField key={String(pr?.price)} name={c.name} update={update} price={pr} />
-                {(() => { const e = expiry(c.expires); return e && (e.soon || e.expired) ? <span className={'exp-chip ' + (e.expired ? 'expired' : 'soon')}>{e.label}</span> : null; })()}
-              </div>
             </div>
           );
         })}
       </div>
-      {!items.length && <p className="empty">Nothing here. Add what you have so the shopping list can skip it.</p>}
+      {!items.length && <p className="empty">{q || filter !== 'All' ? 'Nothing matches.' : 'Nothing here yet. Add what you have so the shopping list can skip it.'}</p>}
       <p className="note" style={{ marginTop: 14 }}>{stockRule} Expired items go back on the list.</p>
-    </>
+      {adding && <Sheet title="Add to the pantry" onClose={() => setAdding(false)}><AddToPantry D={D} update={update} /></Sheet>}
+    </div>
   );
 }
 
@@ -136,10 +151,9 @@ function AddToPantry({ D, update }: { D: HouseholdData; update: Update }) {
   const onKey = (e: React.KeyboardEvent) => { if (e.key === 'Enter') add(); };
 
   return (
-    <div className="add-panel">
-      <div className="add-panel-title">+ Add to pantry</div>
+    <div className="sheet-form">
       <div className="shop-add" style={{ padding: 0 }}>
-        <input className="field-sm compact" style={{ flex: '1 1 180px' }} list="pantry-known" value={name} onChange={e => setName(e.target.value)} onKeyDown={onKey}
+        <input className="field-sm compact" style={{ flex: '1 1 100%' }} autoFocus list="pantry-known" value={name} onChange={e => setName(e.target.value)} onKeyDown={onKey}
           placeholder="Item, e.g. Rice" aria-label="Item to add to pantry" />
         <datalist id="pantry-known">{known.map(k => <option key={k} value={k} />)}</datalist>
         <span className="ing-group">

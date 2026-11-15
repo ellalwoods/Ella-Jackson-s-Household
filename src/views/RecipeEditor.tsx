@@ -68,6 +68,9 @@ export default function RecipeEditor({ D, update, recipe, bucket = null, kind = 
     setNewTag('');
   };
   const [link, setLink] = useState(recipe?.link ?? '');
+  /** Prices and tags fold away until wanted, so adding a recipe is just name, ingredients and method. */
+  const [showPrices, setShowPrices] = useState(false);
+  const [showTags, setShowTags] = useState((isBucket ? bucket?.tags?.length : recipe?.tags?.length) ? true : false);
   const [method, setMethod] = useState(recipe?.method ?? '');
   const [meals, setMeals] = useState<Meal[]>(recipe?.meals ?? ['dinner']);
   const [rows, setRows] = useState<Row[]>(() => {
@@ -196,12 +199,23 @@ export default function RecipeEditor({ D, update, recipe, bucket = null, kind = 
   const thing = isBucket ? 'bucket' : isMini ? 'mini recipe' : 'recipe';
 
   // Each part of the form is its own numbered step, so it's clear what's asked for.
-  const steps: { title: string; optional?: boolean; hint?: string; body: React.ReactNode }[] = [];
+  const steps: { title: string; optional?: boolean; hint?: string; body: React.ReactNode; folded?: { label: string; open: () => void } }[] = [];
   steps.push({
     title: 'Name',
     hint: isBucket ? 'Interchangeable items, like Vegetables.' : isMini ? 'A garnish, sauce or dressing, used in buckets.' : undefined,
-    body: <input className="field-sm compact" value={name} onChange={e => setName(e.target.value)} aria-label="Name"
-      placeholder={isBucket ? 'e.g. Vegetables' : isMini ? 'e.g. Salsa verde' : 'e.g. Spaghetti bolognese'} />,
+    body: (<>
+      <input className="field-sm compact" value={name} onChange={e => setName(e.target.value)} aria-label="Name" autoFocus={!(isBucket ? bucket : recipe)}
+        placeholder={isBucket ? 'e.g. Vegetables' : isMini ? 'e.g. Salsa verde' : 'e.g. Spaghetti bolognese'} />
+      {!isBucket && !isMini && (
+        <div className="row" style={{ alignItems: 'center' }}>
+          <span className="field-label" style={{ width: 40 }}>For</span>
+          {MEALS.map(m => {
+            const on = meals.includes(m);
+            return <button key={m} className={'mini-tag' + (on ? ' on' : '')} aria-pressed={on} onClick={() => setMeals(on ? meals.filter(z => z !== m) : [...meals, m])}>{MEAL_LABEL[m]}</button>;
+          })}
+        </div>
+      )}
+    </>),
   });
   if (isBucket) steps.push({
     title: 'Per meal',
@@ -213,31 +227,21 @@ export default function RecipeEditor({ D, update, recipe, bucket = null, kind = 
       </div>
     ),
   });
-  if (!isMini) steps.push({
+  const tagStep = !isMini && {
     title: 'Tags', optional: true,
-    hint: isBucket ? 'Group items, e.g. Greens.' : 'Which meal it’s for, plus your own tags.',
+    hint: isBucket ? 'Group items, e.g. Greens.' : 'Your own labels, e.g. Quick.',
+    folded: showTags ? undefined : { label: '+ Add tags', open: () => setShowTags(true) },
     body: (<>
-      {!isBucket && (
-        <div className="row" style={{ alignItems: 'center' }}>
-          <span className="field-label" style={{ width: 40 }}>For</span>
-          {MEALS.map(m => {
-            const on = meals.includes(m);
-            return (
-              <button key={m} className="filter" aria-pressed={on} onClick={() => setMeals(on ? meals.filter(z => z !== m) : [...meals, m])}
-                style={{ borderColor: on ? 'var(--ink)' : 'var(--border)', background: on ? 'var(--ink)' : '#fff', color: on ? '#fff' : 'var(--ink)' }}>{MEAL_LABEL[m]}</button>
-            );
-          })}
-        </div>
-      )}
       <TagRow label={isBucket ? '' : 'Tags'} tags={isBucket ? bucketTags : allRecipeTags} selected={isBucket ? bucketTags : tags} selectable={!isBucket}
         onToggle={t => setTags(ts => ts.some(x => norm(x) === norm(t)) ? ts.filter(x => norm(x) !== norm(t)) : [...ts, t])}
         onRename={renameRecipeTag} onDelete={deleteRecipeTag}
         value={newTag} onValue={setNewTag} onAdd={addTag} placeholder={isBucket ? '+ New tag, e.g. Greens' : '+ New tag, e.g. Quick'} />
     </>),
-  });
+  };
+  if (tagStep && isBucket) steps.push(tagStep);
   steps.push({
     title: isBucket ? 'Items' : 'Ingredients',
-    hint: 'What it uses and what you pay. Staples cost ' + money(STAPLE_COST) + '.' + (isBucket ? ' Type a mini recipe’s name to add it.' : (!isMini ? ' Buckets are picked when you plan the meal.' : '')),
+    hint: (isBucket ? 'Type a mini recipe’s name to add it.' : 'Mark salt, oil and spices as staples.') + (showPrices ? ' Staples cost ' + money(STAPLE_COST) + ' a meal.' : ''),
     body: (<>
       <datalist id="known-ingredients">{[...knownMinis, ...known.filter(k => !knownMinis.includes(k))].map(k => <option key={k} value={k} />)}</datalist>
       <div>
@@ -252,7 +256,7 @@ export default function RecipeEditor({ D, update, recipe, bucket = null, kind = 
                   <span className="mini-tag dense on">Mini recipe</span>
                   <span className="ing-label">{(() => { const m = minis.find(z => z.id === r.recipe); return m ? m.ingredients.map(g => g.name).join(', ') || 'no ingredients yet' : ''; })()}</span>
                 </span>
-              ) : r.staple ? (
+              ) : r.staple ? (!showPrices ? <span className="ing-group"><span className="ing-label">staple</span></span> :
                 <span className="ing-group">
                   <span className="ing-label">Buy for $</span>
                   <input className={'field-sm compact ing-num' + (r.name.trim() && !r.price.trim() ? ' needs' : '')} inputMode="decimal" value={r.price} placeholder="0.00"
@@ -265,13 +269,13 @@ export default function RecipeEditor({ D, update, recipe, bucket = null, kind = 
                   <input className="field-sm compact ing-num" inputMode="decimal" value={r.qty} placeholder="qty" aria-label="Amount used" onChange={e => setRow(r.key, { qty: e.target.value })} />
                   <UnitSelect value={r.unit} onChange={u => setRow(r.key, { unit: u })} compact />
                 </span>
-                <span className="ing-group">
+                {showPrices && <span className="ing-group">
                   <span className="ing-label">Buy</span>
                   <input className="field-sm compact ing-num" inputMode="decimal" value={r.buyQty} placeholder="qty" aria-label="Amount you buy" onChange={e => setRow(r.key, { buyQty: e.target.value })} />
                   <UnitSelect value={r.buyUnit} onChange={u => setRow(r.key, { buyUnit: u })} compact />
                   <span className="ing-label">for $</span>
                   <input className="field-sm compact ing-num" inputMode="decimal" value={r.price} placeholder="0.00" aria-label="Price" onChange={e => setRow(r.key, { price: e.target.value })} />
-                </span>
+                </span>}
               </>)}
               {isBucket && bucketTags.length > 0 && (
                 <span className="ing-group row-tags">
@@ -283,7 +287,7 @@ export default function RecipeEditor({ D, update, recipe, bucket = null, kind = 
                 </span>
               )}
               {!r.recipe && <button className={'pill-sm ing-staple' + (r.staple ? ' dark' : '')} aria-pressed={r.staple} onClick={() => setRow(r.key, { staple: !r.staple })}>Staple</button>}
-              <span className="ing-cost" title={mismatch ? 'Units don’t match (e.g. g vs ml)' : undefined}>{c !== null ? money(c) : mismatch ? 'units?' : ''}</span>
+              {showPrices && <span className="ing-cost" title={mismatch ? 'Units don’t match (e.g. g vs ml)' : undefined}>{c !== null ? money(c) : mismatch ? 'units?' : ''}</span>}
               <button className="x-btn" aria-label="Remove ingredient" onClick={() => setRows(rs => (rs.length > 1 ? rs.filter(z => z.key !== r.key) : [blankRow()]))}>×</button>
             </div>
           );
@@ -342,6 +346,7 @@ export default function RecipeEditor({ D, update, recipe, bucket = null, kind = 
         <button className="pill-sm" onClick={() => setRows(rs => [...rs, blankRow()])}>{isBucket ? '+ Add item' : '+ Add ingredient'}</button>
         {isBucket && !choosing && <button className="pill-sm" onClick={() => setChoosing(true)}>+ Add mini recipe</button>}
         {!isBucket && !isMini && !choosing && <button className="pill-sm" onClick={() => setChoosing(true)}>+ Add bucket</button>}
+        <button className="link-btn" style={{ marginLeft: 'auto' }} onClick={() => setShowPrices(v => !v)} aria-pressed={showPrices}>{showPrices ? 'Hide prices' : 'Show prices'}</button>
       </div>
     </>),
   });
@@ -352,14 +357,19 @@ export default function RecipeEditor({ D, update, recipe, bucket = null, kind = 
       <input className="field-sm compact" value={link} onChange={e => setLink(e.target.value)} placeholder="Link, e.g. www.recipetineats.com/…" aria-label="Link to recipe" inputMode="url" autoCapitalize="off" />
     </>),
   });
+  if (tagStep && !isBucket) steps.push(tagStep);
 
   return (
     <div className="editor">
       <div className="editor-title">{(isBucket ? bucket : recipe) ? 'Edit ' + thing : 'New ' + thing}</div>
-      {steps.map((st, i) => (
+      {!recipe && !isBucket && (
+        <p className="note editor-tip">Quickest way: paste a recipe link into your Household chat in Claude, and it’s added here for you.</p>
+      )}
+      {steps.map((st, i) => st.folded ? (
+        <button key={st.title} className="link-btn editor-fold" onClick={st.folded.open}>{st.folded.label}</button>
+      ) : (
         <section key={st.title} className="editor-step" style={i === 0 ? { borderTop: 'none', paddingTop: 0 } : undefined}>
           <div className="step-head">
-            <span className="step-num" aria-hidden>{i + 1}</span>
             <div>
               <div className="step-title">{st.title}{st.optional && <span className="opt"> · optional</span>}</div>
               {st.hint && <div className="step-hint">{st.hint}</div>}
@@ -373,7 +383,7 @@ export default function RecipeEditor({ D, update, recipe, bucket = null, kind = 
           <button className="pill dark" style={{ padding: '0 18px' }} onClick={save}>Save {thing}</button>
           <button className="pill plain" onClick={onDone}>Cancel</button>
         </span>
-        <span style={{ fontSize: 14, fontWeight: 600 }}>{summary}</span>
+        {(showPrices || priced.length > 0 || uses.length > 0) && <span style={{ fontSize: 14, fontWeight: 600 }}>{summary}</span>}
       </div>
     </div>
   );

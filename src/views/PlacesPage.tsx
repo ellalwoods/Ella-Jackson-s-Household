@@ -16,6 +16,7 @@ export default function PlacesPage({ D, update }: { D: HouseholdData; update: Up
   const [tag, setTag] = useState('');
   /** null = closed, 'new' = adding, or the id being edited. */
   const [editing, setEditing] = useState<string | null>(null);
+  const [openId, setOpenId] = useState<string | null>(null);
 
   const pq = norm(q);
   const visits = placeVisits(D);
@@ -35,10 +36,10 @@ export default function PlacesPage({ D, update }: { D: HouseholdData; update: Up
   };
 
   return (
-    <>
-      <div className="row8" style={{ marginBottom: 14 }}>
-        <input className="search" style={{ flex: '1 1 260px' }} value={q} onChange={e => setQ(e.target.value)} placeholder="Search by name, suburb or tag" aria-label="Search places" />
-        <button className="pill dark lg" onClick={() => setEditing('new')}>+ New place</button>
+    <div className="list-page">
+      <div className="list-tools">
+        <input className="search" value={q} onChange={e => setQ(e.target.value)} placeholder="Search by name, suburb or tag" aria-label="Search places" />
+        <button className="pill dark" onClick={() => setEditing('new')}>+ Add</button>
       </div>
       {D.places.length > 0 && (
         <div className="filter-rows">
@@ -64,35 +65,39 @@ export default function PlacesPage({ D, update }: { D: HouseholdData; update: Up
         </div>
       )}
 
-      <div className="auto-grid" style={{ gridTemplateColumns: 'repeat(auto-fill,minmax(min(100%,270px),1fr))' }}>
+      {/* One row per place; tap it for notes, tags, the link, and editing. */}
+      <div className="item-list">
         {list.map(p => {
-          const link = safeLink(p.link), v = visits.get(p.id);
+          const link = safeLink(p.link), v = visits.get(p.id), on = openId === p.id;
+          const sub = [PLACE_KIND_LABEL[p.kind], p.suburb, p.cost ? money(p.cost) + ' pp' : '', v?.next ? 'Planned ' + v.next : ''].filter(Boolean).join(' · ');
           return (
-            <div key={p.id} className="card place-card">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 17, fontWeight: 700, fontFamily: 'var(--display)', letterSpacing: '-0.015em' }}>{p.name}</div>
-                  <div style={{ fontSize: 13 }} className="muted">
-                    {[PLACE_KIND_LABEL[p.kind], p.suburb, p.cost ? money(p.cost) + ' pp' : ''].filter(Boolean).join(' · ')}
-                  </div>
-                </div>
-                <span style={{ display: 'flex', gap: 10, flex: 'none' }}>
-                  <button className="link-btn" onClick={() => setEditing(p.id)}>Edit</button>
-                  <button className="link-btn" onClick={() => remove(p)}>Remove</button>
-                </span>
-              </div>
-              {(p.tags ?? []).length > 0 && (
-                <div className="row" style={{ gap: 4 }}>
-                  {p.tags!.map(t => <button key={t} className={'mini-tag dense' + (norm(tag) === norm(t) ? ' on' : '')} onClick={() => setTag(norm(tag) === norm(t) ? '' : t)}>{t}</button>)}
-                </div>
-              )}
-              {p.notes && <p className="place-notes">{p.notes}</p>}
-              <div className="place-foot">
+            <div key={p.id} className={'item-block' + (on ? ' open' : '')}>
+              <div className="item-row-wrap">
+                <button className="item-row" onClick={() => setOpenId(on ? null : p.id)} aria-expanded={on}>
+                  <span className="item-main">
+                    <span className="item-name">{p.name}</span>
+                    <span className="item-sub">{sub}</span>
+                  </span>
+                </button>
                 <button className={'mini-tag' + (p.been ? ' been' : '')} aria-pressed={p.been} title="Tap to switch"
                   onClick={() => update(x => { const z = x.places.find(z => z.id === p.id); if (z) z.been = !z.been; })}>{p.been ? '✓ Been' : 'Want to try'}</button>
-                {v?.next ? <span className="note">Planned {v.next}</span> : v?.last ? <span className="note">Last went {v.last}</span> : null}
-                {link && <a href={link} target="_blank" rel="noopener noreferrer" style={{ marginLeft: 'auto', fontSize: 13 }}>Open ↗</a>}
               </div>
+              {on && (
+                <div className="item-more">
+                  {p.notes && <p className="place-notes" style={{ WebkitLineClamp: 'unset' }}>{p.notes}</p>}
+                  {(p.tags ?? []).length > 0 && (
+                    <div className="row" style={{ gap: 4 }}>
+                      {p.tags!.map(t => <button key={t} className={'mini-tag dense' + (norm(tag) === norm(t) ? ' on' : '')} onClick={() => setTag(norm(tag) === norm(t) ? '' : t)}>{t}</button>)}
+                    </div>
+                  )}
+                  {!v?.next && v?.last && <span className="note">Last went {v.last}</span>}
+                  <div className="row" style={{ gap: 14, alignItems: 'center' }}>
+                    <button className="pill-sm dark" onClick={() => setEditing(p.id)}>Edit</button>
+                    {link && <a href={link} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13 }}>Open website ↗</a>}
+                    <button className="link-btn" onClick={() => remove(p)}>Remove</button>
+                  </div>
+                </div>
+              )}
             </div>
           );
         })}
@@ -101,7 +106,7 @@ export default function PlacesPage({ D, update }: { D: HouseholdData; update: Up
         <p className="empty">{D.places.length ? 'No places match.' : 'No places yet. Add the restaurants, bars and cafés you like, or want to try. You can then pick them when planning a meal out.'}</p>
       )}
       {editing && <PlaceDialog D={D} update={update} place={editing === 'new' ? null : D.places.find(p => p.id === editing) ?? null} onClose={() => setEditing(null)} />}
-    </>
+    </div>
   );
 }
 
