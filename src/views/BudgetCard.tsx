@@ -1,96 +1,47 @@
 import { useState } from 'react';
 import { key } from '../lib/dates';
-import { ChoreOwner, donutOf, EXTRA_COLOR, Extra, HouseholdData, money, nextOwner, OWNERS, Slice, Spend, uid } from '../lib/model';
+import { ChoreOwner, earnings, Extra, HouseholdData, money, nextOwner, OWNERS, Spend, uid } from '../lib/model';
 import { AddRow } from './SetField';
 import type { Update } from '../Household';
 import { CategoryWeek, weekBudget } from '../lib/food';
 
 /**
- * Pie chart of `slices`. Hovering (or tapping) a segment shows its name,
- * amount and share in the middle in place of `children`.
+ * This week's budget, for checking rather than setting up: what each of you has left,
+ * then one simple row per category. Tap a category to see each person's half and log a spend.
  */
-export function Donut({ slices, size, hole, children }: { slices: Slice[]; size: number; hole: number; children?: React.ReactNode }) {
-  const [hover, setHover] = useState<number | null>(null);
-  const shown = slices.filter(s => s.total > 0);
-  const sum = shown.reduce((a, s) => a + s.total, 0);
-
-  const pick = (e: React.PointerEvent<HTMLDivElement>) => {
-    const r = e.currentTarget.getBoundingClientRect();
-    const dx = e.clientX - r.left - r.width / 2, dy = e.clientY - r.top - r.height / 2;
-    const dist = Math.hypot(dx, dy), outer = r.width / 2;
-    if (!sum || dist > outer || dist < outer - hole) { setHover(null); return; }
-    const deg = (Math.atan2(dx, -dy) * 180 / Math.PI + 360) % 360; // 0° at the top, clockwise like conic-gradient
-    let acc = 0;
-    for (let i = 0; i < shown.length; i++) {
-      acc += shown[i].total / sum * 360;
-      if (deg < acc) { setHover(i); return; }
-    }
-    setHover(null);
-  };
-  const h = hover !== null ? shown[hover] : null;
-
-  return (
-    <div className="donut" style={{ width: size, height: size, background: donutOf(shown) }}
-      onPointerMove={pick} onPointerDown={pick} onPointerLeave={e => { if (e.pointerType === 'mouse') setHover(null); }}
-      role="img" aria-label={shown.map(s => s.label + ' ' + money(s.total)).join(', ')}>
-      {h && (
-        <svg className="donut-ring" viewBox="0 0 100 100" aria-hidden>
-          {(() => {
-            const start = shown.slice(0, hover!).reduce((a, s) => a + s.total, 0) / sum, end = start + h.total / sum;
-            const pt = (f: number, rad: number) => [50 + rad * Math.sin(f * 2 * Math.PI), 50 - rad * Math.cos(f * 2 * Math.PI)];
-            const [x1, y1] = pt(start, 49), [x2, y2] = pt(end, 49);
-            const large = end - start > 0.5 ? 1 : 0;
-            return end - start >= 0.999
-              ? <circle cx="50" cy="50" r="49" fill="none" stroke="#1a1a1a" strokeWidth="1.5" />
-              : <path d={'M' + x1 + ' ' + y1 + ' A49 49 0 ' + large + ' 1 ' + x2 + ' ' + y2} fill="none" stroke="#1a1a1a" strokeWidth="2" strokeLinecap="round" />;
-          })()}
-        </svg>
-      )}
-      <div className="donut-hole" style={{ inset: hole }}>
-        {h ? (
-          <>
-            <span style={{ fontSize: 11, maxWidth: '90%', textAlign: 'center', lineHeight: 1.2 }} className="muted">{h.label}</span>
-            <span style={{ fontSize: size > 120 ? 18 : 15, fontWeight: 600 }}>{money(h.total)}</span>
-            <span style={{ fontSize: 11 }} className="muted">{Math.round(h.total / sum * 100)}%</span>
-          </>
-        ) : children}
-      </div>
-    </div>
-  );
-}
-
 export default function BudgetCard({ D, update, mon, onEdit }: { D: HouseholdData; update: Update; mon: Date; onEdit: () => void }) {
   const wk = key(mon);
   const extras = D.extras[wk] ?? [];
   const b = weekBudget(D, mon);
   const [open, setOpen] = useState<string | null>(null);
+  const flexible = b.cats.filter(c => !c.fixed), fixed = b.cats.filter(c => c.fixed);
 
   return (
-    <section className="card" style={{ flex: '1 1 300px', padding: 20 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 16 }}>
-        <h2 style={{ margin: 0, fontSize: 21, fontWeight: 700, fontFamily: 'var(--display)', letterSpacing: '-0.015em' }}>Budget <span style={{ fontWeight: 400, fontSize: 13 }} className="muted">this week</span></h2>
-        <button className="link-btn" style={{ fontSize: 13 }} onClick={onEdit}>Edit</button>
+    <section className="budget-week">
+      <div className="left-pair">
+        {(['ella', 'jackson'] as const).map(p => (
+          <div key={p} className="left-one">
+            <span className="sec-label">{OWNERS[p].name} has left</span>
+            <span className="left-big" style={{ color: OWNERS[p].ink }}>{money(p === 'ella' ? b.ellaLeft : b.jacksonLeft)}</span>
+            <span className="note">of {money(earnings(D, p))} income</span>
+          </div>
+        ))}
       </div>
-      <div style={{ display: 'flex', gap: 20, alignItems: 'center', flexWrap: 'wrap', marginBottom: 16 }}>
-        <Donut slices={b.slices} size={150} hole={20}>
-          <span style={{ fontSize: 11 }} className="muted">Left</span>
-          <span style={{ fontSize: 14, fontWeight: 600, color: '#A9477B' }}>Ella {money(b.ellaLeft)}</span>
-          <span style={{ fontSize: 14, fontWeight: 600, color: '#1B6B56' }}>Jackson {money(b.jacksonLeft)}</span>
-        </Donut>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13, flex: 1, minWidth: 140 }}>
-          <div className="kv"><span className="muted">Income</span><span style={{ fontWeight: 600 }}>{money(b.income)}</span></div>
-          <div className="kv"><span className="muted">Committed</span><span style={{ fontWeight: 600 }}>{money(b.committed.total)}</span></div>
-          <div className="kv"><span className="muted">Spent so far</span><span>{money(b.spent.total)}</span></div>
-          <div className="kv"><span style={{ color: '#A9477B' }}>Ella pays</span><span>{money(b.committed.e)}</span></div>
-          <div className="kv"><span style={{ color: '#1B6B56' }}>Jackson pays</span><span>{money(b.committed.j)}</span></div>
-          <div className="kv" style={{ borderTop: '1px solid var(--line-soft)', paddingTop: 6 }}><span style={{ color: '#A9477B' }}>Ella has left</span><span style={{ fontWeight: 600 }}>{money(b.ellaLeft)}</span></div>
-          <div className="kv"><span style={{ color: '#1B6B56' }}>Jackson has left</span><span style={{ fontWeight: 600 }}>{money(b.jacksonLeft)}</span></div>
-        </div>
+      <p className="note budget-sum">Spent so far {money(b.spent.total)} of {money(b.committed.total)} planned. <button className="link-btn" onClick={onEdit}>Set up budget</button></p>
+
+      <div className="budget-block">
+        <div className="sec-label">Spending</div>
+        {flexible.map(c => (
+          <CategoryRow key={c.id} c={c} open={open === c.id} onToggle={() => setOpen(o => (o === c.id ? null : c.id))} update={update} wk={wk} />
+        ))}
+        {fixed.map(c => (
+          <div key={c.id} className="cat-simple fixed">
+            <span className="cat-simple-name">{c.name}</span>
+            <span className="cat-simple-amt">{money(c.budget.total)} <span className="muted">· fixed</span></span>
+          </div>
+        ))}
+        {!b.cats.length && <p className="note">No categories yet. <button className="link-btn" onClick={onEdit}>Set up your budget</button></p>}
       </div>
-      {b.cats.map(c => (
-        <CategoryRow key={c.id} c={c} open={open === c.id} onToggle={() => setOpen(o => (o === c.id ? null : c.id))} update={update} wk={wk} />
-      ))}
-      {!b.cats.length && <p style={{ fontSize: 13, margin: 0 }} className="muted">No categories yet.</p>}
       <WeekExtras extras={extras} total={b.extra.total} update={update} wk={wk} />
     </section>
   );
@@ -98,47 +49,31 @@ export default function BudgetCard({ D, update, mon, onEdit }: { D: HouseholdDat
 
 const OVER_INK = '#B0532F';
 
-/** One faded half per person, filling with their colour as they spend. */
-function FillBar({ c }: { c: CategoryWeek }) {
-  // Ella fills from the left edge, Jackson from the right, meeting in the middle.
-  const half = (budget: number, spent: number, color: string, tint: string, width: string, fromRight: boolean) => (
-    <div style={{ width, background: tint, position: 'relative' }}>
-      <div style={{ position: 'absolute', top: 0, bottom: 0, [fromRight ? 'right' : 'left']: 0, width: (budget ? Math.min(1, spent / budget) * 100 : spent ? 100 : 0) + '%', background: color }} />
-    </div>
-  );
-  const t = c.budget.total;
-  const ew = t ? (c.budget.e / t * 100) + '%' : '50%', jw = t ? (c.budget.j / t * 100) + '%' : '50%';
-  return (
-    <div className="split-bar" style={{ gap: 2, background: 'transparent' }}>
-      {half(c.budget.e, c.spent.e, '#E886B8', '#FAE3EE', ew, false)}
-      {half(c.budget.j, c.spent.j, '#2A9E80', '#DAEFE7', jw, true)}
-    </div>
-  );
-}
-
+/** A category: its name, "$37 of $180" and one bar. Tapping it opens each person's half and the spends. */
 function CategoryRow({ c, open, onToggle, update, wk }: { c: CategoryWeek; open: boolean; onToggle: () => void; update: Update; wk: string }) {
-  const personLine = (spent: number, budget: number) => (c.fixed ? money(budget) : money(spent) + ' of ' + money(budget));
+  const pct = c.budget.total ? Math.min(1, c.spent.total / c.budget.total) * 100 : c.spent.total ? 100 : 0;
+  const over = c.over > 0;
   return (
-    <div className="cat-row">
-      <button className="cat-toggle" onClick={c.fixed ? undefined : onToggle} aria-expanded={c.fixed ? undefined : open}
-        style={{ cursor: c.fixed ? 'default' : 'pointer' }}>
-        <span style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 14, gap: 8 }}>
-          <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <span className="swatch" style={{ background: c.color }} />{c.name}
-            {c.pct !== null && <span className="muted" style={{ fontSize: 12 }}>{Math.round(c.pct)}% of left</span>}
-            {!c.fixed && <span className={'cat-log' + (open ? ' on' : '')} aria-hidden>{open ? 'Close' : '+ Log'}</span>}
+    <div className={'cat-simple' + (open ? ' open' : '')}>
+      <button className="cat-simple-btn" onClick={onToggle} aria-expanded={open}>
+        <span className="cat-simple-top">
+          <span className="cat-simple-name">{c.name}{c.pct !== null && <span className="muted"> · {Math.round(c.pct)}% of left</span>}</span>
+          <span className="cat-simple-amt" style={over ? { color: OVER_INK } : undefined}>
+            <b>{money(c.spent.total)}</b> <span className={over ? '' : 'muted'}>{over ? money(c.over) + ' over' : 'of ' + money(c.budget.total)}</span>
           </span>
-          {c.fixed ? <span style={{ fontWeight: 600 }}>{money(c.budget.total)}</span>
-            : c.over > 0 ? <span style={{ fontWeight: 600, color: OVER_INK }}>{money(c.spent.total)} <span style={{ fontWeight: 400, fontSize: 12 }}>· {money(c.over)} over</span></span>
-            : <span><span style={{ fontWeight: 600 }}>{money(c.spent.total)}</span> <span className="muted" style={{ fontSize: 12 }}>of {money(c.budget.total)}</span></span>}
+          <span className="cat-chev" aria-hidden>{open ? '−' : '+'}</span>
         </span>
-        <FillBar c={c} />
-        <span style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
-          <span style={{ color: c.spent.e > c.budget.e && !c.fixed ? OVER_INK : '#A9477B' }}>{personLine(c.spent.e, c.budget.e)}</span>
-          <span style={{ color: c.spent.j > c.budget.j && !c.fixed ? OVER_INK : '#1B6B56' }}>{personLine(c.spent.j, c.budget.j)}</span>
-        </span>
+        <span className="cat-bar"><span style={{ width: pct + '%', background: over ? OVER_INK : 'var(--ink)' }} /></span>
       </button>
-      {open && !c.fixed && <SpendPanel c={c} update={update} wk={wk} />}
+      {open && (
+        <>
+          <div className="cat-halves">
+            <span style={{ color: c.spent.e > c.budget.e ? OVER_INK : OWNERS.ella.ink }}>Ella {money(c.spent.e)} of {money(c.budget.e)}</span>
+            <span style={{ color: c.spent.j > c.budget.j ? OVER_INK : OWNERS.jackson.ink }}>Jackson {money(c.spent.j)} of {money(c.budget.j)}</span>
+          </div>
+          <SpendPanel c={c} update={update} wk={wk} />
+        </>
+      )}
     </div>
   );
 }
@@ -211,12 +146,10 @@ function WeekExtras({ extras, total, update, wk }: { extras: Extra[]; total: num
   });
 
   return (
-    <div style={{ borderTop: '1px solid var(--line-soft)', paddingTop: 10, marginTop: 2, display: 'flex', flexDirection: 'column', gap: 6 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-        <span style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 14 }}>
-          <span className="swatch" style={{ background: EXTRA_COLOR }} />This week only
-        </span>
-        {total > 0 && <span style={{ fontWeight: 600, fontSize: 14 }}>{money(total)}</span>}
+    <div className="budget-block" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <div className="sec-label" style={{ justifyContent: 'space-between' }}>
+        <span>This week only</span>
+        {total > 0 && <span style={{ color: 'var(--ink)', letterSpacing: 0 }}>{money(total)}</span>}
       </div>
       {extras.map(x => (
         <div key={x.id} style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13 }}>

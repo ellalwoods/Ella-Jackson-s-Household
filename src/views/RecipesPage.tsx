@@ -73,7 +73,16 @@ export default function RecipesPage({ D, update, mon }: { D: HouseholdData; upda
             <button className="link-btn" onClick={() => { if (confirmRemove('“' + r.name + '”')) remove(r.id); }}>Remove</button>
           </span>
         </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+        {!showMethod && (r.ingredients.length > 0 || (r.buckets ?? []).length > 0) && (
+          <div className="ing-summary">
+            {[...r.ingredients.map(g => g.name), ...(r.buckets ?? []).map(u => D.buckets.find(z => z.id === u.bucket)?.name).filter(Boolean).map(n => n + ' (bucket)')].join(', ')}
+            {(() => {
+              const low = r.ingredients.filter(g => { const c = pantry.get(norm(g.name)); return c && !isStocked(c); }).length;
+              return low ? <span className="ing-low"> · {low} low</span> : null;
+            })()}
+          </div>
+        )}
+        {showMethod && <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
           {r.ingredients.map((g, i) => {
             const c = pantry.get(norm(g.name));
             const dot = !c ? 'var(--extra)' : isStocked(c) ? STATE_COLORS.Full : STATE_COLORS.Replace;
@@ -88,18 +97,16 @@ export default function RecipesPage({ D, update, mon }: { D: HouseholdData; upda
             const b = D.buckets.find(z => z.id === u.bucket);
             return b ? <span key={u.bucket} className="ing-tag bucket-tag">🪣 {b.name}<span className="muted">· pick {u.count}</span></span> : null;
           })}
-          {!r.ingredients.length && !r.buckets?.length && <span className="note">No ingredients yet — tap Edit to add them.</span>}
+        </div>}
+        {!r.ingredients.length && !r.buckets?.length && <span className="note">No ingredients yet — tap Edit to add them.</span>}
+        <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', fontSize: 13 }}>
+          {(r.ingredients.length > 0 || r.method || link) && (
+            <button className="link-btn" style={{ fontSize: 13 }} onClick={() => setOpenMethod(m => ({ ...m, [r.id]: !m[r.id] }))}>
+              {showMethod ? 'Hide details' : 'Show details'}
+            </button>
+          )}
+          {showMethod && link && <a href={link} target="_blank" rel="noopener noreferrer">Open recipe ↗</a>}
         </div>
-        {(link || r.method) && (
-          <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', fontSize: 13 }}>
-            {link && <a href={link} target="_blank" rel="noopener noreferrer">Open recipe ↗</a>}
-            {r.method && (
-              <button className="link-btn" style={{ fontSize: 13 }} onClick={() => setOpenMethod(m => ({ ...m, [r.id]: !m[r.id] }))}>
-                {showMethod ? 'Hide method' : 'Show method'}
-              </button>
-            )}
-          </div>
-        )}
         {showMethod && r.method && <div style={{ fontSize: 14, lineHeight: 1.5, whiteSpace: 'pre-wrap', borderTop: '1px solid var(--line-soft)', paddingTop: 10 }}>{r.method}</div>}
       </div>
     );
@@ -111,8 +118,6 @@ export default function RecipesPage({ D, update, mon }: { D: HouseholdData; upda
         <input className="search" style={{ flex: '1 1 260px' }} value={q} onChange={e => setQ(e.target.value)} placeholder="Search by name or ingredient" />
         {editing ? <button className="pill plain lg" onClick={() => setEditing(null)}>Close editor</button> : (<>
           <button className="pill dark lg" onClick={() => setEditing('new')}>+ New recipe</button>
-          <button className="pill plain lg" onClick={() => setEditing('bucket:new')}>+ New bucket</button>
-          <button className="pill plain lg" onClick={() => setEditing('mini:new')}>+ New mini recipe</button>
         </>)}
       </div>
       {/* Filters: meal as one joined control, your tags as small chips below. */}

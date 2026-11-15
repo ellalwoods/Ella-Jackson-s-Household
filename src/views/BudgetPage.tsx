@@ -1,9 +1,8 @@
 import { useState } from 'react';
-import { budget, Category, earnings, HouseholdData, Income, isShare, money, num, otherPerson, PEOPLE, PersonId, setShare, toggleShare, uid } from '../lib/model';
+import { budget, Category, HouseholdData, Income, isShare, money, num, otherPerson, PEOPLE, PersonId, setShare, toggleShare, uid } from '../lib/model';
 import { confirmRemove } from './confirm';
 import { AddRow, SetField } from './SetField';
 import type { Update } from '../Household';
-import { Donut } from './BudgetCard';
 
 type Mode = 'spent' | 'fixed' | 'share';
 const MODES: [Mode, string][] = [['spent', 'As spent'], ['fixed', 'Fixed'], ['share', 'Share of left']];
@@ -54,33 +53,6 @@ export default function BudgetPage({ D, update }: { D: HouseholdData; update: Up
 
   return (
     <div className="budget-page">
-      {/* 1. The overall position first: what's left, then income and what's committed. */}
-      <section className="card budget-hero">
-        {/* What's left is each person's own, so it's shown per person, not as one total. */}
-        <div className="hero-person">
-          <span className="hero-label">Ella has left</span>
-          <span className="hero-big" style={{ color: ELLA }}>{money(b.ellaLeft)}</span>
-          <span className="hero-sub">of {money(earnings(D, 'ella'))} income</span>
-        </div>
-        <div className="hero-person">
-          <span className="hero-label">Jackson has left</span>
-          <span className="hero-big" style={{ color: JACKSON }}>{money(b.jacksonLeft)}</span>
-          <span className="hero-sub">of {money(earnings(D, 'jackson'))} income</span>
-        </div>
-        <div className="hero-stat">
-          <span className="hero-label">Income</span>
-          <span className="hero-mid">{money(b.income)}</span>
-          <span className="hero-label" style={{ marginTop: 8 }}>Committed</span>
-          <span className="hero-mid">{money(b.spend)}</span>
-        </div>
-        <div className="hero-donut">
-          <Donut slices={b.slices} size={150} hole={20}>
-            <span style={{ fontSize: 11 }} className="muted">Spending</span>
-            <span style={{ fontSize: 16, fontWeight: 600 }}>{money(b.spend)}</span>
-          </Donut>
-        </div>
-      </section>
-
       {/* 2. Income: one row per source — who, name, amount. */}
       <section className="card" style={{ padding: 18 }}>
         <div className="card-title">Income <span className="sub">per week</span><span className="card-title-end">{money(b.income)}</span></div>

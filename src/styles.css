@@ -720,3 +720,31 @@ input:focus, textarea:focus, select:focus { outline: 2px solid var(--ink); outli
   .meal-slots { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; align-content: start; }
   .slot-label { display: block; }
 }
+
+/* ═══ Money › Budget: what's left, then one quiet row per category ═══ */
+.budget-week { max-width: 760px; display: flex; flex-direction: column; gap: 28px; }
+.left-pair { display: flex; flex-wrap: wrap; gap: 18px 48px; }
+.left-one { display: flex; flex-direction: column; gap: 2px; }
+.left-big { font-family: var(--display); font-weight: 800; font-size: clamp(40px, 7vw, 56px); letter-spacing: -0.04em; line-height: 1; font-variant-numeric: tabular-nums; margin: 4px 0 2px; }
+.budget-sum { margin: -14px 0 0; font-size: 13px; }
+.budget-sum .link-btn { margin-left: 6px; font-size: 13px; }
+.budget-block { border-top: 1.5px solid var(--ink); padding-top: 12px; }
+.cat-simple { border-bottom: 1px solid var(--line); }
+.cat-simple:last-child { border-bottom: none; }
+.cat-simple.fixed { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 14px 0; }
+.cat-simple-btn { display: flex; flex-direction: column; gap: 9px; width: 100%; padding: 14px 0; border: none; background: none; cursor: pointer; text-align: left; color: var(--ink); }
+.cat-simple-top { display: flex; align-items: baseline; gap: 10px; }
+.cat-simple-name { flex: 1; min-width: 0; font-size: 16px; font-weight: 500; white-space: normal; }
+.cat-simple-name .muted { font-size: 13px; font-weight: 400; }
+.cat-simple-amt { font-size: 14px; font-variant-numeric: tabular-nums; }
+.cat-simple-amt b { font-family: var(--display); font-size: 17px; font-weight: 700; letter-spacing: -0.02em; }
+.cat-chev { width: 18px; text-align: center; color: var(--faint); font-size: 16px; }
+.cat-bar { display: block; height: 5px; border-radius: 3px; background: var(--line-soft); overflow: hidden; }
+.cat-bar > span { display: block; height: 100%; border-radius: 3px; }
+.cat-halves { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; margin: -2px 0 10px; }
+.cat-simple.open .spend-panel { margin-bottom: 14px; }
+
+/* Recipes: ingredients as one quiet line until the card is opened. */
+.ing-summary { font-size: 13px; color: var(--muted); line-height: 1.45; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.ing-low { color: #C2563F; font-weight: 600; }
+@media (min-width: 721px) { .week-colhead > span:last-child .col-meal { display: inline; } }
