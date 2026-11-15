@@ -834,3 +834,10 @@ a.pill-sm.detail-link { display: inline-flex; align-items: center; color: var(--
   .dialog { width: 100%; max-height: 88vh; border-radius: 20px 20px 0 0; padding-bottom: calc(20px + env(safe-area-inset-bottom)); }
 }
 .dialog-scrim { z-index: 60; }
+
+/* Getting back from a page of its own: a clear button, not a faint link. */
+.back-link { display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; height: var(--h-sm); padding: 0 14px 0 12px; border: 1px solid var(--border); border-radius: 999px; background: #fff; color: var(--ink); font-size: 14px; font-weight: 600; text-decoration: none; cursor: pointer; }
+.back-link:hover { border-color: var(--ink); color: var(--ink); }
+/* A row that opens a page shows a › at its end. */
+.item-chev-btn { flex: none; width: 24px; padding: 0; border: none; background: none; color: var(--faint); font-size: 22px; line-height: 1; cursor: pointer; }
+.list-filterbar { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; justify-content: space-between; margin-bottom: 14px; }

@@ -5,6 +5,7 @@ import type { Update } from '../Household';
 import { safeLink, TagEdit } from './RecipeEditor';
 import { confirmRemove } from './confirm';
 import TagFilter from './TagFilter';
+import Sheet from './Sheet';
 
 type Show = 'all' | 'want' | 'been';
 
@@ -17,6 +18,7 @@ export default function PlacesPage({ D, update }: { D: HouseholdData; update: Up
   /** null = closed, 'new' = adding, or the id being edited. */
   const [editing, setEditing] = useState<string | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
+  const [filtering, setFiltering] = useState(false);
 
   const pq = norm(q);
   const visits = placeVisits(D);
@@ -47,7 +49,7 @@ export default function PlacesPage({ D, update }: { D: HouseholdData; update: Up
     const p = open, link = safeLink(p.link), v = visits.get(p.id);
     return (
       <div className="detail">
-        <button className="link-btn back-link" onClick={() => go(null)}>‹ Places</button>
+        <button className="back-link" onClick={() => go(null)}>← Places</button>
         <h2 className="detail-title">{p.name}</h2>
         <div className="detail-meta">{[PLACE_KIND_LABEL[p.kind], p.suburb, p.cost ? money(p.cost) + ' per person' : ''].filter(Boolean).join(' · ')}</div>
         <div className="detail-actions">
@@ -86,28 +88,37 @@ export default function PlacesPage({ D, update }: { D: HouseholdData; update: Up
         <input className="search" value={q} onChange={e => setQ(e.target.value)} placeholder="Search by name, suburb or tag" aria-label="Search places" />
         <button className="pill dark" onClick={() => setEditing('new')}>+ Add</button>
       </div>
+      {/* One simple row of choices; type and tags live behind Filters. */}
       {D.places.length > 0 && (
-        <div className="filter-rows">
-          <div className="filter-row">
-            <span className="filter-label">Type</span>
-            <div className="seg" role="group" aria-label="Filter by type">
+        <div className="list-filterbar">
+          <div className="seg" role="group" aria-label="Been or want to try">
+            {([['all', 'All'], ['want', 'Want to try'], ['been', 'Been']] as [Show, string][]).map(([k, l]) => (
+              <button key={k} className={show === k ? 'on' : ''} aria-pressed={show === k} onClick={() => setShow(k)}>{l}</button>
+            ))}
+          </div>
+          <button className={'pill-sm' + (kind !== 'all' || tag ? ' dark' : '')} onClick={() => setFiltering(true)}>
+            Filters{kind !== 'all' || tag ? ' · ' + [kind !== 'all' ? PLACE_KIND_LABEL[kind] : '', tag].filter(Boolean).join(', ') : ''}
+          </button>
+        </div>
+      )}
+      {filtering && (
+        <Sheet title="Filter places" onClose={() => setFiltering(false)}>
+          <div className="sheet-form">
+            <div className="sec-label">Type</div>
+            <div className="seg" role="group" aria-label="Filter by type" style={{ alignSelf: 'flex-start', flexWrap: 'wrap', borderRadius: 18 }}>
               {(['all', ...PLACE_KINDS] as const).map(k => {
                 const n = k === 'all' ? D.places.length : D.places.filter(p => p.kind === k).length;
                 if (k !== 'all' && !n) return null;
                 return <button key={k} className={kind === k ? 'on' : ''} aria-pressed={kind === k} onClick={() => setKind(k)}>{k === 'all' ? 'All' : PLACE_KIND_LABEL[k]} <span className="seg-count">{n}</span></button>;
               })}
             </div>
-          </div>
-          <div className="filter-row">
-            <span className="filter-label">Show</span>
-            <div className="seg" role="group" aria-label="Been or want to try">
-              {([['all', 'All'], ['want', 'Want to try'], ['been', 'Been']] as [Show, string][]).map(([k, l]) => (
-                <button key={k} className={show === k ? 'on' : ''} aria-pressed={show === k} onClick={() => setShow(k)}>{l}</button>
-              ))}
+            {D.placeTags.length > 0 && <div className="filter-rows" style={{ margin: 0 }}><TagFilter D={D} update={update} kind="place" active={tag} onPick={setTag} /></div>}
+            <div className="row" style={{ gap: 10, marginTop: 6 }}>
+              <button className="pill dark" onClick={() => setFiltering(false)}>Show {list.length} place{list.length === 1 ? '' : 's'}</button>
+              {(kind !== 'all' || tag) && <button className="link-btn" onClick={() => { setKind('all'); setTag(''); }}>Clear filters</button>}
             </div>
           </div>
-          <TagFilter D={D} update={update} kind="place" active={tag} onPick={setTag} />
-        </div>
+        </Sheet>
       )}
 
       {/* One row per place; tap it to open its own page. */}
@@ -118,13 +129,14 @@ export default function PlacesPage({ D, update }: { D: HouseholdData; update: Up
           return (
             <div key={p.id} className="item-block">
               <div className="item-row-wrap">
-                <button className="item-row" onClick={() => go(p.id)}>
+                <button className="item-row" onClick={() => go(p.id)} aria-label={'Open ' + p.name}>
                   <span className="item-main">
                     <span className="item-name">{p.name}</span>
                     <span className="item-sub">{sub}</span>
                   </span>
                 </button>
                 <button className={'mini-tag' + (p.been ? ' been' : '')} aria-pressed={p.been} title="Tap to switch" onClick={() => toggleBeen(p)}>{p.been ? '✓ Been' : 'Want to try'}</button>
+                <button className="item-chev-btn" aria-hidden tabIndex={-1} onClick={() => go(p.id)}>›</button>
               </div>
             </div>
           );

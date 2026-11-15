@@ -69,7 +69,7 @@ export default function RecipesPage({ D, update, mon }: { D: HouseholdData; upda
   if (editing) {
     return (
       <div className="detail">
-        <button className="link-btn back-link" onClick={() => setEditing(null)}>‹ Back</button>
+        <button className="back-link" onClick={() => setEditing(null)}>← Back</button>
         <RecipeEditor key={editing} D={D} update={update} recipe={editingRecipe} kind={editKind} bucket={bucketBeingEdited}
           onDone={() => setEditing(null)} />
       </div>
@@ -88,7 +88,7 @@ export default function RecipesPage({ D, update, mon }: { D: HouseholdData; upda
     ].filter(Boolean);
     return (
       <div className="detail">
-        <button className="link-btn back-link" onClick={() => go(null)}>‹ {r.mini ? 'Mini recipes' : 'Recipes'}</button>
+        <button className="back-link" onClick={() => go(null)}>← {r.mini ? 'Mini recipes' : 'Recipes'}</button>
         <h2 className="detail-title">{r.name}</h2>
         <div className="detail-meta">{meta.join(' · ')}</div>
         {(r.tags ?? []).length > 0 && <div className="row" style={{ gap: 4 }}>{r.tags!.map(t => <span key={t} className="mini-tag dense">{t}</span>)}</div>}
@@ -138,7 +138,7 @@ export default function RecipesPage({ D, update, mon }: { D: HouseholdData; upda
     const b = openBucket, usedBy = mains.filter(r => r.buckets?.some(u => u.bucket === b.id)), avg = bucketAverage(b, prices);
     return (
       <div className="detail">
-        <button className="link-btn back-link" onClick={() => go(null)}>‹ Buckets</button>
+        <button className="back-link" onClick={() => go(null)}>← Buckets</button>
         <h2 className="detail-title">{b.name}</h2>
         <div className="detail-meta">
           {[b.items.length + ' item' + (b.items.length === 1 ? '' : 's'), (b.perMeal ?? 1) + ' per meal', avg ? 'avg ' + money(avg) + ' each' : '',
