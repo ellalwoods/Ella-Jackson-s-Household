@@ -8,6 +8,9 @@ import type { Update } from '../Household';
 
 interface Props { D: HouseholdData; update: Update; mon: Date }
 
+/** Meals that always get a slot on the plan; the others fold away until used. */
+const ALWAYS: Meal[] = ['lunch', 'dinner'];
+
 export default function WeekTable({ D, update, mon }: Props) {
   /** Open slot as `${dateKey}|${meal}`. */
   const [picker, setPicker] = useState<string | null>(null);
@@ -17,6 +20,8 @@ export default function WeekTable({ D, update, mon }: Props) {
   const [picking, setPicking] = useState<string | null>(null);
   /** Saving a typed "where" as a new place, for this slot. */
   const [newPlace, setNewPlace] = useState<{ slot: string; name: string } | null>(null);
+  /** Breakfast or "other" slots opened for adding, though nothing is planned there yet. */
+  const [shown, setShown] = useState<Set<string>>(new Set());
 
   const tk = key(new Date());
   const rBy = new Map(D.recipes.map(r => [r.id, r]));
@@ -109,7 +114,7 @@ export default function WeekTable({ D, update, mon }: Props) {
           </div>
 
           <div className="meal-slots">
-            {d.meals.map(({ meal, slot, r, out }, mi) => (
+            {d.meals.filter(m => ALWAYS.includes(m.meal) || m.r || m.out || shown.has(m.slot)).map(({ meal, slot, r, out }, mi) => (
               <div key={meal} style={{ position: 'relative', minWidth: 0 }}>
                 <button className="slot-btn" onClick={() => { setPicker(slot); setQuery(''); setIdx(0); }}
                   style={{ borderColor: r || out ? 'transparent' : 'var(--line)', borderStyle: r || out ? 'solid' : 'dashed', background: out ? 'var(--chip)' : r ? 'var(--panel)' : 'transparent' }}>
@@ -190,6 +195,16 @@ export default function WeekTable({ D, update, mon }: Props) {
                 )}
               </div>
             ))}
+            {(() => {
+              const folded = d.meals.filter(m => !ALWAYS.includes(m.meal) && !m.r && !m.out && !shown.has(m.slot));
+              return folded.length ? (
+                <div className="slot-more">
+                  {folded.map(m => (
+                    <button key={m.meal} className="link-btn" onClick={() => { setShown(s => new Set(s).add(m.slot)); setPicker(m.slot); setQuery(''); setIdx(0); }}>+ {MEAL_LABEL[m.meal]}</button>
+                  ))}
+                </div>
+              ) : null;
+            })()}
           </div>
 
           <div className="chores-cell">
