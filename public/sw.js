@@ -1,6 +1,6 @@
 // Keeps the app opening instantly and offline. Household data itself syncs
 // through Supabase and is cached by the app, so it is never stored here.
-const CACHE = 'household-v1';
+const CACHE = 'household-v2';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icon.svg', './icons/apple-touch-icon.png', './icons/icon-192.png'];
 const FONTS = /^https:\/\/fonts\.(googleapis|gstatic)\.com\//;
 
@@ -32,7 +32,7 @@ self.addEventListener('fetch', event => {
 
   // Pages: always try the network first so updates arrive straight away.
   if (req.mode === 'navigate') {
-    event.respondWith(fetch(req).then(res => put('./index.html', res)).catch(() => caches.match('./index.html')));
+    event.respondWith(fetch(req, { cache: 'no-cache' }).then(res => put('./index.html', res)).catch(() => caches.match('./index.html')));
     return;
   }
   // App files (hashed, so they never change) and fonts: cache first, then network.
