@@ -1,19 +1,26 @@
+import { useId } from 'react';
+
+const HEART = 'M50 88C22 68 4 52 4 31 4 15 15 4 29 4c10 0 17 6 21 14 4-8 11-14 21-14 14 0 25 11 25 27 0 21-18 37-46 57Z';
+
 /**
- * The 3a heart: Ella's and Jackson's circles as the lobes, meeting at the point.
- * Used as the "&" in the wordmark (with a dusty-blue point, as in logo 3e) and,
- * on a linen tile, as the app icon (public/icon.svg, with a butter point).
+ * One heart, Ella's pink on the left and Jackson's green on the right.
+ * Used as the "&" in the wordmark. The app icon (public/icon.svg) is the inverse:
+ * a white heart on a pink and green tile.
  */
-export function HeartMark({ size = 24, point = '#8FB0CF' }: { size?: number; point?: string }) {
+export function HeartMark({ size = 24 }: { size?: number }) {
+  const id = 'heart' + useId().replace(/[^\w-]/g, '');
   return (
-    <svg className="heart-mark" viewBox="19 23 62 56" width={size * 62 / 56} height={size} aria-hidden="true">
-      <polygon points="22,51 50,79 78,51" fill={point} />
-      <circle cx="37" cy="41" r="18" fill="#E886B8" />
-      <circle cx="63" cy="41" r="18" fill="#2A9E80" />
+    <svg className="heart-mark" viewBox="0 0 100 92" width={size * 100 / 92} height={size} aria-hidden="true">
+      <clipPath id={id}><path d={HEART} /></clipPath>
+      <g clipPath={`url(#${id})`}>
+        <rect width="50" height="92" fill="#E886B8" />
+        <rect x="50" width="50" height="92" fill="#2A9E80" />
+      </g>
     </svg>
   );
 }
 
-/** Logo 3e: "Ella ♥ Jackson" with the heart standing in for the ampersand. */
+/** "Ella ♥ Jackson" with the heart standing in for the ampersand. */
 export function Logo({ onClick }: { onClick?: () => void }) {
   return (
     <button className="logo" onClick={onClick} aria-label="Ella and Jackson, Household">

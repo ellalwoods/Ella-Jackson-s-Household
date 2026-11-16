@@ -1,6 +1,6 @@
 // Keeps the app opening instantly and offline. Household data itself syncs
 // through Supabase and is cached by the app, so it is never stored here.
-const CACHE = 'household-v2';
+const CACHE = 'household-v3';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icon.svg', './icons/apple-touch-icon.png', './icons/icon-192.png'];
 const FONTS = /^https:\/\/fonts\.(googleapis|gstatic)\.com\//;
 
