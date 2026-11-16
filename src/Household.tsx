@@ -115,6 +115,17 @@ export default function Household({ data: D, update, status }: Props) {
 
       <main className="main">
         <div className="phone-top"><Logo onClick={() => open('home')} /></div>
+        {/* Pages within a section: one switch, always in the same place at the top. */}
+        {sec.pages.length > 1 && (
+          <nav className="tabbar subnav" aria-label={sec.label}>
+            {sec.pages.map(([p, text]) => (
+              <button key={p} className={'tab-btn' + (p === page ? ' on' : '')} aria-current={p === page ? 'page' : undefined} onClick={() => open(section, p)}>
+                {text}{counts[p] && <span className="tab-count">{counts[p]}</span>}
+              </button>
+            ))}
+          </nav>
+        )}
+
         <div className="page-top">
           <div className="page-title">
             <div className="page-eyebrow">{title[page][1]}</div>
@@ -129,16 +140,6 @@ export default function Household({ data: D, update, status }: Props) {
             </div>
           )}
         </div>
-        {sec.pages.length > 1 && (
-          <nav className="tabbar" aria-label={sec.label}>
-            {sec.pages.map(([p, text]) => (
-              <button key={p} className={'tab-btn' + (p === page ? ' on' : '')} aria-current={p === page ? 'page' : undefined} onClick={() => open(section, p)}>
-                {text}{counts[p] && <span className="tab-count">{counts[p]}</span>}
-              </button>
-            ))}
-          </nav>
-        )}
-
         <div className="page">
           {page === 'home' && (
             <HomePage D={D} update={update} shopCount={shoppingList(D, mondayOf(today)).items.length} ellaLeft={thisWeek.ellaLeft} jacksonLeft={thisWeek.jacksonLeft}

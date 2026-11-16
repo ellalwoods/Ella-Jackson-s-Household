@@ -841,3 +841,12 @@ a.pill-sm.detail-link { display: inline-flex; align-items: center; color: var(--
 /* A row that opens a page shows a › at its end. */
 .item-chev-btn { flex: none; width: 24px; padding: 0; border: none; background: none; color: var(--faint); font-size: 22px; line-height: 1; cursor: pointer; }
 .list-filterbar { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+
+/* Pages within a section (e.g. Shopping · Recipes · Pantry · Places): one clear switch at the top. */
+.main > .tabbar.subnav { display: flex; flex-wrap: nowrap; gap: 2px; width: 100%; max-width: 560px; padding: 3px; margin: 0 0 20px; border: none; border-radius: 12px; background: var(--chip); overflow-x: auto; scrollbar-width: none; }
+.main > .tabbar.subnav::-webkit-scrollbar { display: none; }
+.main > .tabbar.subnav .tab-btn { flex: 1 0 auto; justify-content: center; height: 36px; margin: 0; padding: 0 12px; border: none; border-radius: 9px; font-size: 14px; font-weight: 600; color: var(--muted); }
+.main > .tabbar.subnav .tab-btn.on { background: #fff; color: var(--ink); box-shadow: 0 1px 3px rgba(26, 26, 26, .12); }
+.main > .tabbar.subnav .tab-btn:hover:not(.on) { color: var(--ink); }
+.main > .tabbar.subnav .tab-count { color: var(--faint); font-weight: 500; }
+@media (max-width: 860px) { .main > .tabbar.subnav { margin-bottom: 16px; } }

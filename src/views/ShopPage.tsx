@@ -35,6 +35,7 @@ export default function ShopPage({ update, mon, label, items, skipped, pending =
   const [adding, setAdding] = useState(false);
   const [sorting, setSorting] = useState(false);
   const [showSkipped, setShowSkipped] = useState(false);
+  const [filtering, setFiltering] = useState(false);
   const wk = key(mon);
   // Hand-added and carried-over items keep their tick whichever week you're looking at.
   const tick = (i: ShopItem) => (i.manual || i.carried ? i.id : wk + '|' + i.id);
@@ -102,33 +103,37 @@ export default function ShopPage({ update, mon, label, items, skipped, pending =
           <ul>{pending.map(p => <li key={p}>{p}</li>)}</ul>
         </div>
       )}
+      {/* One row: how to sort, and a Filters button for which sections to show. */}
       {items.length > 0 && (
-        <div className="filter-rows">
-          <div className="filter-row">
-            <span className="filter-label">Sort</span>
-            <div className="seg" role="group" aria-label="Sort">
-              {SORTS.map(([k, l]) => (
-                <button key={k} aria-pressed={sortBy === k} className={sortBy === k ? 'on' : ''} onClick={() => setView(v => ({ ...v, sort: k }))}>{l}</button>
-              ))}
-            </div>
+        <div className="list-filterbar">
+          <div className="seg" role="group" aria-label="Sort">
+            {SORTS.map(([k, l]) => (
+              <button key={k} aria-pressed={sortBy === k} className={sortBy === k ? 'on' : ''} onClick={() => setView(v => ({ ...v, sort: k }))}>{l}</button>
+            ))}
           </div>
           {new Set(items.map(i => i.section)).size > 1 && (
-            <div className="filter-row">
-              <span className="filter-label">Show</span>
-              <div className="seg" role="group" aria-label="Show section">
-                {(['all', ...SHOP_SECTIONS] as const).map(f => {
-                  const on = only === f, n = f === 'all' ? items.length : items.filter(i => i.section === f).length;
-                  if (f !== 'all' && !n) return null;
-                  return (
-                    <button key={f} className={on ? 'on' : ''} aria-pressed={on} onClick={() => setView(v => ({ ...v, only: f }))}>
-                      {f === 'all' ? 'All' : SHOP_SECTION_LABEL[f]} <span className="seg-count">{n}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+            <button className={'pill-sm' + (only !== 'all' ? ' dark' : '')} onClick={() => setFiltering(true)}>
+              Filters{only !== 'all' ? ' · ' + SHOP_SECTION_LABEL[only] : ''}
+            </button>
           )}
         </div>
+      )}
+      {filtering && (
+        <Sheet title="Show a section" onClose={() => setFiltering(false)}>
+          <div className="sheet-form">
+            <div className="seg" role="group" aria-label="Show section" style={{ alignSelf: 'flex-start', flexWrap: 'wrap', borderRadius: 18 }}>
+              {(['all', ...SHOP_SECTIONS] as const).map(f => {
+                const on = only === f, n = f === 'all' ? items.length : items.filter(i => i.section === f).length;
+                if (f !== 'all' && !n) return null;
+                return (
+                  <button key={f} className={on ? 'on' : ''} aria-pressed={on} onClick={() => { setView(v => ({ ...v, only: f })); setFiltering(false); }}>
+                    {f === 'all' ? 'Everything' : SHOP_SECTION_LABEL[f]} <span className="seg-count">{n}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </Sheet>
       )}
       {groups.map(({ sec, list }) => (
         <div key={sec ?? 'all'} className="shop-group">

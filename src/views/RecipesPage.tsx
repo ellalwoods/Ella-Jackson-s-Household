@@ -6,6 +6,7 @@ import type { Update } from '../Household';
 import RecipeEditor, { safeLink } from './RecipeEditor';
 import { confirmRemove } from './confirm';
 import TagFilter from './TagFilter';
+import Sheet from './Sheet';
 
 type Tab = 'recipes' | 'buckets' | 'minis';
 
@@ -22,6 +23,8 @@ export default function RecipesPage({ D, update, mon }: { D: HouseholdData; upda
   const [editing, setEditing] = useState<string | null>(null);
   const [mealFilter, setMealFilter] = useState<Meal | 'all'>('all');
   const [tagFilter, setTagFilter] = useState('');
+  const [filtering, setFiltering] = useState(false);
+  const filtered = mealFilter !== 'all' || !!tagFilter;
 
   const pantry = new Map(D.pantry.map(c => [norm(c.name), c]));
   const prices = costContext(D);
@@ -163,27 +166,45 @@ export default function RecipesPage({ D, update, mon }: { D: HouseholdData; upda
         <input className="search" value={q} onChange={e => setQ(e.target.value)} placeholder={tab === 'buckets' ? 'Search buckets' : tab === 'minis' ? 'Search mini recipes' : 'Search recipes'} aria-label="Search" />
         <button className="pill dark" onClick={() => edit(newLabel[tab][1])}>{newLabel[tab][0]}</button>
       </div>
-      <div className="seg list-switch" role="group" aria-label="Show">
-        {(['recipes', 'buckets', 'minis'] as Tab[]).map(t => (
-          <button key={t} className={tab === t ? 'on' : ''} aria-pressed={tab === t} onClick={() => setTab(t)}>
-            {t === 'recipes' ? 'Recipes' : t === 'buckets' ? 'Buckets' : 'Mini recipes'} <span className="seg-count">{counts[t]}</span>
+      {/* One row: which list, and (for recipes) a Filters button for meal and tags. */}
+      <div className="list-filterbar">
+        <div className="seg" role="group" aria-label="Show">
+          {(['recipes', 'buckets', 'minis'] as Tab[]).map(t => (
+            <button key={t} className={tab === t ? 'on' : ''} aria-pressed={tab === t} onClick={() => setTab(t)}>
+              {t === 'recipes' ? 'Recipes' : t === 'buckets' ? 'Buckets' : 'Mini'} <span className="seg-count">{counts[t]}</span>
+            </button>
+          ))}
+        </div>
+        {tab === 'recipes' && (
+          <button className={'pill-sm' + (filtered ? ' dark' : '')} onClick={() => setFiltering(true)}>
+            Filters{filtered ? ' · ' + [mealFilter !== 'all' ? MEAL_LABEL[mealFilter] : '', tagFilter].filter(Boolean).join(', ') : ''}
           </button>
-        ))}
+        )}
       </div>
-
-      {tab === 'recipes' && (<>
-        <div className="filter-rows">
-          <div className="filter-row">
-            <span className="filter-label">Meal</span>
-            <div className="seg" role="group" aria-label="Filter by meal">
+      {filtering && (
+        <Sheet title="Filter recipes" onClose={() => setFiltering(false)}>
+          <div className="sheet-form">
+            <div className="sec-label">Meal</div>
+            <div className="seg" role="group" aria-label="Filter by meal" style={{ alignSelf: 'flex-start', flexWrap: 'wrap', borderRadius: 18 }}>
               {(['all', ...MEALS] as const).map(m => (
                 <button key={m} className={mealFilter === m ? 'on' : ''} aria-pressed={mealFilter === m} onClick={() => setMealFilter(m)}>{m === 'all' ? 'All' : MEAL_LABEL[m]}</button>
               ))}
             </div>
+            {D.recipeTags.length > 0 && (
+              <div className="filter-rows" style={{ margin: 0 }}>
+                <TagFilter D={D} update={update} kind="recipe" active={tagFilter} onPick={setTagFilter}
+                  count={t => mains.filter(r => (r.tags ?? []).some(x => norm(x) === norm(t))).length} />
+              </div>
+            )}
+            <div className="row" style={{ gap: 10, marginTop: 6 }}>
+              <button className="pill dark" onClick={() => setFiltering(false)}>Show {recipes.length} recipe{recipes.length === 1 ? '' : 's'}</button>
+              {filtered && <button className="link-btn" onClick={() => { setMealFilter('all'); setTagFilter(''); }}>Clear filters</button>}
+            </div>
           </div>
-          <TagFilter D={D} update={update} kind="recipe" active={tagFilter} onPick={setTagFilter}
-            count={t => mains.filter(r => (r.tags ?? []).some(x => norm(x) === norm(t))).length} />
-        </div>
+        </Sheet>
+      )}
+
+      {tab === 'recipes' && (<>
         <div className="item-list">
           {recipes.map(r => {
             const planned = plannedOn(r), low = lowCount(r);
