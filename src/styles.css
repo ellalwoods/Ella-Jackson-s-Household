@@ -811,6 +811,13 @@ a.pill-sm.detail-link { display: inline-flex; align-items: center; color: var(--
 .link-btn.small { font-size: 12px; padding: 0; }
 .shop-line > .shop-expiry { flex-basis: 100%; }
 .shop-stock { margin-top: 14px; }
+/* A ticked item fades after a few seconds, then moves down to Bought. */
+.shop-line { transition: opacity 1.2s ease; }
+.shop-line.fading { opacity: 0; }
+@media (prefers-reduced-motion: reduce) { .shop-line { transition: none; } }
+.shop-bought { margin-top: 22px; border-top: 1.5px solid var(--ink); padding-top: 4px; }
+.shop-bought-head { display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 8px 0; border: none; background: none; cursor: pointer; color: var(--ink); font-size: 13px; }
+.shop-bought-list .shop-line:last-child { border-bottom: none; }
 .shop-foot { display: flex; flex-direction: column; gap: 8px; margin-top: 22px; padding-top: 12px; border-top: 1px solid var(--line); }
 
 /* The add sheet: slides up on a phone, a centred panel on a laptop. */
