@@ -12,8 +12,8 @@ const EXPIRY_KEY = 'hh-shop-expiry';
 const VIEW_KEY = 'hh-shop-view';
 
 type SortBy = 'type' | 'day' | 'az';
-/** A ticked item stays put this long, then fades for FADE_MS and moves down to "Bought". */
-const HOLD_MS = 5000, FADE_MS = 1200;
+/** A ticked item fades out over this long where it is, then moves down to "Bought". */
+const FADE_MS = 5000;
 const SORTS: [SortBy, string][] = [['type', 'By type'], ['day', 'By day'], ['az', 'A–Z']];
 
 /** Ticks and expiry dates are per device (whoever is at the shops), remembered across reloads. */
@@ -49,10 +49,9 @@ export default function ShopPage({ update, mon, label, items, skipped, pending =
   const stopTimers = (k: string) => { (timers.current[k] ?? []).forEach(clearTimeout); delete timers.current[k]; };
   const startTimers = (k: string) => {
     stopTimers(k);
-    setFresh(f => ({ ...f, [k]: 'hold' }));
+    setFresh(f => ({ ...f, [k]: 'fade' }));
     timers.current[k] = [
-      window.setTimeout(() => setFresh(f => (f[k] ? { ...f, [k]: 'fade' } : f)), HOLD_MS),
-      window.setTimeout(() => { delete timers.current[k]; setFresh(f => { const n = { ...f }; delete n[k]; return n; }); }, HOLD_MS + FADE_MS),
+      window.setTimeout(() => { delete timers.current[k]; setFresh(f => { const n = { ...f }; delete n[k]; return n; }); }, FADE_MS),
     ];
   };
   useEffect(() => () => Object.values(timers.current).flat().forEach(clearTimeout), []);
