@@ -4,6 +4,7 @@ import { HouseholdData, money, norm, num, PEOPLE, PersonId, uid } from '../lib/m
 import { equalShares, isUs, owesFrom, pairBalance, pairOpen, pairRounds, peopleIn, renamePerson, settleUp, Txn, US, Who } from '../lib/split';
 import { confirmRemove } from './confirm';
 import { TagEdit } from './RecipeEditor';
+import Sheet from './Sheet';
 import type { Update } from '../Household';
 
 const nm = (w: Who) => (isUs(w) ? PEOPLE[w as PersonId].name : w);
@@ -33,23 +34,47 @@ export default function SplitPage({ D, update }: { D: HouseholdData; update: Upd
     const ws = [t.paidBy, ...Object.keys(t.shares)];
     return ws.every(a => ws.every(b => a === b || (!isUs(a) && !isUs(b)) || Math.abs(owesFrom(t, a, b)) < 0.005 || pairOpen(D.txns, a, b).includes(t)));
   };
-  const remove = (t: Txn) => { if (confirmRemove('“' + t.what + '”')) update(x => { x.txns = x.txns.filter(z => z.id !== t.id); }); };
+  const remove = (t: Txn) => {
+    if (!confirmRemove('“' + t.what + '”')) return false;
+    update(x => { x.txns = x.txns.filter(z => z.id !== t.id); });
+    return true;
+  };
+  // Costs open in a sheet to change; settled (archived) ones stay as they were.
+  const [editing, setEditing] = useState<Txn | null>(null);
+  const edit = (t: Txn) => setEditing(t);
 
   return (
     <div className="two-col">
       <section style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <BetweenUs D={D} update={update} removable={removable} remove={remove} />
-        <WithOthers D={D} update={update} people={people} removable={removable} remove={remove} />
+        <BetweenUs D={D} update={update} removable={removable} edit={edit} />
+        <WithOthers D={D} update={update} people={people} removable={removable} edit={edit} />
         <p className="note" style={{ margin: '0 2px' }}>Separate from the budget: only what you add here counts.</p>
       </section>
       <AddCost D={D} update={update} people={people} />
+      {editing && (
+        <Sheet title={editing.payment ? 'Part-payment' : 'Edit cost'} onClose={() => setEditing(null)}>
+          {editing.payment ? (
+            <div className="sheet-form">
+              <p style={{ margin: 0 }}>{shortDate(editing.date)} · {nm(editing.paidBy)} paid {nm(Object.keys(editing.shares)[0])} {money(editing.amount)}</p>
+              <div className="row" style={{ gap: 12 }}>
+                <button className="link-btn" style={{ color: '#B0563F' }} onClick={() => { if (remove(editing)) setEditing(null); }}>Remove</button>
+                <button className="link-btn" onClick={() => setEditing(null)}>Cancel</button>
+              </div>
+            </div>
+          ) : (
+            <AddCost key={editing.id} D={D} update={update} people={people} editing={editing} onDone={() => setEditing(null)}
+              onRemove={() => { if (remove(editing)) setEditing(null); }} />
+          )}
+        </Sheet>
+      )}
     </div>
   );
 }
 
-type RowProps = { removable: (t: Txn) => boolean; remove: (t: Txn) => void };
+type RowProps = { removable: (t: Txn) => boolean; edit: (t: Txn) => void };
 
-function CostRow({ t, i, note, removable, remove }: { t: Txn; i: number; note?: string } & RowProps) {
+/** A cost. Unsettled ones have Edit, which opens a sheet to change or remove it (part-payments: remove only). */
+function CostRow({ t, i, note, removable, edit }: { t: Txn; i: number; note?: string } & RowProps) {
   return (
     <div className="split-row" style={{ borderTop: i ? '1px solid var(--line)' : 'none' }}>
       <span className="split-date muted">{shortDate(t.date)}</span>
@@ -59,13 +84,13 @@ function CostRow({ t, i, note, removable, remove }: { t: Txn; i: number; note?: 
         {note && <div className="note" style={{ color: 'var(--ink)' }}>{note}</div>}
       </div>
       <div style={{ fontSize: 15, fontWeight: 600, flex: 'none' }}>{money(t.amount)}</div>
-      {removable(t) && <button className="link-btn" style={{ flex: 'none' }} onClick={() => remove(t)}>Remove</button>}
+      {removable(t) && <button className="link-btn" style={{ flex: 'none' }} onClick={() => edit(t)}>Edit</button>}
     </div>
   );
 }
 
 /** Ella and Jackson: one balance, the costs behind it, settle up, and the archive. */
-function BetweenUs({ D, update, removable, remove }: { D: HouseholdData; update: Update } & RowProps) {
+function BetweenUs({ D, update, removable, edit }: { D: HouseholdData; update: Update } & RowProps) {
   const [showCosts, setShowCosts] = useState(false);
   const [showArchive, setShowArchive] = useState(false);
   const [openRound, setOpenRound] = useState<string | null>(null);
@@ -103,7 +128,7 @@ function BetweenUs({ D, update, removable, remove }: { D: HouseholdData; update:
         <div className="split-list">
           {open.map((t, i) => {
             const e = owesFrom(t, 'jackson', 'ella');
-            return <CostRow key={t.id} t={t} i={i} note={(e > 0 ? 'Jackson owes ' : 'Ella owes ') + money(Math.abs(e))} removable={removable} remove={remove} />;
+            return <CostRow key={t.id} t={t} i={i} note={(e > 0 ? 'Jackson owes ' : 'Ella owes ') + money(Math.abs(e))} removable={removable} edit={edit} />;
           })}
         </div>
       )}
@@ -121,7 +146,7 @@ function BetweenUs({ D, update, removable, remove }: { D: HouseholdData; update:
                   </div>
                   {i === 0 && <button className="link-btn" style={{ flex: 'none' }} onClick={() => { if (ask('Undo this settle-up? Its costs go back to unsettled.')) update(x => { x.txns = x.txns.filter(z => z.id !== r.settle.id); }); }}>Undo</button>}
                 </div>
-                {isOpen && <div className="split-archived">{r.items.slice().reverse().map((t, j) => <CostRow key={t.id} t={t} i={j} removable={() => false} remove={remove} />)}</div>}
+                {isOpen && <div className="split-archived">{r.items.slice().reverse().map((t, j) => <CostRow key={t.id} t={t} i={j} removable={() => false} edit={edit} />)}</div>}
               </div>
             );
           })}
@@ -132,7 +157,7 @@ function BetweenUs({ D, update, removable, remove }: { D: HouseholdData; update:
 }
 
 /** Everyone else: one row per person, with Ella's and Jackson's own balances side by side. */
-function WithOthers({ D, update, people, removable, remove }: { D: HouseholdData; update: Update; people: string[] } & RowProps) {
+function WithOthers({ D, update, people, removable, edit }: { D: HouseholdData; update: Update; people: string[] } & RowProps) {
   const [sel, setSel] = useState<string | null>(null);
   const [showPast, setShowPast] = useState(false);
   const rows = people.map(p => ({ p, ella: pairBalance(D.txns, 'ella', p), jackson: pairBalance(D.txns, 'jackson', p) }))
@@ -170,7 +195,7 @@ function WithOthers({ D, update, people, removable, remove }: { D: HouseholdData
                   <span role="cell">{cell(r.ella)}</span>
                   <span role="cell">{cell(r.jackson)}</span>
                 </button>
-                {on && <PersonDetail D={D} update={update} person={r.p} removable={removable} remove={remove} onClose={() => setSel(null)} />}
+                {on && <PersonDetail D={D} update={update} person={r.p} removable={removable} edit={edit} onClose={() => setSel(null)} />}
               </div>
             );
           })}
@@ -193,7 +218,7 @@ function WithOthers({ D, update, people, removable, remove }: { D: HouseholdData
   );
 }
 
-function PersonDetail({ D, update, person, removable, remove, onClose }: { D: HouseholdData; update: Update; person: string; onClose: () => void } & RowProps) {
+function PersonDetail({ D, update, person, removable, edit, onClose }: { D: HouseholdData; update: Update; person: string; onClose: () => void } & RowProps) {
   const [via, setVia] = useState<Partial<Record<PersonId, PersonId>>>({});
   const [payFor, setPayFor] = useState<PersonId | null>(null);
   const [payAmt, setPayAmt] = useState('');
@@ -251,22 +276,32 @@ function PersonDetail({ D, update, person, removable, remove, onClose }: { D: Ho
       <div style={{ marginTop: 6 }}>
         {costs.map((t, i) => {
           const notes = US.map(me => { const e = owesFrom(t, me, person); return Math.abs(e) < 0.005 ? '' : e > 0 ? nm(me) + ' owes ' + money(e) : nm(me) + ' is owed ' + money(-e); }).filter(Boolean).join(' · ');
-          return <CostRow key={t.id} t={t} i={i} note={notes} removable={removable} remove={remove} />;
+          return <CostRow key={t.id} t={t} i={i} note={notes} removable={removable} edit={edit} />;
         })}
       </div>
     </div>
   );
 }
 
-/** One form for every cost: who paid, who it was for, and how it's split. */
-function AddCost({ D, update, people }: { D: HouseholdData; update: Update; people: string[] }) {
-  const [what, setWhat] = useState('');
-  const [amount, setAmount] = useState('');
-  const [date, setDate] = useState(key(new Date()));
-  const [paidBy, setPaidBy] = useState<Who>(() => [...D.txns].reverse().find(t => !t.settle && isUs(t.paidBy))?.paidBy ?? 'ella');
-  const [forWho, setForWho] = useState<Who[]>(['ella', 'jackson']);
-  const [custom, setCustom] = useState(false);
-  const [parts, setParts] = useState<Record<Who, string>>({});
+/** Splitting equally? Then the form shows "Equally"; otherwise each person's amount. */
+const isEqual = (t: Txn) => {
+  const ks = Object.keys(t.shares);
+  const eq = equalShares(t.amount, ks);
+  return ks.every(k => Math.abs((eq[k] ?? 0) - t.shares[k]) < 0.011);
+};
+
+/**
+ * One form for every cost: who paid, who it was for, and how it's split.
+ * With `editing`, it starts filled in from that cost and saves over it.
+ */
+function AddCost({ D, update, people, editing, onDone, onRemove }: { D: HouseholdData; update: Update; people: string[]; editing?: Txn; onDone?: () => void; onRemove?: () => void }) {
+  const [what, setWhat] = useState(editing?.what ?? '');
+  const [amount, setAmount] = useState(editing ? String(editing.amount) : '');
+  const [date, setDate] = useState(editing?.date ?? key(new Date()));
+  const [paidBy, setPaidBy] = useState<Who>(() => editing?.paidBy ?? [...D.txns].reverse().find(t => !t.settle && isUs(t.paidBy))?.paidBy ?? 'ella');
+  const [forWho, setForWho] = useState<Who[]>(editing ? Object.keys(editing.shares) : ['ella', 'jackson']);
+  const [custom, setCustom] = useState(editing ? !isEqual(editing) : false);
+  const [parts, setParts] = useState<Record<Who, string>>(editing && !isEqual(editing) ? Object.fromEntries(Object.entries(editing.shares).map(([w, v]) => [w, String(v)])) : {});
   const [newName, setNewName] = useState<string | null>(null);
   const [editPeople, setEditPeople] = useState(false);
 
@@ -296,6 +331,14 @@ function AddCost({ D, update, people }: { D: HouseholdData; update: Update; peop
   const add = () => {
     if (!ok) return;
     const clean = Object.fromEntries(Object.entries(shares).filter(([, v]) => v > 0));
+    if (editing) {
+      update(x => {
+        const t = x.txns.find(z => z.id === editing.id);
+        if (t) Object.assign(t, { date: date || t.date, what: what.trim(), amount: amt, paidBy, shares: clean });
+      });
+      onDone?.();
+      return;
+    }
     const t: Txn = { id: uid(), date: date || key(new Date()), what: what.trim(), amount: amt, paidBy, shares: clean };
     update(x => { x.txns.push(t); });
     setWhat(''); setAmount(''); setParts({}); setCustom(false); setDate(key(new Date()));
@@ -323,8 +366,8 @@ function AddCost({ D, update, people }: { D: HouseholdData; update: Update; peop
   };
 
   return (
-    <aside className="add-panel" style={{ marginBottom: 0 }}>
-      <div className="add-panel-title">+ Add a cost</div>
+    <aside className={editing ? 'sheet-form' : 'add-panel'} style={{ marginBottom: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {!editing && <div className="add-panel-title">+ Add a cost</div>}
       <input className="field-sm compact" value={what} onChange={e => setWhat(e.target.value)} placeholder="What, e.g. Dinner at Chin Chin" aria-label="What" />
       <div style={{ display: 'flex', gap: 8 }}>
         <input className="field-sm compact" style={{ flex: 1, minWidth: 0 }} value={amount} onChange={e => setAmount(e.target.value)} inputMode="decimal" placeholder="$ Amount" aria-label="Amount" />
@@ -369,7 +412,14 @@ function AddCost({ D, update, people }: { D: HouseholdData; update: Update; peop
 
       {effects.length > 0 && ok && <div className="split-preview">{effects.map(e => <div key={e}>{e}</div>)}</div>}
       {onlyOthers && forWho.length > 0 && <div className="note">Include Ella or Jackson: costs only between other people aren’t tracked.</div>}
-      <button className="pill-sm dark" onClick={add} disabled={!ok}>Add</button>
+      {editing ? (
+        <div className="row" style={{ gap: 12, alignItems: 'center' }}>
+          <button className="pill-sm dark" onClick={add} disabled={!ok}>Save changes</button>
+          <button className="link-btn" onClick={onDone}>Cancel</button>
+          <span style={{ flex: 1 }} />
+          {onRemove && <button className="link-btn" style={{ color: '#B0563F' }} onClick={onRemove}>Remove</button>}
+        </div>
+      ) : <button className="pill-sm dark" onClick={add} disabled={!ok}>Add</button>}
     </aside>
   );
 }
