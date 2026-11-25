@@ -35,6 +35,8 @@
 }
 
 html, body { margin: 0; padding: 0; background: #FFFFFF; -webkit-font-smoothing: antialiased; }
+/* Stop the page bouncing at the top and bottom on phones, which dragged the bottom bar around. */
+html, body { overscroll-behavior-y: none; }
 * { box-sizing: border-box; }
 a { color: var(--jackson-ink); }
 a:hover { color: var(--ella-ink); }
@@ -42,7 +44,7 @@ button { font: inherit; color: inherit; white-space: nowrap; }
 select, input, textarea { font: inherit; color: inherit; }
 input:focus, textarea:focus, select:focus { outline: 2px solid var(--ink); outline-offset: 1px; }
 
-.app { min-height: 100vh; background: #FFFFFF; font-family: var(--body); font-size: 15px; line-height: 1.45; color: var(--ink); padding: 22px clamp(14px, 4vw, 48px) 64px; }
+.app { min-height: 100vh; min-height: 100dvh; background: #FFFFFF; font-family: var(--body); font-size: 15px; line-height: 1.45; color: var(--ink); padding: 22px clamp(14px, 4vw, 48px) 64px; }
 
 /* Header */
 .header { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; justify-content: space-between; margin-bottom: 22px; }
@@ -639,7 +641,7 @@ input:focus, textarea:focus, select:focus { outline: 2px solid var(--ink); outli
 }
 
 /* ═══ Shell: five sections. A sidebar on laptops, a bar along the bottom on phones ═══ */
-.app.shell { padding: 0; display: grid; grid-template-columns: 228px minmax(0, 1fr); min-height: 100vh; }
+.app.shell { padding: 0; display: grid; grid-template-columns: 228px minmax(0, 1fr); min-height: 100vh; min-height: 100dvh; }
 .sidenav { position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; gap: 30px; padding: 30px 22px 22px; border-right: 1px solid var(--line); }
 .sidenav .logo-names { font-size: 24px; }
 .sidenav-list { display: flex; flex-direction: column; gap: 2px; }

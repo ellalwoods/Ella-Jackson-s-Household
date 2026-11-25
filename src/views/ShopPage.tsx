@@ -16,7 +16,7 @@ type SortBy = 'type' | 'day' | 'az';
 const FADE_MS = 5000;
 const SORTS: [SortBy, string][] = [['type', 'By type'], ['day', 'By day'], ['az', 'A–Z']];
 
-/** Ticks and expiry dates are per device (whoever is at the shops), remembered across reloads. */
+/** How the list is sorted and filtered is per device, remembered across reloads. */
 function useStored<T>(storageKey: string) {
   const [v, setV] = useState<Record<string, T>>(() => {
     try { return JSON.parse(localStorage.getItem(storageKey) || '{}'); } catch { return {}; }
@@ -25,11 +25,30 @@ function useStored<T>(storageKey: string) {
   return [v, setV] as const;
 }
 
-interface Props { update: Update; mon: Date; label: string; items: ShopItem[]; skipped: Skipped[]; pending?: string[] }
+/**
+ * Ticks and use-by dates used to be kept on each phone only. Move any still
+ * saved that way into the shared household (once), then forget the local copy.
+ */
+function carryOverLocalTicks(update: Update) {
+  let ticks: Record<string, boolean> = {}, dates: Record<string, string> = {};
+  try {
+    ticks = JSON.parse(localStorage.getItem(TICKS_KEY) || '{}') || {};
+    dates = JSON.parse(localStorage.getItem(EXPIRY_KEY) || '{}') || {};
+  } catch { return; }
+  const on = Object.keys(ticks).filter(k => ticks[k]);
+  const dated = Object.keys(dates).filter(k => dates[k]);
+  if (on.length || dated.length) update(x => {
+    on.forEach(k => { x.shopTicks[k] = 1; });
+    dated.forEach(k => { x.shopDates[k] ??= dates[k]; });
+  });
+  try { localStorage.removeItem(TICKS_KEY); localStorage.removeItem(EXPIRY_KEY); } catch { /* blocked */ }
+}
 
-export default function ShopPage({ update, mon, label, items, skipped, pending = [] }: Props) {
-  const [ticks, setTicks] = useStored<boolean>(TICKS_KEY);
-  const [dates, setDates] = useStored<string>(EXPIRY_KEY);
+interface Props { update: Update; mon: Date; label: string; items: ShopItem[]; skipped: Skipped[]; pending?: string[]; ticks: Record<string, 1>; dates: Record<string, string> }
+
+export default function ShopPage({ update, mon, label, items, skipped, pending = [], ticks, dates }: Props) {
+  useEffect(() => { carryOverLocalTicks(update); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const setDate = (k: string, v: string) => update(x => { if (v) x.shopDates[k] = v; else delete x.shopDates[k]; });
   const [view, setView] = useStored<string>(VIEW_KEY);
   const sortBy = (view.sort as SortBy) || 'type';
   const only = (view.only as ShopSection | 'all') || 'all';
@@ -57,7 +76,7 @@ export default function ShopPage({ update, mon, label, items, skipped, pending =
   useEffect(() => () => Object.values(timers.current).flat().forEach(clearTimeout), []);
   const toggle = (i: ShopItem) => {
     const k = tick(i), on = !ticks[k];
-    setTicks(t => ({ ...t, [k]: on }));
+    update(x => { if (on) x.shopTicks[k] = 1; else delete x.shopTicks[k]; });
     if (on) startTimers(k);
     else { stopTimers(k); setFresh(f => { const n = { ...f }; delete n[k]; return n; }); }
   };
@@ -89,10 +108,12 @@ export default function ShopPage({ update, mon, label, items, skipped, pending =
     const got = items.filter(isTicked);
     const exp: Record<string, string> = {};
     got.forEach(i => { const d = dates[tick(i)]; if (d) exp[i.id] = d; });
-    update(x => stockUp(x, got, wk, exp));
-    setDates(ds => { const n = { ...ds }; got.forEach(i => delete n[tick(i)]); return n; });
-    // Hand-added and carried-over items leave the list once they're in the pantry.
-    setTicks(t => { const n = { ...t }; got.filter(i => i.manual || i.carried).forEach(i => delete n[tick(i)]); return n; });
+    update(x => {
+      stockUp(x, got, wk, exp);
+      got.forEach(i => delete x.shopDates[tick(i)]);
+      // Hand-added and carried-over items leave the list once they're in the pantry.
+      got.filter(i => i.manual || i.carried).forEach(i => delete x.shopTicks[tick(i)]);
+    });
   };
   const removeManual = (id: string) => update(x => {
     for (const w of Object.keys(x.shopExtras)) {
@@ -139,7 +160,7 @@ export default function ShopPage({ update, mon, label, items, skipped, pending =
         </span>
         {ck && (
           <div className="shop-expiry">
-            <ExpiryInput label="Use by" compact value={dates[k] ?? ''} onChange={v => setDates(ds => ({ ...ds, [k]: v }))} />
+            <ExpiryInput label="Use by" compact value={dates[k] ?? ''} onChange={v => setDate(k, v)} />
             {!dates[k] && <span className="note">optional</span>}
           </div>
         )}

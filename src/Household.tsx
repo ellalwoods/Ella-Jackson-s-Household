@@ -148,7 +148,7 @@ export default function Household({ data: D, update, status }: Props) {
           )}
           {page === 'plan' && <WeekTable key={+mon} D={D} update={update} mon={mon} />}
           {page === 'chores' && <ChoresPage D={D} update={update} />}
-          {page === 'shop' && <ShopPage update={update} mon={mon} label={label} {...shop} pending={pending} />}
+          {page === 'shop' && <ShopPage update={update} mon={mon} label={label} {...shop} pending={pending} ticks={D.shopTicks} dates={D.shopDates} />}
           {page === 'recipes' && <RecipesPage D={D} update={update} mon={mon} />}
           {page === 'pantry' && <PantryPage D={D} update={update} />}
           {page === 'places' && <PlacesPage D={D} update={update} />}
