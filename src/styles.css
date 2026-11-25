@@ -35,6 +35,8 @@
 }
 
 html, body { margin: 0; padding: 0; background: #FFFFFF; -webkit-font-smoothing: antialiased; }
+/* No rubber-band bounce at the top and bottom of the page on iPhones: it made the screen jump when scrolling back up. */
+html, body { overscroll-behavior-y: none; }
 * { box-sizing: border-box; }
 a { color: var(--jackson-ink); }
 a:hover { color: var(--ella-ink); }

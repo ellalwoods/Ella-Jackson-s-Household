@@ -213,6 +213,10 @@ export interface HouseholdData {
   shopFrom: string;
   /** Carried-over items you said aren't needed, by `${weekKey}|${normalised name}`. */
   shopCleared: Record<string, 1>;
+  /** Shopping list ticks, shared so both phones see them: `${weekKey}|${item id}`, or the item id for hand-added and carried-over items. */
+  shopTicks: Record<string, 1>;
+  /** Optional use-by dates typed in when ticking, by the same keys. */
+  shopUseBy: Record<string, string>;
   buckets: Bucket[];
   /** Every recipe tag you've made, so they can be reused. */
   recipeTags: string[];
@@ -304,6 +308,8 @@ export function seed(today = new Date()): HouseholdData {
     shopSections: {},
     shopFrom: key(mondayOf(new Date())),
     shopCleared: {},
+    shopTicks: {},
+    shopUseBy: {},
     buckets: [],
     recipeTags: [],
     eatOut: {},
@@ -327,7 +333,7 @@ export function migrate(d: any): HouseholdData | null {
     ];
   }
   delete d.income;
-  d.recipes ??= []; d.plan ??= {}; d.chores ??= []; d.done ??= {}; d.prices ??= []; d.staples ??= []; d.extras ??= {}; d.spends ??= {}; d.events ??= []; d.tags ??= []; d.shopExtras ??= {}; d.shopSections ??= {}; d.shopFrom ??= key(mondayOf(new Date())); d.shopCleared ??= {}; d.buckets ??= []; d.recipeTags ??= []; d.eatOut ??= {}; d.eatOutPlace ??= {}; d.places ??= []; d.placeTags ??= []; d.picks ??= {}; d.splitPeople ??= [];
+  d.recipes ??= []; d.plan ??= {}; d.chores ??= []; d.done ??= {}; d.prices ??= []; d.staples ??= []; d.extras ??= {}; d.spends ??= {}; d.events ??= []; d.tags ??= []; d.shopExtras ??= {}; d.shopSections ??= {}; d.shopFrom ??= key(mondayOf(new Date())); d.shopCleared ??= {}; d.shopTicks ??= {}; d.shopUseBy ??= {}; d.buckets ??= []; d.recipeTags ??= []; d.eatOut ??= {}; d.eatOutPlace ??= {}; d.places ??= []; d.placeTags ??= []; d.picks ??= {}; d.splitPeople ??= [];
   // The first Split page kept costs between us and with others separately; now it's one list.
   if (!Array.isArray(d.txns)) { d.txns = upgradeSplits(d.splits, d.others, uid); for (const p of peopleIn(d.txns, [])) if (!d.splitPeople.includes(p)) d.splitPeople.push(p); }
   delete d.splits; delete d.others;

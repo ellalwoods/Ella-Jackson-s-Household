@@ -1,14 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { addDays, key, parse } from '../lib/dates';
-import { ManualShopItem, money, norm, SHOP_SECTION_LABEL, SHOP_SECTIONS, ShopSection, Unit, uid } from '../lib/model';
+import { HouseholdData, ManualShopItem, money, norm, SHOP_SECTION_LABEL, SHOP_SECTIONS, ShopSection, Unit, uid } from '../lib/model';
 import { buyText, shortWeek, guessSection, ShopItem, shoppingText, Skipped, stockUp } from '../lib/food';
 import type { Update } from '../Household';
 import { ExpiryInput, stockRule, UnitSelect } from './PantryPage';
 import Sheet from './Sheet';
 
-const TICKS_KEY = 'hh-shop-ticks';
-
-const EXPIRY_KEY = 'hh-shop-expiry';
+/** Where ticks used to be kept on each phone, before they were shared. */
+const OLD_TICKS_KEY = 'hh-shop-ticks', OLD_EXPIRY_KEY = 'hh-shop-expiry';
 const VIEW_KEY = 'hh-shop-view';
 
 type SortBy = 'type' | 'day' | 'az';
@@ -16,7 +15,7 @@ type SortBy = 'type' | 'day' | 'az';
 const FADE_MS = 5000;
 const SORTS: [SortBy, string][] = [['type', 'By type'], ['day', 'By day'], ['az', 'A–Z']];
 
-/** Ticks and expiry dates are per device (whoever is at the shops), remembered across reloads. */
+/** View settings (sort, filter) are per device, remembered across reloads. */
 function useStored<T>(storageKey: string) {
   const [v, setV] = useState<Record<string, T>>(() => {
     try { return JSON.parse(localStorage.getItem(storageKey) || '{}'); } catch { return {}; }
@@ -25,11 +24,26 @@ function useStored<T>(storageKey: string) {
   return [v, setV] as const;
 }
 
-interface Props { update: Update; mon: Date; label: string; items: ShopItem[]; skipped: Skipped[]; pending?: string[] }
+interface Props { D: HouseholdData; update: Update; mon: Date; label: string; items: ShopItem[]; skipped: Skipped[]; pending?: string[] }
 
-export default function ShopPage({ update, mon, label, items, skipped, pending = [] }: Props) {
-  const [ticks, setTicks] = useStored<boolean>(TICKS_KEY);
-  const [dates, setDates] = useStored<string>(EXPIRY_KEY);
+export default function ShopPage({ D, update, mon, label, items, skipped, pending = [] }: Props) {
+  // Ticks and use-by dates are shared through the household, so both phones see the same list.
+  const ticks = D.shopTicks, dates = D.shopUseBy;
+  const setTick = (k: string, on: boolean) => update(x => { if (on) x.shopTicks[k] = 1; else { delete x.shopTicks[k]; delete x.shopUseBy[k]; } });
+  const setDate = (k: string, v: string) => update(x => { if (v) x.shopUseBy[k] = v; else delete x.shopUseBy[k]; });
+  // One-off: ticks made before they were shared move from this phone into the household.
+  useEffect(() => {
+    try {
+      const t = JSON.parse(localStorage.getItem(OLD_TICKS_KEY) || '{}') as Record<string, boolean>;
+      const e = JSON.parse(localStorage.getItem(OLD_EXPIRY_KEY) || '{}') as Record<string, string>;
+      const keys = Object.keys(t).filter(k => t[k]);
+      if (keys.length || Object.keys(e).length) update(x => {
+        keys.forEach(k => { x.shopTicks[k] = 1; });
+        Object.entries(e).forEach(([k, v]) => { if (v && !x.shopUseBy[k]) x.shopUseBy[k] = v; });
+      });
+      localStorage.removeItem(OLD_TICKS_KEY); localStorage.removeItem(OLD_EXPIRY_KEY);
+    } catch { /* storage blocked */ }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [view, setView] = useStored<string>(VIEW_KEY);
   const sortBy = (view.sort as SortBy) || 'type';
   const only = (view.only as ShopSection | 'all') || 'all';
@@ -57,7 +71,7 @@ export default function ShopPage({ update, mon, label, items, skipped, pending =
   useEffect(() => () => Object.values(timers.current).flat().forEach(clearTimeout), []);
   const toggle = (i: ShopItem) => {
     const k = tick(i), on = !ticks[k];
-    setTicks(t => ({ ...t, [k]: on }));
+    setTick(k, on);
     if (on) startTimers(k);
     else { stopTimers(k); setFresh(f => { const n = { ...f }; delete n[k]; return n; }); }
   };
@@ -89,10 +103,12 @@ export default function ShopPage({ update, mon, label, items, skipped, pending =
     const got = items.filter(isTicked);
     const exp: Record<string, string> = {};
     got.forEach(i => { const d = dates[tick(i)]; if (d) exp[i.id] = d; });
-    update(x => stockUp(x, got, wk, exp));
-    setDates(ds => { const n = { ...ds }; got.forEach(i => delete n[tick(i)]); return n; });
-    // Hand-added and carried-over items leave the list once they're in the pantry.
-    setTicks(t => { const n = { ...t }; got.filter(i => i.manual || i.carried).forEach(i => delete n[tick(i)]); return n; });
+    update(x => {
+      stockUp(x, got, wk, exp);
+      got.forEach(i => delete x.shopUseBy[tick(i)]);
+      // Hand-added and carried-over items leave the list once they're in the pantry.
+      got.filter(i => i.manual || i.carried).forEach(i => delete x.shopTicks[tick(i)]);
+    });
   };
   const removeManual = (id: string) => update(x => {
     for (const w of Object.keys(x.shopExtras)) {
@@ -139,7 +155,7 @@ export default function ShopPage({ update, mon, label, items, skipped, pending =
         </span>
         {ck && (
           <div className="shop-expiry">
-            <ExpiryInput label="Use by" compact value={dates[k] ?? ''} onChange={v => setDates(ds => ({ ...ds, [k]: v }))} />
+            <ExpiryInput label="Use by" compact value={dates[k] ?? ''} onChange={v => setDate(k, v)} />
             {!dates[k] && <span className="note">optional</span>}
           </div>
         )}
